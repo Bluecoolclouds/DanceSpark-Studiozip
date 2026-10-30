@@ -22,7 +22,10 @@ export default function Studio() {
 
   const confirmDelete = (id: string) => {
     if (Platform.OS === 'web') { removeDraft(id); return; }
-    Alert.alert('Удалить черновик?', 'Это действие нельзя отменить.', [
+    const draft = drafts.find((item) => item.id === id);
+    Alert.alert('Удалить черновик?', draft?.savedVideoAssetId
+      ? 'Черновик будет удалён. Сохранённая копия в медиатеке останется.'
+      : 'Это действие нельзя отменить.', [
       { text: 'Отмена', style: 'cancel' },
       { text: 'Удалить', style: 'destructive', onPress: () => removeDraft(id) },
     ]);
@@ -62,7 +65,9 @@ export default function Studio() {
                     <Text style={[styles.dTitle, { color: c.foreground }]} numberOfLines={1}>{t.title}</Text>
                     <Text style={[styles.dMeta, { color: c.mutedForeground }]}>{d.duration} сек · {new Date(d.createdAt).toLocaleDateString('ru-RU')}</Text>
                     <View style={[styles.badge, { backgroundColor: tone(c, t.color), borderColor: c.border }]}>
-                      <Text style={[styles.badgeText, { color: c.foreground }]}>ЧЕРНОВИК</Text>
+                      <Text style={[styles.badgeText, { color: c.foreground }]}>
+                        {d.savedVideoAssetId ? 'СОХРАНЕНО' : d.videoUri ? 'ГОТОВОЕ ВИДЕО' : 'ЧЕРНОВИК'}
+                      </Text>
                     </View>
                   </View>
                   <Bouncy onPress={() => confirmDelete(d.id)} style={[styles.del, { borderColor: c.border }]}>

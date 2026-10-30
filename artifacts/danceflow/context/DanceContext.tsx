@@ -7,6 +7,8 @@ export interface Draft {
   photoUri: string;
   duration: number;
   createdAt: number;
+  videoUri?: string;
+  savedVideoAssetId?: string;
 }
 
 interface Ctx {
@@ -16,6 +18,7 @@ interface Ctx {
   isFavorite: (id: string) => boolean;
   toggleFavorite: (id: string) => void;
   addDraft: (d: Omit<Draft, 'id' | 'createdAt'>) => Draft;
+  updateDraft: (id: string, updates: Partial<Pick<Draft, 'videoUri' | 'savedVideoAssetId'>>) => void;
   removeDraft: (id: string) => void;
 }
 
@@ -57,6 +60,14 @@ export function DanceProvider({ children }: { children: React.ReactNode }) {
     return draft;
   }, []);
 
+  const updateDraft = useCallback((id: string, updates: Partial<Pick<Draft, 'videoUri' | 'savedVideoAssetId'>>) => {
+    setDrafts((prev) => {
+      const next = prev.map((draft) => draft.id === id ? { ...draft, ...updates } : draft);
+      AsyncStorage.setItem(DRAFT_KEY, JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+  }, []);
+
   const removeDraft = useCallback((id: string) => {
     setDrafts((prev) => {
       const next = prev.filter((x) => x.id !== id);
@@ -68,8 +79,8 @@ export function DanceProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<Ctx>(() => ({
     ready, favorites, drafts,
     isFavorite: (id) => favorites.includes(id),
-    toggleFavorite, addDraft, removeDraft,
-  }), [ready, favorites, drafts, toggleFavorite, addDraft, removeDraft]);
+    toggleFavorite, addDraft, updateDraft, removeDraft,
+  }), [ready, favorites, drafts, toggleFavorite, addDraft, updateDraft, removeDraft]);
 
   return <DanceContext.Provider value={value}>{children}</DanceContext.Provider>;
 }

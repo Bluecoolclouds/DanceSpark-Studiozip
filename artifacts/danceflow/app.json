@@ -23,6 +23,16 @@
           "photosPermission": "Danceflow использует фото, чтобы собрать черновик танца.",
           "cameraPermission": "Danceflow использует камеру, чтобы сделать фото для танца."
         }
+      ],
+      "expo-video",
+      "expo-sharing",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Danceflow использует медиатеку, чтобы управлять сохранёнными танцами.",
+          "savePhotosPermission": "Danceflow сохраняет готовые танцы в медиатеку.",
+          "granularPermissions": ["video"]
+        }
       ]
     ],
     "experiments": {
