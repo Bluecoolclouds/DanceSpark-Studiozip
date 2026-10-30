@@ -108,13 +108,13 @@ export function TemplateCard({ t, onPress, width, height = 280 }: { t: DanceTemp
       <Image source={t.image} style={StyleSheet.absoluteFill} contentFit="cover" />
       <LinearGradient colors={[c.clear, c.scrim]} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0.5 }} end={{ x: 0, y: 1 }} />
       <View style={s.cardTop}>
-        <View style={[s.tag, { backgroundColor: col, borderColor: 'transparent' }]}>
+        {!t.videoUri && <View style={[s.tag, { backgroundColor: col, borderColor: 'transparent' }]}>
           <Text style={[s.tagText, { color: onTone(c, t.color) }]}>{categoryLabel(t.category)}</Text>
-        </View>
+        </View>}
         <FavButton id={t.id} size={36} />
       </View>
       <View style={s.cardBottom}>
-        {t.isNew && <View style={[s.newChip, { backgroundColor: c.accent }]}><Text style={[s.newText, { color: c.foreground }]}>Новинка</Text></View>}
+        {!t.videoUri && t.isNew && <View style={[s.newChip, { backgroundColor: c.accent }]}><Text style={[s.newText, { color: c.foreground }]}>Новинка</Text></View>}
         {!t.videoUri && <Text style={[s.cardTitle, { color: c.stageForeground }]} numberOfLines={1}>{t.title}</Text>}
         <View style={s.row}>
           {t.videoUri
