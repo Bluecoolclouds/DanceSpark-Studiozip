@@ -14,3 +14,9 @@ The user wants the dance cards nearly touching, with less rounding and no large 
 **Why:** The user repeatedly clarified that unwanted space meant the gaps between cards, not their height or the image's dark overlay.
 
 **How to apply:** Keep the mosaic tightly aligned; do not add decorative vertical offsets that create empty space around adjacent cards.
+
+Danceflow will be a paid app.
+
+**Why:** The user explicitly clarified that the product is intended to be paid.
+
+**How to apply:** Include payments and purchase accounting in production readiness, rather than treating monetization as optional for the public launch. The exact pricing model is not decided.
