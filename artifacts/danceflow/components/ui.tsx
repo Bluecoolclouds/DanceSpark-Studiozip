@@ -31,10 +31,10 @@ export const tap = (style: 'light' | 'medium' | 'heavy' = 'light') => {
 };
 
 export function Bouncy({
-  children, onPress, style, disabled, haptic = 'light', testID, scaleTo = 0.94,
+  children, onPress, style, disabled, haptic = 'light', testID, accessibilityLabel, scaleTo = 0.94,
 }: {
   children: React.ReactNode; onPress?: () => void; style?: StyleProp<ViewStyle>; disabled?: boolean;
-  haptic?: 'light' | 'medium' | 'heavy'; testID?: string; scaleTo?: number;
+  haptic?: 'light' | 'medium' | 'heavy'; testID?: string; accessibilityLabel?: string; scaleTo?: number;
 }) {
   const s = useSharedValue(1);
   const reduced = useReducedMotion();
@@ -44,6 +44,8 @@ export function Bouncy({
   return (
     <AnimatedPressable
       testID={testID}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       disabled={disabled}
       style={[style, a, focused && focusRing, disabled && { opacity: 0.45 }]}
       onFocus={() => setFocused(true)}
@@ -105,26 +107,30 @@ export function TemplateCard({ t, onPress, width, height = 280, previewPlayer }:
   const c = useColors();
   const col = tone(c, t.color);
   return (
-    <Bouncy onPress={onPress} scaleTo={0.97} style={[s.card, { width, height, borderColor: c.glassEdge, backgroundColor: col, shadowColor: c.glow }]}>
-      <Image source={t.image} style={StyleSheet.absoluteFill} contentFit="cover" />
-      {previewPlayer && <VideoView player={previewPlayer} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} surfaceType={Platform.OS === 'android' ? 'textureView' : 'surfaceView'} />}
-      <LinearGradient colors={[c.clear, c.scrim]} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0.5 }} end={{ x: 0, y: 1 }} />
-      <View style={s.cardTop}>
-        {!t.videoUri && <View style={[s.tag, { backgroundColor: col, borderColor: 'transparent' }]}>
-          <Text style={[s.tagText, { color: onTone(c, t.color) }]}>{categoryLabel(t.category)}</Text>
-        </View>}
-        <FavButton id={t.id} size={36} />
-      </View>
-      <View style={s.cardBottom}>
-        {!t.videoUri && t.isNew && <View style={[s.newChip, { backgroundColor: c.accent }]}><Text style={[s.newText, { color: c.foreground }]}>Новинка</Text></View>}
-        {!t.videoUri && <Text style={[s.cardTitle, { color: c.stageForeground }]} numberOfLines={1}>{t.title}</Text>}
-        <View style={s.row}>
-          {t.videoUri
-            ? <Feather name="play-circle" size={22} color={c.stageForeground} />
-            : <><Text style={[s.meta, { color: c.stageForeground }]}>{t.bpm} BPM · {t.dancer}</Text>{t.energy != null && <EnergyBars level={t.energy} color={col} />}</>}
+    <View style={[s.card, { width, height, borderColor: c.glassEdge, backgroundColor: col, shadowColor: c.glow }]}>
+      <Bouncy onPress={onPress} scaleTo={0.97} style={StyleSheet.absoluteFill}>
+        <Image source={t.image} style={StyleSheet.absoluteFill} contentFit="cover" />
+        {previewPlayer && <VideoView player={previewPlayer} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} surfaceType={Platform.OS === 'android' ? 'textureView' : 'surfaceView'} />}
+        <LinearGradient colors={[c.clear, c.scrim]} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0.5 }} end={{ x: 0, y: 1 }} />
+      </Bouncy>
+      <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+        <View style={s.cardTop}>
+          {!t.videoUri && <View style={[s.tag, { backgroundColor: col, borderColor: 'transparent' }]}>
+            <Text style={[s.tagText, { color: onTone(c, t.color) }]}>{categoryLabel(t.category)}</Text>
+          </View>}
+          <FavButton id={t.id} size={36} />
+        </View>
+        <View pointerEvents="none" style={s.cardBottom}>
+          {!t.videoUri && t.isNew && <View style={[s.newChip, { backgroundColor: c.accent }]}><Text style={[s.newText, { color: c.foreground }]}>Новинка</Text></View>}
+          {!t.videoUri && <Text style={[s.cardTitle, { color: c.stageForeground }]} numberOfLines={1}>{t.title}</Text>}
+          <View style={s.row}>
+            {t.videoUri
+              ? <Feather name="play-circle" size={22} color={c.stageForeground} />
+              : <><Text style={[s.meta, { color: c.stageForeground }]}>{t.bpm} BPM · {t.dancer}</Text>{t.energy != null && <EnergyBars level={t.energy} color={col} />}</>}
+          </View>
         </View>
       </View>
-    </Bouncy>
+    </View>
   );
 }
 

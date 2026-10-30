@@ -7,7 +7,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { NativeScrollEvent, NativeSyntheticEvent, Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { useReducedMotion, Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BigButton, Pill, SectionTitle, TemplateCard, EmptyState } from '@/components/ui';
+import { BigButton, Bouncy, Pill, SectionTitle, TemplateCard, EmptyState } from '@/components/ui';
 import { F } from '@/constants/fonts';
 import { CATEGORIES, Category, HERO_IMAGE, TEMPLATES } from '@/constants/templates';
 import { useColors } from '@/hooks/useColors';
@@ -54,6 +54,13 @@ export default function Discover() {
   }, [viewportHeight]);
 
   const activeFeatured = featured[activeFeaturedIndex] ?? featured[0];
+  const featuredScroll = useRef<React.ElementRef<typeof ScrollView>>(null);
+  const moveFeatured = useCallback((direction: -1 | 1) => {
+    const next = Math.max(0, Math.min(featured.length - 1, activeFeaturedIndex + direction));
+    if (next === activeFeaturedIndex) return;
+    setActiveFeaturedIndex(next);
+    featuredScroll.current?.scrollTo({ x: next * (featuredCardWidth + 2), y: 0, animated: true });
+  }, [activeFeaturedIndex, featured.length, featuredCardWidth]);
   const previewUri = activeFeatured?.videoUri
     ? Platform.OS === 'web'
       ? activeFeatured.videoUri.replace(/\/video\.mp4$/, '/preview.webm')
@@ -136,8 +143,12 @@ export default function Discover() {
         }}
       >
         <ScrollView
+          ref={featuredScroll}
           horizontal
           showsHorizontalScrollIndicator={false}
+          snapToInterval={featuredCardWidth + 2}
+          decelerationRate="fast"
+          disableIntervalMomentum
           contentContainerStyle={{ paddingHorizontal: 12, gap: 2, paddingBottom: 8 }}
           onScrollEndDrag={(event) => selectFeaturedAtOffset(event.nativeEvent.contentOffset.x)}
           onMomentumScrollEnd={(event) => selectFeaturedAtOffset(event.nativeEvent.contentOffset.x)}
@@ -153,6 +164,26 @@ export default function Discover() {
             />
         ))}
         </ScrollView>
+        {featured.length > 1 && <>
+          <Bouncy
+            testID="featured-previous"
+            accessibilityLabel="Предыдущий хит"
+            disabled={activeFeaturedIndex === 0}
+            onPress={() => moveFeatured(-1)}
+            style={[styles.featuredArrow, styles.featuredArrowLeft, { backgroundColor: c.glass, borderColor: c.glassEdge }]}
+          >
+            <Feather name="chevron-left" size={24} color={c.foreground} />
+          </Bouncy>
+          <Bouncy
+            testID="featured-next"
+            accessibilityLabel="Следующий хит"
+            disabled={activeFeaturedIndex === featured.length - 1}
+            onPress={() => moveFeatured(1)}
+            style={[styles.featuredArrow, styles.featuredArrowRight, { backgroundColor: c.glass, borderColor: c.glassEdge }]}
+          >
+            <Feather name="chevron-right" size={24} color={c.foreground} />
+          </Bouncy>
+        </>}
       </View>
 
       <View style={{ height: 28 }} />
@@ -194,6 +225,9 @@ const styles = StyleSheet.create({
   marquee: { borderTopWidth: 1, borderBottomWidth: 1, paddingVertical: 10, transform: [{ rotate: '-3deg' }], marginTop: -18, marginHorizontal: -10, marginBottom: 30 },
   marqueeText: { fontFamily: F.display, fontSize: 15 },
   count: { fontFamily: F.display, fontSize: 22 },
+  featuredArrow: { position: 'absolute', top: 148, width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center', zIndex: 10 },
+  featuredArrowLeft: { left: 6 },
+  featuredArrowRight: { right: 6 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12, gap: 2, marginTop: 6 },
   honest: { margin: 20, marginTop: 34, padding: 16, borderRadius: 20, borderWidth: 1, flexDirection: 'row', gap: 10 },
   honestText: { flex: 1, fontFamily: F.bodyBold, fontSize: 13, lineHeight: 19 },
