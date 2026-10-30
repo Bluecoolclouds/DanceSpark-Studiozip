@@ -1,15 +1,23 @@
-# [Project name]
+# Danceflow
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+An Expo dance-video app with a separate web admin panel and Express API.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- Install dependencies with `pnpm install --frozen-lockfile`.
+- Start services through their managed Replit workflows, which supply `PORT` and routing:
+  - `artifacts/danceflow: expo` — mobile app and Expo web preview.
+  - `artifacts/danceflow-admin: web` — admin panel at `/admin/`.
+  - `artifacts/api-server: API Server` — API at `/api`.
+  - `artifacts/mockup-sandbox: Component Preview Server` — existing design previews at `/__mockup`.
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required settings: `DATABASE_URL` (Replit-managed PostgreSQL), `CLERK_PUBLISHABLE_KEY`, and `CLERK_SECRET_KEY` (provision through Replit-managed Clerk).
+- After provisioning an empty development database, apply the existing schema with `pnpm --filter @workspace/db run push`. Review proposed changes before applying to a database containing data.
+- `higgs_api` is required only for actual Higgsfield generation; keep it in Secrets. Do not enable paid generation without provider configuration and spending limits.
+- `DANCEFLOW_OWNER_EMAIL` identifies the intended administrator; ownership also requires a verified authenticated identity.
 
 ## Stack
 
@@ -38,7 +46,9 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Imported project names ending in `.zip` can be rejected by Clerk provisioning as URL-like names. Rename the Replit project to a plain name such as `Danceflow` before provisioning authentication.
+- Without Clerk provisioning, the mobile app cannot initialize authentication and API middleware can return errors even for health requests. Do not bypass authentication to make previews load.
+- Backend tests include database-writing governance tests and expect authentication/provider configuration. Run them only against a disposable development database, never production.
 
 ## Pointers
 
