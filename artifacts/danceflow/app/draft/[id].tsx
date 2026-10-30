@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
   round: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   title: { fontFamily: F.display, fontSize: 30, lineHeight: 34, letterSpacing: -1 },
   collage: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: 28 },
-  photo: { width: 140, height: 190, borderRadius: 22, borderWidth: 3, overflow: 'hidden' },
+  photo: { width: 140, height: 190, borderRadius: 6, borderWidth: 2, overflow: 'hidden' },
   plus: { width: 44, height: 44, borderRadius: 22, borderWidth: 3, alignItems: 'center', justifyContent: 'center', marginHorizontal: -12, zIndex: 2 },
   lbl: { position: 'absolute', bottom: 8, left: 8, borderWidth: 2, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
   lblText: { fontFamily: F.bodyHeavy, fontSize: 10, letterSpacing: 1 },

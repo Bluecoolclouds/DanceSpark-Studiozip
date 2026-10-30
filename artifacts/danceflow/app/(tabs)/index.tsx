@@ -35,7 +35,7 @@ export default function Discover() {
     (cat === 'all' || t.category === cat) &&
     (speed === 'any' || (speed === 'chill' ? t.bpm < 110 : t.bpm >= 110))), [cat, speed]);
 
-  const cardW = (Math.min(width, 600) - 20 * 2 - 14) / 2;
+  const cardW = (Math.min(width, 600) - 12 * 2 - 5) / 2;
   const featured = TEMPLATES.filter((t) => t.isNew);
 
   return (
@@ -60,7 +60,7 @@ export default function Discover() {
       </View>
 
       <SectionTitle kicker="СВЕЖЕЕ НА СЦЕНЕ" title="Новые хиты" />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 14, paddingBottom: 8 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 5, paddingBottom: 8 }}>
         {featured.map((t) => (
           <TemplateCard key={t.id} t={t} width={Math.min(width * 0.72, 300)} height={340} onPress={() => router.push(`/template/${t.id}`)} />
         ))}
@@ -68,10 +68,10 @@ export default function Discover() {
 
       <View style={{ height: 28 }} />
       <SectionTitle kicker="ВЕСЬ КАТАЛОГ" title="Выбери свой стиль" right={<Text style={[styles.count, { color: c.mutedForeground }]}>{list.length}</Text>} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingVertical: 4 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 5, paddingVertical: 4 }}>
         {CATEGORIES.map((k) => <Pill key={k.key} label={k.label} active={cat === k.key} onPress={() => setCat(k.key)} />)}
       </ScrollView>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingVertical: 10 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 5, paddingVertical: 10 }}>
         {SPEEDS.map((k) => <Pill key={k.key} color="secondary" label={k.label} active={speed === k.key} onPress={() => setSpeed(k.key)} />)}
       </ScrollView>
 
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   marquee: { borderTopWidth: 3, borderBottomWidth: 3, paddingVertical: 10, transform: [{ rotate: '-2deg' }], marginTop: -14, marginHorizontal: -10, marginBottom: 30 },
   marqueeText: { fontFamily: F.display, fontSize: 15, letterSpacing: 1 },
   count: { fontFamily: F.display, fontSize: 22 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, gap: 14, marginTop: 6 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12, gap: 5, marginTop: 6 },
   honest: { margin: 20, marginTop: 34, padding: 16, borderRadius: 20, borderWidth: 2, flexDirection: 'row', gap: 10 },
   honestText: { flex: 1, fontFamily: F.bodyBold, fontSize: 13, lineHeight: 19 },
 });

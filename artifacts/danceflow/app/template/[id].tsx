@@ -103,7 +103,7 @@ function Stat({ label, value, unit, bg }: { label: string; value: string; unit?:
 }
 
 const styles = StyleSheet.create({
-  hero: { height: 520, overflow: 'hidden', borderBottomLeftRadius: 36, borderBottomRightRadius: 36 },
+  hero: { height: 520, overflow: 'hidden', borderBottomLeftRadius: 8, borderBottomRightRadius: 8 },
   topBar: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between' },
   round: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   heroText: { position: 'absolute', left: 20, right: 20, bottom: 26, gap: 8 },
@@ -111,8 +111,8 @@ const styles = StyleSheet.create({
   tagText: { fontFamily: F.bodyHeavy, fontSize: 11, letterSpacing: 1 },
   title: { fontFamily: F.display, fontSize: 36, letterSpacing: -1 },
   tagline: { fontFamily: F.bodyBold, fontSize: 15 },
-  statsRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginTop: 20 },
-  stat: { flex: 1, borderWidth: 2, borderRadius: 18, padding: 12 },
+  statsRow: { flexDirection: 'row', gap: 5, paddingHorizontal: 12, marginTop: 12 },
+  stat: { flex: 1, borderWidth: 2, borderRadius: 8, padding: 12 },
   statLabel: { fontFamily: F.bodyBold, fontSize: 11 },
   statValue: { fontFamily: F.display, fontSize: 18, marginTop: 4 },
   block: { paddingHorizontal: 20, marginTop: 26, gap: 10 },

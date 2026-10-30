@@ -158,7 +158,7 @@ const s = StyleSheet.create({
   demoText: { fontFamily: F.bodyHeavy, fontSize: 11, letterSpacing: 1 },
   bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 3 },
   fav: { alignItems: 'center', justifyContent: 'center', borderWidth: 2 },
-  card: { borderRadius: 26, borderWidth: 3, overflow: 'hidden', shadowOffset: { width: 4, height: 5 }, shadowOpacity: 1, shadowRadius: 0, elevation: 4 },
+  card: { borderRadius: 8, borderWidth: 2, overflow: 'hidden', shadowOffset: { width: 2, height: 3 }, shadowOpacity: 1, shadowRadius: 0, elevation: 3 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12 },
   tag: { borderWidth: 2, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   tagText: { fontFamily: F.bodyHeavy, fontSize: 11, letterSpacing: 1 },

@@ -25,7 +25,7 @@ const colors = {
     scrim: 'rgba(27,11,58,0.72)',
     clear: 'rgba(27,11,58,0)',
   },
-  radius: 22,
+  radius: 12,
 };
 
 export default colors;
