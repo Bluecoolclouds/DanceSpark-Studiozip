@@ -46,7 +46,7 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-- Imported project names ending in `.zip` can be rejected by Clerk provisioning as URL-like names. Rename the Replit project to a plain name such as `Danceflow` before provisioning authentication.
+- Imported project names ending in `.zip` can be rejected by Clerk provisioning as URL-like names. A plain project name is needed, but renaming and refreshing did not resolve the observed provisioning error in this import; see the agent memory note on imported authentication provisioning before retrying.
 - Without Clerk provisioning, the mobile app cannot initialize authentication and API middleware can return errors even for health requests. Do not bypass authentication to make previews load.
 - Backend tests include database-writing governance tests and expect authentication/provider configuration. Run them only against a disposable development database, never production.
 
