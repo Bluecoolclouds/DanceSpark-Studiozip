@@ -90,7 +90,7 @@ export function TemplateCard({ t, onPress, width, height = 280 }: { t: DanceTemp
   return (
     <Bouncy onPress={onPress} scaleTo={0.97} style={[s.card, { width, height, borderColor: c.border, backgroundColor: col, shadowColor: c.border }]}>
       <Image source={t.image} style={StyleSheet.absoluteFill} contentFit="cover" />
-      <LinearGradient colors={[c.clear, c.scrim]} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0.45 }} end={{ x: 0, y: 1 }} />
+      <LinearGradient colors={[c.clear, c.scrim]} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0.72 }} end={{ x: 0, y: 1 }} />
       <View style={s.cardTop}>
         <View style={[s.tag, { backgroundColor: col, borderColor: c.border }]}>
           <Text style={[s.tagText, { color: c.foreground }]}>{categoryLabel(t.category).toUpperCase()}</Text>
