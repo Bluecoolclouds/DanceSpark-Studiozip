@@ -9,6 +9,12 @@ The user wants a phone app for generating dances, conceptually like Higgsfield's
 
 **How to apply:** Keep the original energetic dance identity and custom artwork in future screens. Treat actual video generation as a separate next step; never present a saved design draft as a generated video.
 
+For the Hallmark redesign, the user chose to preserve bright colors and dance character, rejected the yellow screen as unclear and cheap-looking, and requested the character of Just Dance 4 with a transparent pill-shaped bottom menu.
+
+**Why:** The user explicitly described what felt wrong and the desired replacement. Brightness does not mean retaining the cream/yellow base.
+
+**How to apply:** Preserve the energetic identity, avoid cream/yellow as the main surface, and keep floating translucent bottom navigation. Do not interpret Hallmark as permission to replace the dance identity with a generic minimalist AI interface.
+
 The user wants the dance cards nearly touching, with less rounding and no large vertical gaps between rows. Preserve the existing card and banner heights when adjusting spacing.
 
 **Why:** The user repeatedly clarified that unwanted space meant the gaps between cards, not their height or the image's dark overlay.

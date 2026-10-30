@@ -8,10 +8,12 @@ import { Tabs } from 'expo-router';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { SymbolView } from 'expo-symbols';
 import { F } from '@/constants/fonts';
+import colors from '@/constants/colors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function NativeTabLayout() {
   return (
-    <NativeTabs>
+    <NativeTabs tintColor={colors.light.primary}>
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Icon sf={{ default: 'sparkles', selected: 'sparkles' }} />
         <NativeTabs.Trigger.Label>Танцы</NativeTabs.Trigger.Label>
@@ -29,9 +31,12 @@ function NativeTabLayout() {
 }
 
 function ClassicTabLayout() {
-  const colors = useColors();
+  const colorsT = useColors();
+  const insets = useSafeAreaInsets();
   const isIOS = Platform.OS === 'ios';
   const isWeb = Platform.OS === 'web';
+  const canBlur = isIOS || isWeb;
+  const bottom = isWeb ? 18 : Math.max(insets.bottom, 12);
   const tabs: { name: string; title: string; sf: string; fe: keyof typeof Feather.glyphMap }[] = [
     { name: 'index', title: 'Танцы', sf: 'sparkles', fe: 'star' },
     { name: 'create', title: 'Создать', sf: 'plus.circle.fill', fe: 'plus-circle' },
@@ -40,25 +45,47 @@ function ClassicTabLayout() {
 
   return (
     <Tabs
+      safeAreaInsets={{ bottom: 0 }}
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.mutedForeground,
+        tabBarActiveTintColor: colorsT.primary,
+        tabBarInactiveTintColor: colorsT.mutedForeground,
         headerShown: false,
-        tabBarLabelStyle: { fontFamily: F.bodyHeavy, fontSize: 11 },
+        tabBarLabelPosition: 'below-icon',
+        tabBarLabelStyle: { fontFamily: F.bodyHeavy, fontSize: 11, lineHeight: 16, marginBottom: 0 },
+        tabBarIconStyle: { height: 24 },
+        tabBarItemStyle: { borderRadius: 999, marginVertical: 6, marginHorizontal: 4, overflow: 'hidden' },
+        tabBarActiveBackgroundColor: colors.light.primary + '1F',
         tabBarStyle: {
           position: 'absolute',
-          backgroundColor: isIOS ? 'transparent' : colors.background,
-          borderTopWidth: isWeb ? 2 : 0,
-          borderTopColor: colors.border,
-          elevation: 0,
-          ...(isWeb ? { height: 84 } : {}),
+          left: 0,
+          right: 0,
+          marginHorizontal: 28,
+          bottom,
+          height: 76,
+          paddingTop: 2,
+          paddingBottom: 8,
+          borderRadius: 999,
+          borderTopWidth: 1,
+          borderWidth: 1,
+          borderColor: colorsT.glassEdge,
+          borderTopColor: colorsT.glassEdge,
+          backgroundColor: 'transparent',
+          overflow: 'hidden',
+          shadowColor: colorsT.glow,
+          shadowOpacity: 0.28,
+          shadowRadius: 22,
+          shadowOffset: { width: 0, height: 10 },
+          elevation: 10,
         },
         tabBarBackground: () =>
-          isIOS ? (
-            <BlurView intensity={100} tint="light" style={StyleSheet.absoluteFill} />
-          ) : isWeb ? (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]} />
-          ) : null,
+          canBlur ? (
+            <View style={StyleSheet.absoluteFill}>
+              <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} />
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: colorsT.glass }]} />
+            </View>
+          ) : (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: colorsT.glassFallback }]} />
+          ),
       }}
     >
       {tabs.map((t) => (

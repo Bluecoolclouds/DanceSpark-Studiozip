@@ -99,5 +99,5 @@ export function AuthError({ message }: { message?: string }) {
 export { BigButton };
 
 const styles = StyleSheet.create({
-  input: { borderWidth: 2, borderRadius: 13, paddingHorizontal: 16, minHeight: 52, fontSize: 16 },
+  input: { borderWidth: 1, borderRadius: 13, paddingHorizontal: 16, minHeight: 52, fontSize: 16 },
 });

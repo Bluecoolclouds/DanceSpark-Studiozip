@@ -1,0 +1,15 @@
+{
+  "mode": "redesign (native Expo app, user named Hallmark via main agent)",
+  "direction": "by request: Just Dance 4 character (no theme deal); vivid pink/cyan/lime/violet, floating translucent capsule tab bar",
+  "citations": {
+    "palette": "constants/colors.ts:1 (was cream #FFF4D6 base, #1B0B3A 2-3px borders)",
+    "fonts": "constants/fonts.ts:1 Unbounded display + Manrope body, preserved",
+    "tokens_hook": "hooks/useColors.ts:16 preserved",
+    "shared_ui": "components/ui.tsx",
+    "tabs": "app/(tabs)/_layout.tsx (NativeTabs liquid glass preserved; classic tabs restyled)",
+    "discovery": "app/(tabs)/index.tsx"
+  },
+  "preserved": ["routes", "handlers", "testIDs", "copy words", "pricing", "card/banner heights", "2px grid gaps", "DanceContext.tsx", "lib/drafts.ts"],
+  "introduced": ["lilac stage palette", "glass/glassFallback/glassEdge/glow/focus tokens", "onTone() contrast helper", "1px translucent borders + coloured soft shadows instead of 2-3px black cartoon outlines", "floating blurred capsule tab bar", "web focus ring", "reduced-motion guards"],
+  "native_adaptation": "Hallmark Floor items about :root, CSS stamp, overflow-x, focus-visible and prefers-reduced-motion are mapped to RN equivalents: constants/colors.ts is the token block (consumed via useColors), Pressable focused state draws an outline on web, useReducedMotion disables press springs and the hero bob. No CSS/HTML layer added."
+}

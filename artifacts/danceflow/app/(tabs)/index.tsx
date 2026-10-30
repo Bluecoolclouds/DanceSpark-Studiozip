@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { useReducedMotion, Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BigButton, Pill, SectionTitle, TemplateCard, EmptyState } from '@/components/ui';
 import { F } from '@/constants/fonts';
@@ -26,9 +26,11 @@ export default function Discover() {
   const top = Platform.OS === 'web' ? 67 : insets.top;
 
   const bob = useSharedValue(0);
+  const reduced = useReducedMotion();
   useEffect(() => {
+    if (reduced) return;
     bob.value = withRepeat(withSequence(withTiming(1, { duration: 520, easing: Easing.out(Easing.quad) }), withTiming(0, { duration: 520, easing: Easing.in(Easing.quad) })), -1);
-  }, [bob]);
+  }, [bob, reduced]);
   const bobStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${-6 + bob.value * 6}deg` }, { scale: 1 + bob.value * 0.06 }] }));
 
   const list = useMemo(() => TEMPLATES.filter((t) =>
@@ -43,6 +45,8 @@ export default function Discover() {
       <View style={[styles.hero, { paddingTop: top + 12, backgroundColor: c.stage }]}>
         <Image source={HERO_IMAGE} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="right" />
         <LinearGradient colors={[c.stage, c.clear]} start={{ x: 0, y: 0 }} end={{ x: 0.85, y: 0 }} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={[c.clear, c.primary]} start={{ x: 0, y: 0.55 }} end={{ x: 0, y: 1 }} style={[StyleSheet.absoluteFill, { opacity: 0.55 }]} />
+        <View pointerEvents="none" style={[styles.spot, { backgroundColor: c.secondary }]} />
         <View style={styles.brandRow}>
           <Text style={[styles.brand, { color: c.stageForeground }]}>Dance<Text style={{ color: c.accent }}>flow</Text></Text>
         </View>
@@ -55,8 +59,8 @@ export default function Discover() {
         </Animated.View>
       </View>
 
-      <View style={[styles.marquee, { backgroundColor: c.primary, borderColor: c.border }]}>
-        <Text style={[styles.marqueeText, { color: c.primaryForeground }]} numberOfLines={1}>K-POP  ·  СТРИТ  ·  ДИСКО  ·  ТРЕНДЫ  ·  K-POP  ·  СТРИТ  ·  ДИСКО</Text>
+      <View style={[styles.marquee, { backgroundColor: c.accent, borderColor: 'transparent' }]}>
+        <Text style={[styles.marqueeText, { color: c.foreground }]} numberOfLines={1}>K-POP  /  СТРИТ  /  ДИСКО  /  ТРЕНДЫ  /  K-POP  /  СТРИТ  /  ДИСКО</Text>
       </View>
 
       <SectionTitle kicker="СВЕЖЕЕ НА СЦЕНЕ" title="Новые хиты" />
@@ -87,8 +91,8 @@ export default function Discover() {
         </View>
       )}
 
-      <View style={[styles.honest, { backgroundColor: c.secondary, borderColor: c.border }]}>
-        <Feather name="info" size={18} color={c.foreground} />
+      <View style={[styles.honest, { backgroundColor: c.card, borderColor: c.border }]}>
+        <Feather name="info" size={18} color={c.violet} />
         <Text style={[styles.honestText, { color: c.foreground }]}>Danceflow — дизайн-прототип. Видео не генерируются: ты собираешь черновик из фото, танца и длительности.</Text>
       </View>
     </ScrollView>
@@ -96,15 +100,16 @@ export default function Discover() {
 }
 
 const styles = StyleSheet.create({
+  spot: { position: 'absolute', width: 220, height: 220, borderRadius: 110, right: -70, top: 40, opacity: 0.22 },
   hero: { paddingHorizontal: 20, paddingBottom: 30, minHeight: 470, overflow: 'hidden' },
   brandRow: { flexDirection: 'row', alignItems: 'center' },
   brand: { fontFamily: F.display, fontSize: 22, letterSpacing: -0.5 },
   heroTitle: { fontFamily: F.display, fontSize: 38, lineHeight: 42, letterSpacing: -1 },
   heroSub: { fontFamily: F.bodyBold, fontSize: 15, lineHeight: 21, marginTop: 12, opacity: 0.92 },
-  marquee: { borderTopWidth: 3, borderBottomWidth: 3, paddingVertical: 10, transform: [{ rotate: '-2deg' }], marginTop: -14, marginHorizontal: -10, marginBottom: 30 },
-  marqueeText: { fontFamily: F.display, fontSize: 15, letterSpacing: 1 },
+  marquee: { borderTopWidth: 1, borderBottomWidth: 1, paddingVertical: 10, transform: [{ rotate: '-3deg' }], marginTop: -18, marginHorizontal: -10, marginBottom: 30 },
+  marqueeText: { fontFamily: F.display, fontSize: 15 },
   count: { fontFamily: F.display, fontSize: 22 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12, gap: 2, marginTop: 6 },
-  honest: { margin: 20, marginTop: 34, padding: 16, borderRadius: 20, borderWidth: 2, flexDirection: 'row', gap: 10 },
+  honest: { margin: 20, marginTop: 34, padding: 16, borderRadius: 20, borderWidth: 1, flexDirection: 'row', gap: 10 },
   honestText: { flex: 1, fontFamily: F.bodyBold, fontSize: 13, lineHeight: 19 },
 });

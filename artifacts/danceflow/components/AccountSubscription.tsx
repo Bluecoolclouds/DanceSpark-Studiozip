@@ -85,7 +85,7 @@ export function AccountSubscription() {
 }
 
 const styles = StyleSheet.create({
-  card: { borderWidth: 2, borderRadius: 8, padding: 14, gap: 12, marginVertical: 16 },
+  card: { borderWidth: 1, borderRadius: 8, padding: 14, gap: 12, marginVertical: 16 },
   title: { fontFamily: F.display, fontSize: 18 },
   text: { fontFamily: F.body, fontSize: 13, lineHeight: 19 },
 });

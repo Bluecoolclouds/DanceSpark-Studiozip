@@ -233,7 +233,7 @@ export default function DraftScreen() {
           </View>
           <View style={[styles.photo, { borderColor: c.border, backgroundColor: tone(c, t.color), transform: [{ rotate: '4deg' }] }]}>
             <Image source={t.image} style={StyleSheet.absoluteFill} contentFit="cover" />
-            <View style={[styles.lbl, { backgroundColor: tone(c, t.color), borderColor: c.border }]}><Text style={[styles.lblText, { color: c.foreground }]}>{t.dancer.toUpperCase()}</Text></View>
+            <View style={[styles.lbl, { backgroundColor: tone(c, t.color), borderColor: c.border }]}><Text style={[styles.lblText, { color: c.foreground }]}>{t.dancer}</Text></View>
           </View>
         </View>
       )}
@@ -355,24 +355,24 @@ function Row({ k, v, last }: { k: string; v: string; last?: boolean }) {
 }
 
 const styles = StyleSheet.create({
-  empty: { height: 120, borderWidth: 2, borderStyle: 'dashed', borderRadius: 6, alignItems: 'center', justifyContent: 'center', gap: 6, marginVertical: 16, padding: 12 },
+  empty: { height: 120, borderWidth: 1, borderStyle: 'dashed', borderRadius: 6, alignItems: 'center', justifyContent: 'center', gap: 6, marginVertical: 16, padding: 12 },
   emptyText: { fontFamily: F.bodyBold, fontSize: 13, textAlign: 'center' },
   h: { fontFamily: F.display, fontSize: 16, marginTop: 6 },
   small: { fontFamily: F.bodyBold, fontSize: 12, lineHeight: 17 },
   bar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
-  round: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  round: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   title: { fontFamily: F.display, fontSize: 30, lineHeight: 34, letterSpacing: -1 },
   collage: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: 28 },
-  videoFrame: { width: '100%', aspectRatio: 9 / 16, maxHeight: 520, borderWidth: 3, borderRadius: 24, overflow: 'hidden', marginTop: 22 },
-  photo: { width: 140, height: 190, borderRadius: 6, borderWidth: 2, overflow: 'hidden' },
-  plus: { width: 44, height: 44, borderRadius: 22, borderWidth: 3, alignItems: 'center', justifyContent: 'center', marginHorizontal: -12, zIndex: 2 },
-  lbl: { position: 'absolute', bottom: 8, left: 8, borderWidth: 2, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
-  lblText: { fontFamily: F.bodyHeavy, fontSize: 10, letterSpacing: 1 },
-  summary: { borderWidth: 3, borderRadius: 24, paddingHorizontal: 16 },
+  videoFrame: { width: '100%', aspectRatio: 9 / 16, maxHeight: 520, borderWidth: 1, borderRadius: 24, overflow: 'hidden', marginTop: 22 },
+  photo: { width: 140, height: 190, borderRadius: 6, borderWidth: 1, overflow: 'hidden' },
+  plus: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginHorizontal: -12, zIndex: 2 },
+  lbl: { position: 'absolute', bottom: 8, left: 8, borderWidth: 1, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  lblText: { fontFamily: F.bodyHeavy, fontSize: 10 },
+  summary: { borderWidth: 1, borderRadius: 24, paddingHorizontal: 16 },
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: 14, paddingVertical: 13 },
   k: { fontFamily: F.bodyBold, fontSize: 14 },
   v: { fontFamily: F.bodyHeavy, fontSize: 14, flex: 1, textAlign: 'right' },
-  note: { flexDirection: 'row', gap: 10, padding: 14, borderRadius: 20, borderWidth: 2, marginTop: 16 },
+  note: { flexDirection: 'row', gap: 10, padding: 14, borderRadius: 20, borderWidth: 1, marginTop: 16 },
   noteText: { flex: 1, fontFamily: F.bodyBold, fontSize: 13, lineHeight: 19 },
   refreshStatus: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
 });
