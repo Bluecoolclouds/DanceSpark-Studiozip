@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { DraftStorageNotice } from '@/components/DraftStorageNotice';
 import { useFonts } from 'expo-font';
 import { Unbounded_700Bold, Unbounded_800ExtraBold } from '@expo-google-fonts/unbounded';
 import { Manrope_500Medium, Manrope_700Bold, Manrope_800ExtraBold } from '@expo-google-fonts/manrope';
@@ -53,6 +54,7 @@ function RootLayoutNav() {
   return (
     <>
       <StatusBar style="auto" />
+      <DraftStorageNotice />
       <Stack screenOptions={{ headerShown: false, headerBackTitle: 'Назад' }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="template/[id]" />
