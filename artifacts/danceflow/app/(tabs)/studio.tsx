@@ -9,6 +9,7 @@ import { F } from '@/constants/fonts';
 import { TEMPLATES, getTemplate } from '@/constants/templates';
 import { useDance } from '@/context/DanceContext';
 import { useColors } from '@/hooks/useColors';
+import { AccountSubscription } from '@/components/AccountSubscription';
 
 export default function Studio() {
   const c = useColors();
@@ -35,6 +36,7 @@ export default function Studio() {
     <ScrollView style={{ flex: 1, backgroundColor: c.background }} contentContainerStyle={{ paddingTop: top + 14, paddingBottom: 130 }} showsVerticalScrollIndicator={false}>
       <View style={{ paddingHorizontal: 20 }}>
         <Text style={[styles.title, { color: c.foreground }]}>Моя <Text style={{ color: c.violet }}>сцена</Text></Text>
+        <AccountSubscription />
         <View style={styles.stats}>
           <Stat n={drafts.length} label="черновиков" color={c.accent} />
           <Stat n={favorites.length} label="в избранном" color={c.primary} />

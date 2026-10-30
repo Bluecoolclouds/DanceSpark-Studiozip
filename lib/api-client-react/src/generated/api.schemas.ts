@@ -5,6 +5,33 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type AccountSubscriptionPlan = typeof AccountSubscriptionPlan[keyof typeof AccountSubscriptionPlan];
+
+
+export const AccountSubscriptionPlan = {
+  none: 'none',
+  warmup: 'warmup',
+  dancefloor: 'dancefloor',
+  stage: 'stage',
+} as const;
+
+export type AccountSubscriptionStatus = typeof AccountSubscriptionStatus[keyof typeof AccountSubscriptionStatus];
+
+
+export const AccountSubscriptionStatus = {
+  inactive: 'inactive',
+  active: 'active',
+  expired: 'expired',
+} as const;
+
+export interface AccountSubscription {
+  accountId: string;
+  plan: AccountSubscriptionPlan;
+  status: AccountSubscriptionStatus;
+  /** @nullable */
+  subscriptionUntil: string | null;
+}
+
 export interface AdminSession {
   userId: string;
   email: string;

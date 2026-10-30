@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { setBaseUrl } from '@workspace/api-client-react';
 import { setAuthTokenGetter } from '@workspace/api-client-react';
@@ -23,22 +23,30 @@ if (!clerkKey) throw new Error('CLERK_PUBLISHABLE_KEY is required for account au
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient();
-
 function AuthBridge({ children }: { children: React.ReactNode }) {
   const { getToken, userId } = useAuth();
-  const previousUser = React.useRef<string | null | undefined>(undefined);
+  const [transportOwner, setTransportOwner] = useState<string | null | undefined>(undefined);
+  // A separate cache per identity prevents late requests from an old session
+  // from filling the next account's cache, including during sign-out.
+  const queryClient = useMemo(() => new QueryClient(), [userId]);
   useEffect(() => {
     setAuthTokenGetter(() => getToken());
+    setTransportOwner(userId);
     return () => setAuthTokenGetter(null);
-  }, [getToken]);
+  }, [getToken, userId]);
   useEffect(() => {
-    if (previousUser.current !== undefined && previousUser.current !== userId) {
+    return () => {
+      void queryClient.cancelQueries();
       queryClient.clear();
-    }
-    previousUser.current = userId;
-  }, [userId]);
-  return <DanceProvider key={userId ?? 'guest'} ownerId={userId ?? 'guest'}>{children}</DanceProvider>;
+    };
+  }, [queryClient]);
+  // Register the authenticated transport before mounting any account queries.
+  if (transportOwner !== userId) return null;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <DanceProvider key={userId ?? 'guest'} ownerId={userId ?? 'guest'}>{children}</DanceProvider>
+    </QueryClientProvider>
+  );
 }
 
 function RootLayoutNav() {
@@ -83,7 +91,6 @@ export default function RootLayout() {
       <ClerkLoaded>
         <SafeAreaProvider>
           <ErrorBoundary>
-            <QueryClientProvider client={queryClient}>
               <GestureHandlerRootView>
                 <KeyboardProvider>
                   <AuthBridge>
@@ -91,7 +98,6 @@ export default function RootLayout() {
                   </AuthBridge>
                 </KeyboardProvider>
               </GestureHandlerRootView>
-            </QueryClientProvider>
           </ErrorBoundary>
         </SafeAreaProvider>
       </ClerkLoaded>

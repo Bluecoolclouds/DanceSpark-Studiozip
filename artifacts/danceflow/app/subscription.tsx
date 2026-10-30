@@ -7,6 +7,7 @@ import { BigButton, Bouncy, tone } from '@/components/ui';
 import { F } from '@/constants/fonts';
 import { SUBSCRIPTION_PLANS, SubscriptionPlanId, formatRub, limitLabel } from '@/constants/subscriptions';
 import { useColors } from '@/hooks/useColors';
+import { AccountSubscription } from '@/components/AccountSubscription';
 
 export default function SubscriptionScreen() {
   const c = useColors();
@@ -27,6 +28,7 @@ export default function SubscriptionScreen() {
         <Text style={[styles.kicker, { color: c.primary }]}>ПОДПИСКА · ЕЖЕМЕСЯЧНО</Text>
         <Text style={[styles.title, { color: c.foreground }]}>Выбери свой <Text style={{ color: c.violet }}>ритм</Text></Text>
         <Text style={[styles.lead, { color: c.mutedForeground }]}>Тарифы отличаются только дневным лимитом генераций.</Text>
+        <AccountSubscription />
 
         <View style={[styles.notice, { backgroundColor: c.sun, borderColor: c.border }]} accessibilityRole="alert">
           <Feather name="alert-circle" size={20} color={c.foreground} />

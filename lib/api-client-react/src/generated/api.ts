@@ -25,6 +25,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AccountSubscription,
   AdminAuditPage,
   AdminGenerationsPage,
   AdminOverview,
@@ -70,6 +71,101 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetAccountSubscriptionUrl = () => {
+
+
+
+
+  return `/api/account/subscription`
+}
+
+export const getAccountSubscription = async ( options?: Parameters<typeof customFetch>[1]): Promise<AccountSubscription> => {
+
+  return customFetch<AccountSubscription>(getGetAccountSubscriptionUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAccountSubscriptionQueryKey = () => {
+    return [
+    `/api/account/subscription`
+    ] as const;
+    }
+
+
+export const getGetAccountSubscriptionQueryOptions = <TData = Awaited<ReturnType<typeof getAccountSubscription>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAccountSubscription>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAccountSubscriptionQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAccountSubscription>>> = ({ signal }) => getAccountSubscription({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAccountSubscription>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAccountSubscriptionQueryResult = NonNullable<Awaited<ReturnType<typeof getAccountSubscription>>>
+export type GetAccountSubscriptionQueryError = ErrorType<void>
+
+
+export function useGetAccountSubscription<TData = Awaited<ReturnType<typeof getAccountSubscription>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAccountSubscription>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAccountSubscription>>,
+          TError,
+          Awaited<ReturnType<typeof getAccountSubscription>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAccountSubscription<TData = Awaited<ReturnType<typeof getAccountSubscription>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAccountSubscription>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAccountSubscription>>,
+          TError,
+          Awaited<ReturnType<typeof getAccountSubscription>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAccountSubscription<TData = Awaited<ReturnType<typeof getAccountSubscription>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAccountSubscription>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetAccountSubscription<TData = Awaited<ReturnType<typeof getAccountSubscription>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAccountSubscription>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAccountSubscriptionQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetAdminSessionUrl = () => {
 

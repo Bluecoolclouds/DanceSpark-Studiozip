@@ -35,7 +35,7 @@ export default function SignUpScreen() {
               setMessage('Заверши дополнительную проверку аккаунта.');
               return;
             }
-            router.replace('/create');
+            router.replace('/studio');
           },
         });
       } else setMessage('Регистрация не завершена. Проверь код.');

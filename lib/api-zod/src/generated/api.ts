@@ -8,6 +8,14 @@
 import * as zod from 'zod';
 
 
+export const GetAccountSubscriptionResponse = zod.object({
+  "accountId": zod.string(),
+  "plan": zod.enum(['none', 'warmup', 'dancefloor', 'stage']),
+  "status": zod.enum(['inactive', 'active', 'expired']),
+  "subscriptionUntil": zod.string().nullable()
+})
+
+
 export const GetAdminSessionResponse = zod.object({
   "userId": zod.string(),
   "email": zod.string(),

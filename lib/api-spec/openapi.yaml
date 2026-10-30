@@ -13,6 +13,21 @@ tags:
   - name: video-generations
     description: Generate dance videos from user photos
 paths:
+  /account/subscription:
+    get:
+      operationId: getAccountSubscription
+      responses:
+        "200":
+          description: Server-confirmed subscription of the authenticated account
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountSubscription" }
+        "401":
+          description: Sign-in required
+        "403":
+          description: Account blocked
+        "503":
+          description: Subscription cannot be verified
   /admin/session:
     get:
       operationId: getAdminSession
@@ -229,6 +244,14 @@ paths:
                 $ref: "#/components/schemas/ApiError"
 components:
   schemas:
+    AccountSubscription:
+      type: object
+      required: [accountId, plan, status, subscriptionUntil]
+      properties:
+        accountId: { type: string }
+        plan: { type: string, enum: [none, warmup, dancefloor, stage] }
+        status: { type: string, enum: [inactive, active, expired] }
+        subscriptionUntil: { type: [string, "null"] }
     AdminSession:
       type: object
       required: [userId, email, isAdmin, environment]

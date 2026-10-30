@@ -19,7 +19,7 @@ export default function SignInScreen() {
           setMessage('Заверши дополнительную проверку аккаунта и повтори вход.');
           return;
         }
-        router.replace('/create');
+        router.replace('/studio');
       },
     });
   };
