@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "Danceflow",
+    "slug": "danceflow",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "danceflow",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {},
+    "web": {
+      "favicon": "./assets/images/icon.png",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Danceflow использует фото, чтобы собрать черновик танца.",
+          "cameraPermission": "Danceflow использует камеру, чтобы сделать фото для танца."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#7B2CFF"
+    }
+  }
+}

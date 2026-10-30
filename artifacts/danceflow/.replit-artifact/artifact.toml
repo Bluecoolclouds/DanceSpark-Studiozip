@@ -1,0 +1,24 @@
+kind = "mobile"
+previewPath = "/"
+title = "Danceflow"
+description = "Яркий мобильный дизайн-прототип приложения для создания танцевальных AI-видео: выбор движений, загрузка фото и коллекция идей. Вдохновлён энергией танцевальных игр."
+version = "1.0.0"
+id = "artifacts/danceflow"
+router = "expo-domain"
+
+[[services]]
+name = "expo"
+ensurePreviewReachable = "/status"
+paths = [ "/" ]
+localPort = 19999
+
+[services.development]
+run = "pnpm --filter @workspace/danceflow run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/danceflow", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/danceflow", "run", "serve" ]
+
+[services.env]
+PORT = "19999"
+BASE_PATH = "/"
