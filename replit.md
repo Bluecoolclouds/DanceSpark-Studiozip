@@ -48,7 +48,7 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 - Imported project names ending in `.zip` can be rejected by Clerk provisioning as URL-like names. A plain project name is needed, but renaming and refreshing did not resolve the observed provisioning error in this import; see the agent memory note on imported authentication provisioning before retrying.
 - Without Clerk provisioning, the mobile app cannot initialize authentication and API middleware can return errors even for health requests. Do not bypass authentication to make previews load.
-- Backend tests include database-writing governance tests and expect authentication/provider configuration. Run them only against a disposable development database, never production.
+- Run backend tests with `pnpm --filter @workspace/api-server test`. The launcher requires PostgreSQL tools (`initdb`, `pg_ctl`, `createdb`) on PATH, starts a disposable Unix-socket-only cluster, applies the current Drizzle schema, and removes it afterwards. It does not use `DATABASE_URL` or credentials from the application environment. Synthetic Clerk/Higgsfield keys and a network guard prevent external requests; production configuration checks remain unchanged. To run selected files, pass e.g. `pnpm --filter @workspace/api-server test tests/admin-governance.test.ts`. Direct test invocation fails unless launched in this isolated environment.
 
 ## Pointers
 

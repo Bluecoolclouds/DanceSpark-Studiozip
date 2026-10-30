@@ -1,7 +1,8 @@
+import "./helpers/setup.mjs";
 import assert from "node:assert/strict";
-import { before, after, beforeEach, test } from "node:test";
+import { beforeEach, test } from "node:test";
 import { randomUUID } from "node:crypto";
-import { pool } from "@workspace/db";
+import { isolatedDatabase } from "./helpers/database";
 import { reserveGeneration, beginGeneration, finishGeneration } from "../src/lib/generation-governance";
 import { seedVerifiedOwner, requireAdmin, protectAdminMutation } from "../src/middlewares/admin-auth";
 import { settingsResponse } from "../src/lib/admin-data";
@@ -11,22 +12,9 @@ import type { AddressInfo } from "node:net";
 import type { Request, Response } from "express";
 import adminRouter from "../src/routes/admin";
 
-const schema = `df_test_${randomUUID().replaceAll("-", "")}`;
-// A separate schema and pool search path keep fixtures out of the application.
-pool.options.options = `-c search_path=${schema},public`;
-process.env.DANCEFLOW_OWNER_EMAIL = "owner@example.invalid";
-
-before(async () => {
-  await pool.query(`CREATE SCHEMA ${schema}`);
-  for (const table of ["df_accounts", "df_jobs", "df_controls", "df_admin_audit"]) {
-    await pool.query(`CREATE TABLE ${schema}.${table} (LIKE public.${table} INCLUDING ALL)`);
-  }
-});
-after(async () => {
-  await pool.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
-  await pool.end();
-});
+const pool = isolatedDatabase();
 beforeEach(async () => {
+  process.env.higgs_api = "unit-test-id:unit-test-secret";
   await pool.query("TRUNCATE df_jobs,df_accounts,df_controls,df_admin_audit");
   await pool.query(`INSERT INTO df_controls(id,paused,max_concurrent,per_user_concurrent,max_daily_spend_rub,cost_per_generation_rub)
     VALUES(1,false,10,5,10000,5)`);
@@ -38,6 +26,22 @@ beforeEach(async () => {
 
 const reserve = (key = randomUUID(), userId = "u1") => reserveGeneration({ userId, idempotencyKey: key, templateId: "bubblegum" });
 const expectPolicy = (work: Promise<unknown>, code: string) => assert.rejects(work, (e: unknown) => e instanceof Error && e.message === code);
+
+test("missing provider configuration still fails closed without reserving spend", async () => {
+  delete process.env.higgs_api;
+  await expectPolicy(reserve(), "provider_not_configured");
+  assert.equal((await pool.query("SELECT count(*)::int n FROM df_jobs")).rows[0].n, 0);
+});
+
+test("fixtures cannot modify or fall through to public application tables", async () => {
+  const { rows: [row] } = await pool.query("SELECT current_schema() AS schema, current_setting('search_path') AS path");
+  assert.match(row.schema, /^df_test_[a-f0-9]+$/);
+  assert.equal(row.path, row.schema);
+  assert.equal((await pool.query("SELECT count(*)::int n FROM public.df_accounts")).rows[0].n, 0);
+  assert.equal((await pool.query("SELECT count(*)::int n FROM df_accounts")).rows[0].n, 3);
+  await assert.rejects(pool.query("INSERT INTO df_jobs(id,user_id,idempotency_key,template_id) VALUES('bad','missing','some-key','bubblegum')"),
+    (error: any) => error.code === "23503");
+});
 
 test("pause, unpaid, expired and blocked accounts fail closed", async () => {
   await pool.query("UPDATE df_controls SET paused=true");

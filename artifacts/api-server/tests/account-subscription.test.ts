@@ -1,3 +1,4 @@
+import "./helpers/setup.mjs";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { accountSubscription } from "../src/lib/account-subscription";

@@ -1,29 +1,17 @@
+import "./helpers/setup.mjs";
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
-import { after, before, beforeEach, test, type TestContext } from "node:test";
-import { pool } from "@workspace/db";
+import { beforeEach, test, type TestContext } from "node:test";
+import { isolatedDatabase } from "./helpers/database";
 import { createOwnedGeneration, getOwnedGeneration, VideoNotFoundError } from "../src/lib/generation-access";
 import { GenerationPolicyError } from "../src/lib/generation-governance";
 
-// Only disposable development DB fixtures and mocked provider HTTP are used.
-const schema = `df_access_test_${randomUUID().replaceAll("-", "")}`;
-pool.options.options = `-c search_path=${schema},public`;
+const pool = isolatedDatabase();
 const input = {
   clientRequestId: "draft-request-123",
   imageDataUrl: `data:image/jpeg;base64,${Buffer.concat([Buffer.from([255, 216, 255]), Buffer.alloc(100)]).toString("base64")}`,
   styleId: "bubblegum-rush" as const,
   duration: 5 as const,
 };
-before(async () => {
-  await pool.query(`CREATE SCHEMA ${schema}`);
-  for (const table of ["df_accounts", "df_jobs", "df_controls", "df_admin_audit"]) {
-    await pool.query(`CREATE TABLE ${schema}.${table} (LIKE public.${table} INCLUDING ALL)`);
-  }
-});
-after(async () => {
-  await pool.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
-  await pool.end();
-});
 beforeEach(async () => {
   process.env.higgs_api = "unit-test-id:unit-test-secret";
   await pool.query("TRUNCATE df_jobs,df_accounts,df_controls,df_admin_audit");
@@ -87,6 +75,33 @@ test("concurrent duplicate requests submit to the provider exactly once", async 
   assert.equal(results[0].requestId, results[1].requestId);
   assert.equal(calls.length, 3);
   assert.equal((await pool.query("SELECT count(*)::int AS total FROM df_jobs")).rows[0].total, 1);
+});
+
+test("budget and concurrency races never submit rejected requests to the provider", async (t) => {
+  const calls = provider(t);
+  for (const controls of [
+    "max_daily_spend_rub=9,max_concurrent=10,per_user_concurrent=5",
+    "max_daily_spend_rub=10000,max_concurrent=1,per_user_concurrent=5",
+    "max_daily_spend_rub=10000,max_concurrent=10,per_user_concurrent=1",
+  ]) {
+    await pool.query("TRUNCATE df_jobs");
+    await pool.query(`UPDATE df_controls SET ${controls}`);
+    calls.length = 0;
+    const outcomes = await Promise.allSettled(Array.from({ length: 6 }, (_, i) =>
+      createOwnedGeneration("u1", { ...input, clientRequestId: `race-request-${i}` })));
+    assert.equal(outcomes.filter((r) => r.status === "fulfilled").length, 1);
+    const failures = outcomes.filter((r) => r.status === "rejected");
+    assert.equal(failures.length, 5);
+    for (const failure of failures) {
+      assert.ok(failure.reason instanceof GenerationPolicyError);
+      assert.equal(failure.reason.code, controls.startsWith("max_daily_spend_rub=9,")
+        ? "daily_budget_reached" : "concurrency_limit_reached");
+    }
+    assert.equal(calls.length, 3, "one upload and one mocked paid submission");
+    const ledger = (await pool.query("SELECT count(*)::int n,sum(estimated_cost_rub)::float spend FROM df_jobs")).rows[0];
+    assert.equal(ledger.n, 1);
+    assert.equal(ledger.spend, 5);
+  }
 });
 
 test("results require ownership and completed provider jobs update the admin ledger", async (t) => {

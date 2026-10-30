@@ -1,3 +1,4 @@
 - [Danceflow product direction](danceflow-direction.md) — Mobile dance-video app; start with bright Just Dance-inspired design and generated artwork.
 - [Danceflow payments](danceflow-payments.md) — Confirmed YooKassa scope: web and Android in Russia, with automatic monthly renewal.
 - [Imported auth provisioning](imported-auth-provisioning.md) — Clerk still used the ZIP name after confirmed rename and refresh; avoid repeating that failed workaround.
+- [Server test failure signals](server-test-failure-signals.md) — Network-safety probes must verify process exit status, not just failed-hook output.
