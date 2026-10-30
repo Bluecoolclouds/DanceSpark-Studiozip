@@ -1,1 +1,2 @@
 - [Danceflow product direction](danceflow-direction.md) — Mobile dance-video app; start with bright Just Dance-inspired design and generated artwork.
+- [Danceflow payments](danceflow-payments.md) — Confirmed YooKassa scope: web and Android in Russia, with automatic monthly renewal.
