@@ -2,7 +2,7 @@ import { useSignUp } from '@clerk/expo';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { View } from 'react-native';
-import { AuthError, AuthFrame, AuthInput, BigButton } from '@/components/AuthFrame';
+import { AuthAction, AuthError, AuthFrame, AuthInput, BigButton } from '@/components/AuthFrame';
 
 export default function SignUpScreen() {
   const { signUp, errors, fetchStatus } = useSignUp();
@@ -59,6 +59,7 @@ export default function SignUpScreen() {
           <AuthInput label="Пароль" value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" />
           <AuthError message={errors.fields.emailAddress?.message || errors.fields.password?.message || message} />
           <BigButton label={working ? 'Создаём аккаунт...' : 'Создать аккаунт'} onPress={create} disabled={working || !emailAddress || !password} />
+          <AuthAction label="Уже регистрировались? Восстановить пароль" testID="signup-forgot-password" disabled={working} onPress={() => router.push('/forgot-password')} />
           <View nativeID="clerk-captcha" />
         </View>
       )}

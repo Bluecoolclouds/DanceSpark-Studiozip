@@ -2,7 +2,7 @@ import { useSignIn, useAuth } from '@clerk/expo';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { View } from 'react-native';
-import { AuthError, AuthFrame, AuthInput, BigButton } from '@/components/AuthFrame';
+import { AuthAction, AuthError, AuthFrame, AuthInput, BigButton } from '@/components/AuthFrame';
 
 export default function SignInScreen() {
   const { signIn, errors, fetchStatus } = useSignIn();
@@ -67,6 +67,7 @@ export default function SignInScreen() {
           <AuthInput label="Пароль" value={password} onChangeText={setPassword} secureTextEntry autoComplete="password" />
           <AuthError message={errors.fields.identifier?.message || errors.fields.password?.message || message} />
           <BigButton label={working ? 'Входим...' : 'Войти'} onPress={login} disabled={working || !emailAddress || !password || !!isSignedIn} />
+          <AuthAction label="Забыли пароль?" testID="forgot-password" disabled={working || !!isSignedIn} onPress={() => router.push('/forgot-password')} />
         </View>
       )}
     </AuthFrame>
