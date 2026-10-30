@@ -25,6 +25,7 @@ function RootLayoutNav() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="template/[id]" />
         <Stack.Screen name="draft/[id]" />
+        <Stack.Screen name="subscription" />
       </Stack>
     </>
   );

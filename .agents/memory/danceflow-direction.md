@@ -19,4 +19,10 @@ Danceflow will be a paid app.
 
 **Why:** The user explicitly clarified that the product is intended to be paid.
 
-**How to apply:** Include payments and purchase accounting in production readiness, rather than treating monetization as optional for the public launch. The exact pricing model is not decided.
+**How to apply:** Include payments and purchase accounting in production readiness, rather than treating monetization as optional for the public launch.
+
+The user specified monthly subscriptions: 500 ₽ for 10 generations per day, 1,500 ₽ for 25 per day, and 2,500 ₽ for unlimited generations. They explicitly rejected RevenueCat and plan to connect YooKassa later.
+
+**Why:** These are the user's chosen commercial terms and payment-provider direction, not inferred pricing recommendations.
+
+**How to apply:** Preserve these terms in subscription offers. Do not connect RevenueCat or silently replace unlimited access with a quota. Until payment verification exists, plan selection must not activate paid access.

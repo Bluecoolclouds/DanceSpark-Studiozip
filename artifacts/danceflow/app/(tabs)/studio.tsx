@@ -39,6 +39,19 @@ export default function Studio() {
           <Stat n={drafts.length} label="черновиков" color={c.accent} />
           <Stat n={favorites.length} label="в избранном" color={c.primary} />
         </View>
+        <Bouncy testID="open-subscription" scaleTo={0.97} onPress={() => router.push('/subscription')}
+          style={[styles.subEntry, { backgroundColor: c.violet, borderColor: c.border, shadowColor: c.border }]}>
+          <View accessible accessibilityRole="button" accessibilityLabel="Тарифы подписки" style={styles.subRow}>
+            <View style={[styles.subIcon, { backgroundColor: c.sun, borderColor: c.border }]}>
+              <Feather name="star" size={18} color={c.foreground} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.subTitle, { color: c.primaryForeground }]}>Тарифы подписки</Text>
+              <Text style={[styles.subText, { color: c.primaryForeground }]}>Посмотреть цены · оплата скоро</Text>
+            </View>
+            <Feather name="arrow-right" size={20} color={c.primaryForeground} />
+          </View>
+        </Bouncy>
       </View>
       <View style={styles.tabs}>
         <Pill label="Черновики" active={tab === 'drafts'} onPress={() => setTab('drafts')} color="accent" />
@@ -105,6 +118,11 @@ const styles = StyleSheet.create({
   stat: { flex: 1, borderWidth: 3, borderRadius: 22, padding: 14 },
   statN: { fontFamily: F.display, fontSize: 30 },
   statL: { fontFamily: F.bodyBold, fontSize: 13 },
+  subEntry: { marginTop: 12, borderRadius: 8, borderWidth: 2, padding: 12, shadowOffset: { width: 2, height: 3 }, shadowOpacity: 1, shadowRadius: 0, elevation: 2 },
+  subRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  subIcon: { width: 38, height: 38, borderRadius: 19, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  subTitle: { fontFamily: F.displayBold, fontSize: 15 },
+  subText: { fontFamily: F.bodyBold, fontSize: 12, opacity: 0.9, marginTop: 2 },
   tabs: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginVertical: 20 },
   skel: { height: 110, borderRadius: 22 },
   draft: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 8, borderRadius: 8, borderWidth: 2, shadowOffset: { width: 2, height: 3 }, shadowOpacity: 1, shadowRadius: 0, elevation: 2 },
