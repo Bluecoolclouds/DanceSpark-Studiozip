@@ -1,8 +1,8 @@
-import { useEffect, useRef, type ComponentType, type ReactNode } from 'react';
-import { ClerkProvider, SignIn, SignUp, Show, useClerk } from '@clerk/react';
+import { useEffect, useMemo, type ComponentType, type ReactNode } from 'react';
+import { ClerkProvider, SignIn, SignUp, Show, useAuth } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
-import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Redirect, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
@@ -15,10 +15,6 @@ import UsersPage from '@/pages/users';
 import Generations from '@/pages/generations';
 import SettingsPage from '@/pages/settings';
 import Audit from '@/pages/audit';
-
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { refetchOnWindowFocus: true, staleTime: 10_000 } },
-});
 
 const clerkPubKey = publishableKeyFromHost(
   window.location.hostname,
@@ -146,23 +142,25 @@ const GenerationsRoute = protect(Generations);
 const SettingsRoute = protect(SettingsPage);
 const AuditRoute = protect(Audit);
 
-function ClerkQueryClientCacheInvalidator() {
-  const { addListener } = useClerk();
-  const qc = useQueryClient();
-  const prevUserIdRef = useRef<string | null | undefined>(undefined);
-
+function AccountQueryProvider({ children }: { children: ReactNode }) {
+  const { userId, isLoaded } = useAuth();
+  // Never render the next identity with the previous account's cached session.
+  // Late responses and mutations remain attached to the discarded client.
+  const qc = useMemo(() => new QueryClient({
+    defaultOptions: { queries: { refetchOnWindowFocus: true, staleTime: 10_000 } },
+  }), [userId]);
   useEffect(() => {
-    const unsubscribe = addListener(({ user }) => {
-      const userId = user?.id ?? null;
-      if (prevUserIdRef.current !== undefined && prevUserIdRef.current !== userId) {
-        qc.clear();
-      }
-      prevUserIdRef.current = userId;
-    });
-    return unsubscribe;
-  }, [addListener, qc]);
-
-  return null;
+    return () => {
+      void qc.cancelQueries();
+      qc.clear();
+    };
+  }, [qc]);
+  if (!isLoaded) return null;
+  return (
+    <QueryClientProvider client={qc} key={userId ?? 'guest'}>
+      {children}
+    </QueryClientProvider>
+  );
 }
 
 function RoutedErrorBoundary({ children }: { children: ReactNode }) {
@@ -199,8 +197,7 @@ function ClerkProviderWithRoutes() {
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >
-      <QueryClientProvider client={queryClient}>
-        <ClerkQueryClientCacheInvalidator />
+      <AccountQueryProvider>
         <TooltipProvider>
           <RoutedErrorBoundary>
             <Switch>
@@ -217,7 +214,7 @@ function ClerkProviderWithRoutes() {
           </RoutedErrorBoundary>
           <Toaster />
         </TooltipProvider>
-      </QueryClientProvider>
+      </AccountQueryProvider>
     </ClerkProvider>
   );
 }

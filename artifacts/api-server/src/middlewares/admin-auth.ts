@@ -45,7 +45,7 @@ export async function requireAccount(req: Request, res: Response, next: NextFunc
   }
   let { rows } = await pool.query<ServerAccount>("SELECT id,email,role,blocked FROM df_accounts WHERE id=$1", [userId]);
   // Resolve identity exclusively from Clerk, never from a client-supplied email or role.
-  if (!rows[0] || (rows[0].role !== "admin" && process.env.DANCEFLOW_OWNER_EMAIL?.toLowerCase() === rows[0].email.toLowerCase())) {
+  if (!rows[0] || (rows[0].role !== "admin" && process.env.DANCEFLOW_OWNER_EMAIL?.trim().toLowerCase() === rows[0].email.toLowerCase())) {
     const identity = await clerkClient.users.getUser(userId);
     const primary = identity.emailAddresses.find((e) => e.id === identity.primaryEmailAddressId);
     await pool.query(
