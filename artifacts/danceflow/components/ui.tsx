@@ -2,6 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { VideoView, type VideoPlayer } from 'expo-video';
 import React, { useState } from 'react';
 import { Platform, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
@@ -100,12 +101,13 @@ export function FavButton({ id, size = 40 }: { id: string; size?: number }) {
   );
 }
 
-export function TemplateCard({ t, onPress, width, height = 280 }: { t: DanceTemplate; onPress: () => void; width?: number; height?: number }) {
+export function TemplateCard({ t, onPress, width, height = 280, previewPlayer }: { t: DanceTemplate; onPress: () => void; width?: number; height?: number; previewPlayer?: VideoPlayer }) {
   const c = useColors();
   const col = tone(c, t.color);
   return (
     <Bouncy onPress={onPress} scaleTo={0.97} style={[s.card, { width, height, borderColor: c.glassEdge, backgroundColor: col, shadowColor: c.glow }]}>
       <Image source={t.image} style={StyleSheet.absoluteFill} contentFit="cover" />
+      {previewPlayer && <VideoView player={previewPlayer} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} surfaceType={Platform.OS === 'android' ? 'textureView' : 'surfaceView'} />}
       <LinearGradient colors={[c.clear, c.scrim]} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0.5 }} end={{ x: 0, y: 1 }} />
       <View style={s.cardTop}>
         {!t.videoUri && <View style={[s.tag, { backgroundColor: col, borderColor: 'transparent' }]}>

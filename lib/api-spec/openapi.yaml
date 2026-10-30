@@ -29,7 +29,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [video.mp4, preview.webm, poster.jpg]
+            enum: [video.mp4, preview.mp4, preview.webm, poster.jpg]
         - name: Range
           in: header
           schema:

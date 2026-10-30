@@ -1,9 +1,10 @@
 import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useVideoPlayer } from 'expo-video';
 import { router } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { NativeScrollEvent, NativeSyntheticEvent, Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { useReducedMotion, Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BigButton, Pill, SectionTitle, TemplateCard, EmptyState } from '@/components/ui';
@@ -21,6 +22,7 @@ export default function Discover() {
   const c = useColors();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const { height: viewportHeight } = useWindowDimensions();
   const [cat, setCat] = useState<Category | 'all'>('all');
   const [speed, setSpeed] = useState<'any' | 'chill' | 'hype'>('any');
   const top = Platform.OS === 'web' ? 67 : insets.top;
@@ -39,9 +41,72 @@ export default function Discover() {
 
   const cardW = (Math.min(width, 600) - 12 * 2 - 2) / 2;
   const featured = TEMPLATES.filter((t) => t.isNew);
+  const featuredCardWidth = Math.min(width * 0.72, 300);
+  const [activeFeaturedIndex, setActiveFeaturedIndex] = useState(0);
+  const [featuredInView, setFeaturedInView] = useState(false);
+  const featuredFrame = useRef({ y: 0, height: 0 });
+  const pageScrollY = useRef(0);
+
+  const updateFeaturedVisibility = useCallback(() => {
+    const { y, height: sectionHeight } = featuredFrame.current;
+    const visible = y < pageScrollY.current + viewportHeight && y + sectionHeight > pageScrollY.current;
+    setFeaturedInView((current) => current === visible ? current : visible);
+  }, [viewportHeight]);
+
+  const activeFeatured = featured[activeFeaturedIndex] ?? featured[0];
+  const previewUri = activeFeatured?.videoUri
+    ? Platform.OS === 'web'
+      ? activeFeatured.videoUri.replace(/\/video\.mp4$/, '/preview.webm')
+      : activeFeatured.videoUri.replace(/\/video\.mp4$/, '/preview.mp4')
+    : null;
+  const videoPlayer = useVideoPlayer(null, (player) => {
+    player.loop = true;
+    player.muted = true;
+  });
+  const activeIdRef = useRef(activeFeatured?.id);
+  const shouldPreviewRef = useRef(false);
+
+  useEffect(() => {
+    if (!activeFeatured || !previewUri) return;
+    const templateChanged = activeIdRef.current !== activeFeatured.id;
+    activeIdRef.current = activeFeatured.id;
+    shouldPreviewRef.current = featuredInView && !reduced;
+    if (!shouldPreviewRef.current) {
+      videoPlayer.pause();
+      void videoPlayer.replaceAsync(null).catch(() => {});
+      return;
+    }
+    if (!templateChanged && videoPlayer.status === 'readyToPlay') {
+      videoPlayer.play();
+      return;
+    }
+    let cancelled = false;
+    videoPlayer.pause();
+    void videoPlayer.replaceAsync(previewUri).then(() => {
+      if (!cancelled && shouldPreviewRef.current) videoPlayer.play();
+    }).catch(() => {});
+    return () => { cancelled = true; videoPlayer.pause(); };
+  }, [activeFeatured?.id, featuredInView, previewUri, reduced, videoPlayer]);
+
+  useEffect(() => {
+    const subscription = videoPlayer.addListener('statusChange', ({ status }) => {
+      if (status === 'readyToPlay' && shouldPreviewRef.current) videoPlayer.play();
+    });
+    return () => subscription.remove();
+  }, [videoPlayer]);
+
+  const handlePageScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    pageScrollY.current = event.nativeEvent.contentOffset.y;
+    updateFeaturedVisibility();
+  }, [updateFeaturedVisibility]);
+
+  const selectFeaturedAtOffset = useCallback((offsetX: number) => {
+    const next = Math.max(0, Math.min(featured.length - 1, Math.round(offsetX / (featuredCardWidth + 2))));
+    setActiveFeaturedIndex(next);
+  }, [featured.length, featuredCardWidth]);
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: c.background }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+    <ScrollView onScroll={handlePageScroll} onLayout={updateFeaturedVisibility} scrollEventThrottle={120} style={{ flex: 1, backgroundColor: c.background }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
       <View style={[styles.hero, { paddingTop: top + 12, backgroundColor: c.stage }]}>
         <Image source={HERO_IMAGE} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="right" />
         <LinearGradient colors={[c.stage, c.clear]} start={{ x: 0, y: 0 }} end={{ x: 0.85, y: 0 }} style={StyleSheet.absoluteFill} />
@@ -64,11 +129,31 @@ export default function Discover() {
       </View>
 
       <SectionTitle kicker="СВЕЖЕЕ НА СЦЕНЕ" title="Новые хиты" />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 2, paddingBottom: 8 }}>
-        {featured.map((t) => (
-          <TemplateCard key={t.id} t={t} width={Math.min(width * 0.72, 300)} height={340} onPress={() => router.push(`/template/${t.id}`)} />
+      <View
+        onLayout={(event) => {
+          featuredFrame.current = { y: event.nativeEvent.layout.y, height: event.nativeEvent.layout.height };
+          updateFeaturedVisibility();
+        }}
+      >
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 12, gap: 2, paddingBottom: 8 }}
+          onScrollEndDrag={(event) => selectFeaturedAtOffset(event.nativeEvent.contentOffset.x)}
+          onMomentumScrollEnd={(event) => selectFeaturedAtOffset(event.nativeEvent.contentOffset.x)}
+        >
+          {featured.map((t, index) => (
+            <TemplateCard
+              key={t.id}
+              t={t}
+              width={featuredCardWidth}
+              height={340}
+              previewPlayer={index === activeFeaturedIndex && featuredInView ? videoPlayer : undefined}
+              onPress={() => router.push(`/template/${t.id}`)}
+            />
         ))}
-      </ScrollView>
+        </ScrollView>
+      </View>
 
       <View style={{ height: 28 }} />
       <SectionTitle kicker="ВЕСЬ КАТАЛОГ" title="Выбери свой стиль" right={<Text style={[styles.count, { color: c.mutedForeground }]}>{list.length}</Text>} />
