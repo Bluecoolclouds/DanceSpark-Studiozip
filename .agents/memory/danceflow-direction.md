@@ -15,6 +15,12 @@ For the Hallmark redesign, the user chose to preserve bright colors and dance ch
 
 **How to apply:** Preserve the energetic identity, avoid cream/yellow as the main surface, and keep floating translucent bottom navigation. Do not interpret Hallmark as permission to replace the dance identity with a generic minimalist AI interface.
 
+The user supplied five real video templates and chose “Заменить демонстрационные танцы”. The accompanying photo of a character in armor must not be used for now (“Пока не использовать”).
+
+**Why:** This was the user's explicit catalogue choice, not permission to add the photo as a preset character or cover.
+
+**How to apply:** Keep the uploaded clips as the visible catalogue rather than mixing the original fictional dances back in. Preserve older draft references without advertising the old demo dances as current templates. Do not invent BPM, performer identities, or choreography descriptions for the supplied videos.
+
 The user wants the dance cards nearly touching, with less rounding and no large vertical gaps between rows. Preserve the existing card and banner heights when adjusting spacing.
 
 **Why:** The user repeatedly clarified that unwanted space meant the gaps between cards, not their height or the image's dark overlay.

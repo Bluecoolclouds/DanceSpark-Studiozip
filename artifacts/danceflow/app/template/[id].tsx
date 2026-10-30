@@ -9,6 +9,7 @@ import { BigButton, Bouncy, EmptyState, EnergyBars, FavButton, tone } from '@/co
 import { F } from '@/constants/fonts';
 import { categoryLabel, getTemplate } from '@/constants/templates';
 import { useColors } from '@/hooks/useColors';
+import { SourcePreview } from '@/components/generation-form';
 
 export default function TemplateDetail() {
   const c = useColors();
@@ -49,20 +50,25 @@ export default function TemplateDetail() {
         </View>
 
         <View style={styles.statsRow}>
-          <Stat label="Темп" value={`${t.bpm}`} unit="BPM" bg={c.secondary} />
+          <Stat label={t.videoUri ? "Исходник" : "Темп"} value={t.videoUri ? `${Math.round(t.sourceDurationSeconds!)}` : `${t.bpm}`} unit={t.videoUri ? "сек" : "BPM"} bg={c.secondary} />
           <View style={[styles.stat, { backgroundColor: c.card, borderColor: c.border }]}>
-            <Text style={[styles.statLabel, { color: c.mutedForeground }]}>Энергия</Text>
-            <View style={{ marginTop: 8 }}><EnergyBars level={t.energy} color={c.primary} /></View>
+            <Text style={[styles.statLabel, { color: c.mutedForeground }]}>{t.videoUri ? "Аудио" : "Энергия"}</Text>
+            {t.videoUri ? <Text style={[styles.body, { color: c.foreground }]}>Со звуком</Text> : t.energy != null && <View style={{ marginTop: 8 }}><EnergyBars level={t.energy} color={c.primary} /></View>}
           </View>
-          <Stat label="Танцор" value={t.dancer} bg={c.accent} />
+          <Stat label={t.videoUri ? "Режим" : "Танцор"} value={t.videoUri ? "Перенос" : t.dancer} bg={c.accent} />
         </View>
+
+        {t.videoUri && <View style={styles.block}>
+          <Text style={[styles.h, { color: c.foreground }]}>Смотреть танец</Text>
+          <SourcePreview key={t.id} uri={t.videoUri} />
+        </View>}
 
         <View style={styles.block}>
           <Text style={[styles.h, { color: c.foreground }]}>О танце</Text>
           <Text style={[styles.body, { color: c.mutedForeground }]}>{t.description}</Text>
         </View>
 
-        <View style={styles.block}>
+        {t.moves.length > 0 && <View style={styles.block}>
           <Text style={[styles.h, { color: c.foreground }]}>Движения</Text>
           {t.moves.map((m, i) => (
             <View key={m} style={[styles.move, { backgroundColor: c.card, borderColor: c.border }]}>
@@ -72,7 +78,7 @@ export default function TemplateDetail() {
               <Text style={[styles.moveText, { color: c.foreground }]}>{m}</Text>
             </View>
           ))}
-        </View>
+        </View>}
 
         <View style={styles.block}>
           <Text style={[styles.h, { color: c.foreground }]}>Длительность</Text>

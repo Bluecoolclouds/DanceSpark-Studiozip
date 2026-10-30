@@ -13,6 +13,52 @@ tags:
   - name: video-generations
     description: Generate dance videos from user photos
 paths:
+  /dance-templates/{id}/{asset}:
+    get:
+      operationId: getDanceTemplateMedia
+      summary: Public video or poster for a published dance template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [trend-01, trend-02, trend-03, trend-04, trend-05]
+        - name: asset
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [video.mp4, preview.webm, poster.jpg]
+        - name: Range
+          in: header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Complete public media file
+          content:
+            video/mp4:
+              schema: { type: string, format: binary }
+            video/webm:
+              schema: { type: string, format: binary }
+            image/jpeg:
+              schema: { type: string, format: binary }
+        "206":
+          description: Requested media byte range
+          content:
+            video/mp4:
+              schema: { type: string, format: binary }
+            video/webm:
+              schema: { type: string, format: binary }
+            image/jpeg:
+              schema: { type: string, format: binary }
+        "404":
+          description: Unknown template or asset
+        "416":
+          description: Invalid or unsatisfiable byte range
+        "503":
+          description: Media storage is unavailable
   /account/subscription:
     get:
       operationId: getAccountSubscription

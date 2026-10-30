@@ -54,3 +54,5 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
 - YooKassa preparation and launch checklist: [docs/payments/yookassa-readiness.md](docs/payments/yookassa-readiness.md). This is a specification, not an active payment integration.
+- Catalogue clips and posters live in App Storage under the public `dance-templates` prefix. The API serves only allowlisted catalogue assets, with byte ranges for video playback. App Storage settings must be available to the API in the target environment.
+- Original MP4 files are used as draft inputs; WebM versions are for browser previews only. The API's local media cache is disposable, not durable storage.

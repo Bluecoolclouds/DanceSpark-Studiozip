@@ -10,11 +10,13 @@ export interface DanceTemplate {
   category: Category;
   tagline: string;
   description: string;
-  bpm: number;
-  energy: 1 | 2 | 3 | 4 | 5;
+  bpm: number | null;
+  energy: 1 | 2 | 3 | 4 | 5 | null;
   durations: number[];
   moves: string[];
-  image: number;
+  image: number | { uri: string };
+  videoUri?: string;
+  sourceDurationSeconds?: number;
   color: ColorKey;
   isNew?: boolean;
 }
@@ -33,7 +35,9 @@ export const CATEGORIES: { key: Category | 'all'; label: string }[] = [
   { key: 'trend', label: 'Тренды' },
 ];
 
-export const TEMPLATES: DanceTemplate[] = [
+// Existing drafts keep resolving their original metadata; legacy dances are not
+// offered in the new catalogue.
+const LEGACY_TEMPLATES: DanceTemplate[] = [
   {
     id: 'bubblegum-rush', title: 'Bubblegum Rush', dancer: 'Мика', category: 'kpop',
     tagline: 'Хвостики летят, сцена взрывается',
@@ -92,5 +96,35 @@ export const TEMPLATES: DanceTemplate[] = [
   },
 ];
 
-export const getTemplate = (id?: string) => TEMPLATES.find((t) => t.id === id);
+const mediaUrl = (id: string, asset: string) =>
+  `https://${process.env.EXPO_PUBLIC_DOMAIN}/api/dance-templates/${id}/${asset}`;
+
+const uploaded = [
+  { id: 'trend-01', seconds: 13.000522, color: 'primary' as const },
+  { id: 'trend-02', seconds: 15.092971, color: 'secondary' as const },
+  { id: 'trend-03', seconds: 41.988005, color: 'violet' as const },
+  { id: 'trend-04', seconds: 20.064, color: 'accent' as const },
+  { id: 'trend-05', seconds: 21.566667, color: 'primary' as const },
+];
+
+export const TEMPLATES: DanceTemplate[] = uploaded.map((item, index) => ({
+  id: item.id,
+  title: `Тренд ${String(index + 1).padStart(2, '0')}`,
+  dancer: '',
+  category: 'trend',
+  tagline: 'Реальное видео с движениями',
+  description: `Исходный ролик: ${Math.round(item.seconds)} сек, со звуком. Посмотри видео и выбери его для переноса движений на персонажа с твоего фото.`,
+  bpm: null,
+  energy: null,
+  durations: [Math.min(Math.floor(item.seconds), 15)],
+  moves: [],
+  image: { uri: mediaUrl(item.id, 'poster.jpg') },
+  videoUri: mediaUrl(item.id, 'video.mp4'),
+  sourceDurationSeconds: item.seconds,
+  color: item.color,
+  isNew: true,
+}));
+
+export const getTemplate = (id?: string) =>
+  TEMPLATES.find((t) => t.id === id) ?? LEGACY_TEMPLATES.find((t) => t.id === id);
 export const categoryLabel = (c: Category) => CATEGORIES.find((x) => x.key === c)?.label ?? c;

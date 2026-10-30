@@ -2,7 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CostPreview, ModelPicker, QualityPicker, RefCounter, RefGrid, SourcePreview, fmtSec, getModel } from '@/components/generation-form';
@@ -19,16 +19,12 @@ import { useAuth, useClerk } from '@clerk/expo';
 const MAX_PROMPT = 10000;
 interface SourceVideo { uri: string; seconds: number | null }
 
-interface SourceVideo { uri: string; seconds: number | null }
-
-interface SourceVideo { uri: string; seconds: number | null }
-
 export default function Create() {
   const c = useColors();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ template?: string }>();
   const { addDraft, updateDraft } = useDance();
-  const [mode, setMode] = useState<'photo' | 'video'>('photo');
+  const [mode, setMode] = useState<'photo' | 'video'>('video');
   const [photo, setPhoto] = useState<string | null>(null);
   const [duration, setDuration] = useState<number | null>(null);
   const [model, setModel] = useState<GenerationModel>('motion-transfer');
@@ -48,6 +44,16 @@ export default function Create() {
   const dur = duration && t.durations.includes(duration) ? duration : t.durations[0];
   const m = getModel(model)!;
   const top = Platform.OS === 'web' ? 67 : insets.top;
+
+  useEffect(() => setPicked(null), [params.template]);
+
+  useEffect(() => {
+    if (!t.videoUri || t.sourceDurationSeconds == null) return;
+    setMode('video');
+    setModel('motion-transfer');
+    setSource({ uri: t.videoUri, seconds: t.sourceDurationSeconds });
+    setError(null);
+  }, [t.id, t.videoUri, t.sourceDurationSeconds]);
 
   const denied = (what: string) => {
     const msg = `Нет доступа к ${what}. Разреши его в ${Platform.OS === 'web' ? 'браузере' : 'настройках'}.`;
@@ -172,10 +178,10 @@ export default function Create() {
     <ScrollView style={{ flex: 1, backgroundColor: c.background }} contentContainerStyle={{ paddingTop: top + 14, paddingBottom: 130 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={{ paddingHorizontal: 20, gap: 8 }}>
         <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10 }}>
-          {(['photo', 'video'] as const).map((value) => (
+          {(t.videoUri ? ['video'] as const : ['photo', 'video'] as const).map((value) => (
             <View key={value} style={{ flex: 1 }}>
             <Bouncy testID={`mode-${value}`} disabled={generating} onPress={() => setMode(value)} style={[styles.pick, { flex: 0, backgroundColor: mode === value ? c.accent : c.card, borderColor: c.border }]}>
-              <Text style={[styles.pickText, { color: c.foreground, fontSize: 12 }]}>{value === 'photo' ? 'Фото → танец' : 'Видео · черновик'}</Text>
+              <Text style={[styles.pickText, { color: c.foreground, fontSize: 12 }]}>{value === 'photo' ? 'Фото → танец' : 'Видео + фото'}</Text>
             </Bouncy>
             </View>
           ))}
@@ -184,7 +190,7 @@ export default function Create() {
         <Text style={[styles.title, { color: c.foreground }]}>Собери свой{'\n'}<Text style={{ color: c.primary }}>танец</Text></Text>
         <Text style={[styles.sub, { color: c.mutedForeground }]}>{mode === 'photo'
           ? 'Выбери фото, танец и длительность — затем создай настоящее видео. Этот режим использует PixVerse, без переноса движений из исходного ролика.'
-          : 'Видео + фото = черновик Genjutsu Light. Этот режим пока не подключён к генерации — сохраним настройки на устройстве.'}</Text>
+          : 'Выбери танец и добавь фото персонажа. Сохраним черновик Genjutsu Light: перенос движений пока не запускается.'}</Text>
         {!isSignedIn && (
           <Bouncy onPress={() => router.push('/sign-in')} style={{ paddingVertical: 8 }}>
             <Text style={{ color: c.primary, fontFamily: F.body, fontSize: 15 }}>Войти для создания видео →</Text>
@@ -222,11 +228,23 @@ export default function Create() {
       <Step n="1" title="Что делаем" color={c.primary} />
       <View style={styles.pad}><ModelPicker value={model} onChange={setModel} /></View>
 
-      <Step n="2" title="Исходное видео" color={c.secondary} />
+      <Step n="2" title="Выбери танец" color={c.secondary} />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingBottom: 12 }}>
+        {TEMPLATES.map((item) => (
+          <Bouncy key={item.id} testID={`source-template-${item.id}`} onPress={() => {
+            setPicked(item.id);
+            if (item.videoUri) setSource({ uri: item.videoUri, seconds: item.sourceDurationSeconds ?? null });
+          }} style={[styles.tpl, { backgroundColor: c.card, borderColor: item.id === templateId ? c.primary : c.border }]}>
+            <Image source={item.image} style={styles.tplImg} contentFit="cover" />
+            <View style={styles.tplLabel}><Text style={[styles.tplText, { color: c.foreground }]}>{item.title}</Text></View>
+            {item.id === templateId && <View style={[styles.check, { backgroundColor: c.accent }]}><Feather name="check" size={16} color={c.foreground} /></View>}
+          </Bouncy>
+        ))}
+      </ScrollView>
       <View style={[styles.pad, { gap: 6 }]}>
         {source ? (
           <>
-            <SourcePreview uri={source.uri} />
+            <SourcePreview key={source.uri} uri={source.uri} />
             <View style={styles.srcBar}>
               <Text style={[styles.srcMeta, { color: c.foreground }]}>
                 {source.seconds == null ? 'Длительность неизвестна' : `${fmtSec(source.seconds)} · в работу ${fmtSec(Math.min(source.seconds, MAX_OUTPUT_SECONDS))}`}

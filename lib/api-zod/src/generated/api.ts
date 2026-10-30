@@ -8,6 +8,21 @@
 import * as zod from 'zod';
 
 
+/**
+ * @summary Public video or poster for a published dance template
+ */
+export const GetDanceTemplateMediaParams = zod.object({
+  "id": zod.enum(['trend-01', 'trend-02', 'trend-03', 'trend-04', 'trend-05']),
+  "asset": zod.enum(['video.mp4', 'preview.webm', 'poster.jpg'])
+})
+
+export const GetDanceTemplateMediaHeader = zod.object({
+  "Range": zod.string().optional()
+})
+
+export const GetDanceTemplateMediaResponse = zod.unknown()
+
+
 export const GetAccountSubscriptionResponse = zod.object({
   "accountId": zod.string(),
   "plan": zod.enum(['none', 'warmup', 'dancefloor', 'stage']),

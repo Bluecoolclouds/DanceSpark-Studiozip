@@ -1,8 +1,8 @@
 import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { VideoView, useVideoPlayer } from 'expo-video';
-import React, { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { Bouncy } from '@/components/ui';
 import { F } from '@/constants/fonts';
 import {
@@ -17,10 +17,34 @@ export const getModel = (id?: GenerationModel) => GENERATION_MODELS.find((m) => 
 
 export function SourcePreview({ uri, height = 300 }: { uri: string; height?: number }) {
   const c = useColors();
-  const player = useVideoPlayer(uri, (p) => { p.loop = false; p.muted = false; });
+  // Preview-only alternative: draft/provider input keeps the original MP4 URI.
+  const playbackUri = Platform.OS === 'web' && uri.includes('/api/dance-templates/')
+    ? uri.replace(/\/video\.mp4$/, '/preview.webm')
+    : uri;
+  const player = useVideoPlayer(playbackUri, (p) => { p.loop = false; p.muted = false; });
+  const [failed, setFailed] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  useEffect(() => {
+    setFailed(player.status === 'error');
+    setPlaying(player.playing);
+    const subscription = player.addListener('statusChange', ({ status }) => setFailed(status === 'error'));
+    const playingSubscription = player.addListener('playingChange', ({ isPlaying }) => setPlaying(isPlaying));
+    return () => { subscription.remove(); playingSubscription.remove(); };
+  }, [player]);
   return (
     <View style={[s.video, { height, borderColor: c.border, backgroundColor: c.stage }]}>
       <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="contain" nativeControls />
+      {!failed && <Bouncy testID="template-video-toggle" onPress={() => playing ? player.pause() : player.play()}
+        style={{ position: 'absolute', top: 12, right: 12, minHeight: 44, backgroundColor: c.card, borderRadius: 22, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Feather name={playing ? 'pause' : 'play'} size={18} color={c.foreground} />
+        <Text style={{ color: c.foreground, fontFamily: F.bodyBold }}>{playing ? 'Пауза' : 'Смотреть'}</Text>
+      </Bouncy>}
+      {failed && <View style={[StyleSheet.absoluteFill, { backgroundColor: c.stage, padding: 20, alignItems: 'center', justifyContent: 'center', gap: 12 }]}>
+        <Text style={{ color: c.stageForeground, fontFamily: F.bodyBold, textAlign: 'center' }}>Не удалось загрузить видео. Проверь подключение.</Text>
+        <Bouncy onPress={() => { setFailed(false); void player.replaceAsync(playbackUri).catch(() => setFailed(true)); }} style={{ backgroundColor: c.accent, padding: 12, borderRadius: 12 }}>
+          <Text style={{ color: c.foreground, fontFamily: F.bodyBold }}>Повторить</Text>
+        </Bouncy>
+      </View>}
     </View>
   );
 }

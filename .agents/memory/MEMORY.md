@@ -1,4 +1,6 @@
 - [Danceflow product direction](danceflow-direction.md) — Mobile dance-video app; start with bright Just Dance-inspired design and generated artwork.
+- [Storage video cancellation](storage-video-cancellation.md) — Verify aborted media requests; early cloud-stream destruction can crash the SDK pipeline.
+- [Dance video previews](dance-video-previews.md) — Browser playback versions are separate from original provider inputs; HTTP success alone does not prove decoding.
 - [Danceflow payments](danceflow-payments.md) — Confirmed YooKassa scope: web and Android in Russia, with automatic monthly renewal.
 - [Imported auth provisioning](imported-auth-provisioning.md) — Clerk still used the ZIP name after confirmed rename and refresh; avoid repeating that failed workaround.
 - [Server test failure signals](server-test-failure-signals.md) — Network-safety probes must verify process exit status, not just failed-hook output.

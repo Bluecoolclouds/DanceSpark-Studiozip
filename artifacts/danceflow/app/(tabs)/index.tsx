@@ -35,7 +35,7 @@ export default function Discover() {
 
   const list = useMemo(() => TEMPLATES.filter((t) =>
     (cat === 'all' || t.category === cat) &&
-    (speed === 'any' || (speed === 'chill' ? t.bpm < 110 : t.bpm >= 110))), [cat, speed]);
+    (speed === 'any' || (t.bpm != null && (speed === 'chill' ? t.bpm < 110 : t.bpm >= 110)))), [cat, speed]);
 
   const cardW = (Math.min(width, 600) - 12 * 2 - 2) / 2;
   const featured = TEMPLATES.filter((t) => t.isNew);
@@ -73,11 +73,11 @@ export default function Discover() {
       <View style={{ height: 28 }} />
       <SectionTitle kicker="ВЕСЬ КАТАЛОГ" title="Выбери свой стиль" right={<Text style={[styles.count, { color: c.mutedForeground }]}>{list.length}</Text>} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 5, paddingVertical: 4 }}>
-        {CATEGORIES.map((k) => <Pill key={k.key} label={k.label} active={cat === k.key} onPress={() => setCat(k.key)} />)}
+        {CATEGORIES.filter((k) => k.key === 'all' || TEMPLATES.some((t) => t.category === k.key)).map((k) => <Pill key={k.key} label={k.label} active={cat === k.key} onPress={() => setCat(k.key)} />)}
       </ScrollView>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 5, paddingVertical: 10 }}>
+      {TEMPLATES.some((t) => t.bpm != null) && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 5, paddingVertical: 10 }}>
         {SPEEDS.map((k) => <Pill key={k.key} color="secondary" label={k.label} active={speed === k.key} onPress={() => setSpeed(k.key)} />)}
-      </ScrollView>
+      </ScrollView>}
 
       {list.length === 0 ? (
         <EmptyState icon="music" title="Тут пока тихо" text="Под такой фильтр танцев нет. Попробуй другой темп." action="Сбросить" onAction={() => { setCat('all'); setSpeed('any'); }} />
@@ -93,7 +93,7 @@ export default function Discover() {
 
       <View style={[styles.honest, { backgroundColor: c.card, borderColor: c.border }]}>
         <Feather name="info" size={18} color={c.violet} />
-        <Text style={[styles.honestText, { color: c.foreground }]}>Danceflow — дизайн-прототип. Видео не генерируются: ты собираешь черновик из фото, танца и длительности.</Text>
+        <Text style={[styles.honestText, { color: c.foreground }]}>В каталоге реальные ролики: открой танец, посмотри видео и добавь своё фото. Перенос движений пока сохраняется как черновик, без запуска генерации.</Text>
       </View>
     </ScrollView>
   );
