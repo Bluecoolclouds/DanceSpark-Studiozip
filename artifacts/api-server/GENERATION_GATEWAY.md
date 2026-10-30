@@ -2,6 +2,8 @@
 
 The admin console uses persisted PostgreSQL records, not sample statistics. The existing generator must be connected to the gateway before these controls affect its provider requests. The admin API intentionally reports `telemetryConnected: false` until that integration is implemented and verified.
 
+The owner has selected two Genjutsu **Light** endpoints, priced per input-plus-output second, not per job. See `GENJUTSU_LIGHT.md` for the exact selection and required duration-aware budget calculation before enabling paid submissions. The configured generic per-job estimate must not be represented as the actual provider charge.
+
 ## Required generator integration
 
 1. Authenticate with Clerk, resolve the local account using `requireAccount`, take the identity from `res.locals.account`, never from a request-body user ID.

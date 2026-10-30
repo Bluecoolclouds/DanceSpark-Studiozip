@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import type { GenerationDraftSettings } from '@/constants/generation';
 
-export interface Draft {
+export interface Draft extends GenerationDraftSettings {
   id: string;
   templateId: string;
   photoUri: string;

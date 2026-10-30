@@ -10,6 +10,8 @@ import { F } from '@/constants/fonts';
 import { getTemplate } from '@/constants/templates';
 import { useDance } from '@/context/DanceContext';
 import { useColors } from '@/hooks/useColors';
+import { CostPreview, RefGrid, SourcePreview, fmtSec, getModel } from '@/components/generation-form';
+import { MAX_OUTPUT_SECONDS } from '@/constants/generation';
 import { deleteVideoFromLibrary, saveVideoToLibrary, shareVideo, VideoLibraryPermissionError } from '@/lib/draft-videos';
 
 export default function DraftScreen() {
@@ -20,6 +22,7 @@ export default function DraftScreen() {
   const [busy, setBusy] = useState<'save' | 'share' | 'delete' | null>(null);
   const d = drafts.find((x) => x.id === id);
   const t = d ? getTemplate(d.templateId) : undefined;
+  const m = getModel(d?.model);
   const top = Platform.OS === 'web' ? 67 : insets.top;
   const bottom = Platform.OS === 'web' ? 34 : insets.bottom;
 
@@ -122,6 +125,11 @@ export default function DraftScreen() {
 
       {d.videoUri ? (
         <GeneratedVideo uri={d.videoUri} />
+      ) : m ? (
+        <View style={[styles.empty, { borderColor: c.border, backgroundColor: c.muted }]}>
+          <Feather name="film" size={22} color={c.mutedForeground} />
+          <Text style={[styles.emptyText, { color: c.mutedForeground }]}>Результата пока нет. Генерация ещё не запускалась.</Text>
+        </View>
       ) : (
         <View style={styles.collage}>
           <View style={[styles.photo, { borderColor: c.border, backgroundColor: c.muted, transform: [{ rotate: '-4deg' }] }]}>
@@ -139,14 +147,34 @@ export default function DraftScreen() {
       )}
 
       <View style={[styles.summary, { backgroundColor: c.card, borderColor: c.border }]}>
-        <Row k="Танец" v={t.title} />
-        <Row k="Стиль" v={t.tagline} />
-        <Row k="Темп" v={`${t.bpm} BPM`} />
-        <Row k="Длительность" v={`${d.duration} сек`} />
+        {m && <Row k="Режим" v={m.title} />}
+        {m && d.resolution && <Row k="Качество" v={d.resolution} />}
+        <Row k={m ? 'Идея' : 'Танец'} v={t.title} />
+        {!m && <Row k="Стиль" v={t.tagline} />}
+        {!m && <Row k="Темп" v={`${t.bpm} BPM`} />}
+        <Row k={m ? 'Ожидаемый результат' : 'Длительность'} v={m ? fmtSec(d.duration) : `${d.duration} сек`} />
         <Row k="Создан" v={new Date(d.createdAt).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })} last />
       </View>
 
-      {!d.videoUri && (
+      {m && (
+        <View style={{ gap: 8, marginTop: 16 }}>
+          <Text style={[styles.h, { color: c.foreground }]}>Исходное видео</Text>
+          {d.sourceVideoUri ? <SourcePreview uri={d.sourceVideoUri} height={260} /> : <Text style={[styles.emptyText, { color: c.mutedForeground }]}>Не сохранено.</Text>}
+          {d.sourceVideoDurationSeconds != null && (
+            <Text style={[styles.small, { color: c.mutedForeground }]}>
+              {fmtSec(d.sourceVideoDurationSeconds)}{d.sourceVideoDurationSeconds > MAX_OUTPUT_SECONDS ? ` · будут использованы первые ${MAX_OUTPUT_SECONDS} сек` : ''} · звук сохраняется
+            </Text>
+          )}
+          <Text style={[styles.h, { color: c.foreground }]}>{m.referenceLabel} · {d.referenceImageUris?.length ?? 0}</Text>
+          <RefGrid uris={d.referenceImageUris ?? [d.photoUri]} />
+          <Text style={[styles.h, { color: c.foreground }]}>Подсказка</Text>
+          <Text style={[styles.small, { color: d.prompt ? c.foreground : c.mutedForeground }]}>{d.prompt || 'Без подсказки'}</Text>
+          {d.resolution && <CostPreview resolution={d.resolution} seconds={d.sourceVideoDurationSeconds} />}
+          <Text style={[styles.small, { color: c.mutedForeground }]}>Модель: {m.endpointId}</Text>
+        </View>
+      )}
+
+      {!d.videoUri && !m && (
         <View style={[styles.note, { backgroundColor: c.secondary, borderColor: c.border }]}>
           <Feather name="info" size={18} color={c.foreground} />
           <Text style={[styles.noteText, { color: c.foreground }]}>Готовое видео появится здесь после генерации. Пока сохранены только фото, танец и длительность.</Text>
@@ -195,6 +223,10 @@ function Row({ k, v, last }: { k: string; v: string; last?: boolean }) {
 }
 
 const styles = StyleSheet.create({
+  empty: { height: 120, borderWidth: 2, borderStyle: 'dashed', borderRadius: 6, alignItems: 'center', justifyContent: 'center', gap: 6, marginVertical: 16, padding: 12 },
+  emptyText: { fontFamily: F.bodyBold, fontSize: 13, textAlign: 'center' },
+  h: { fontFamily: F.display, fontSize: 16, marginTop: 6 },
+  small: { fontFamily: F.bodyBold, fontSize: 12, lineHeight: 17 },
   bar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
   round: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   title: { fontFamily: F.display, fontSize: 30, lineHeight: 34, letterSpacing: -1 },

@@ -29,6 +29,18 @@ The user specified monthly subscriptions: 500 ₽ for 10 generations per day, 1,
 
 For the paid service, “unlimited” means no daily generation-count cap, not unrestricted parallel AI spending. Keep administrative emergency controls distinct from the advertised plan allowance. Administrative cost figures must be labelled estimates until provider billing data is available.
 
-**Why:** Real provider unit costs have not been established. A failed upstream job may still incur a charge, so presenting configured estimates as actual expenses or promising unrestricted simultaneous work would be misleading.
+**Why:** Published base rates are now known for the selected Light models, but actual discounted costs have not been reconciled with provider bills. A failed upstream job may still incur a charge, so presenting configured estimates as actual expenses or promising unrestricted simultaneous work would be misleading.
 
 **How to apply:** Preserve the unlimited plan's absence of a daily count cap while retaining explicit concurrency and spending protection. Do not claim profitable pricing or an exact provider balance from locally configured estimates.
+
+The user explicitly selected both Higgsfield **Genjutsu Light v1.0** modes: Motion Transfer and Object Swap, and named their playgrounds as references for the creation page.
+
+**Why:** This is the user's provider/model choice. The similarly named standard Genjutsu has different pricing and limits and is not an interchangeable substitute.
+
+**How to apply:** Keep both Light modes, explain their different purposes, and never silently replace them with standard Genjutsu or another provider. Preserve the user's subscription prices pending their decision about the resulting economics.
+
+The user also supplied standard Genjutsu Motion Transfer, Object Swap and Restyle as additional model references. For Higgsfield API settings, they instructed: replace `/playground` with `/api-reference` in the model URL.
+
+**Why:** The user provided the correct documentation route; similarly named models have different contracts and billing rules.
+
+**How to apply:** Consult each exact model's `/api-reference` rather than inferring its contract from another model or a guessed documentation URL. The additional references do not by themselves authorize silently replacing the selected Light models.

@@ -3,91 +3,172 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CostPreview, ModelPicker, QualityPicker, RefCounter, RefGrid, SourcePreview, fmtSec, getModel } from '@/components/generation-form';
 import { BigButton, Bouncy, DemoBadge, tone } from '@/components/ui';
 import { F } from '@/constants/fonts';
+import { GenerationModel, GenerationResolution, MAX_OUTPUT_SECONDS, MAX_REFERENCE_IMAGES } from '@/constants/generation';
 import { TEMPLATES, getTemplate } from '@/constants/templates';
 import { useDance } from '@/context/DanceContext';
 import { useColors } from '@/hooks/useColors';
+
+const MAX_PROMPT = 10000;
+interface SourceVideo { uri: string; seconds: number | null }
 
 export default function Create() {
   const c = useColors();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ template?: string }>();
   const { addDraft } = useDance();
-  const [photo, setPhoto] = useState<string | null>(null);
+  const [model, setModel] = useState<GenerationModel>('motion-transfer');
+  const [source, setSource] = useState<SourceVideo | null>(null);
+  const [refs, setRefs] = useState<string[]>([]);
+  const [prompt, setPrompt] = useState<string>('');
+  const [resolution, setResolution] = useState<GenerationResolution>('720p');
   const [picked, setPicked] = useState<string | null>(null);
-  const [duration, setDuration] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const templateId = picked ?? (getTemplate(params.template) ? params.template! : TEMPLATES[0].id);
   const t = getTemplate(templateId)!;
-  const dur = duration && t.durations.includes(duration) ? duration : t.durations[0];
+  const m = getModel(model)!;
   const top = Platform.OS === 'web' ? 67 : insets.top;
 
   const denied = (what: string) => {
-    if (Platform.OS === 'web') { Alert.alert('Нет доступа', `Разреши доступ к ${what} в браузере.`); return; }
-    Alert.alert('Нет доступа', `Разреши доступ к ${what} в настройках, чтобы выбрать фото.`, [
+    const msg = `Нет доступа к ${what}. Разреши его в ${Platform.OS === 'web' ? 'браузере' : 'настройках'}.`;
+    setError(msg);
+    if (Platform.OS === 'web') return;
+    Alert.alert('Нет доступа', msg, [
       { text: 'Отмена', style: 'cancel' },
       { text: 'Настройки', onPress: () => Linking.openSettings().catch(() => {}) },
     ]);
   };
 
-  const pickLibrary = async () => {
+  const run = async (fn: () => Promise<void>) => {
+    setError(null);
+    try { await fn(); } catch (e) { setError(e instanceof Error ? `Не получилось: ${e.message}` : 'Не получилось открыть галерею.'); }
+  };
+
+  const pickVideo = () => run(async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) return denied('галерее');
-    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [3, 4], quality: 0.8 });
-    if (!r.canceled && r.assets[0]) setPhoto(r.assets[0].uri);
+    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['videos'], quality: 1 });
+    const a = !r.canceled ? r.assets[0] : undefined;
+    if (!a) return;
+    const ms = a.duration;
+    setSource({ uri: a.uri, seconds: ms != null && Number.isFinite(ms) && ms > 0 ? ms / 1000 : null });
+  });
+
+  const addRefs = (uris: string[]) => {
+    setRefs((prev) => {
+      const room = MAX_REFERENCE_IMAGES - prev.length;
+      if (uris.length > room) setError(`Можно не больше ${MAX_REFERENCE_IMAGES} фото. Добавлено ${Math.max(room, 0)} из ${uris.length}.`);
+      return [...prev, ...uris.slice(0, Math.max(room, 0))];
+    });
   };
-  const pickCamera = async () => {
-    if (Platform.OS === 'web') return pickLibrary();
+
+  const pickImages = () => run(async () => {
+    if (refs.length >= MAX_REFERENCE_IMAGES) return setError(`Уже ${MAX_REFERENCE_IMAGES} фото — удали одно, чтобы добавить новое.`);
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return denied('галерее');
+    const r = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'], allowsMultipleSelection: true, selectionLimit: MAX_REFERENCE_IMAGES - refs.length, quality: 0.8,
+    });
+    if (!r.canceled) addRefs(r.assets.map((a) => a.uri));
+  });
+
+  const pickCamera = () => run(async () => {
+    if (Platform.OS === 'web') return pickImages();
+    if (refs.length >= MAX_REFERENCE_IMAGES) return setError(`Уже ${MAX_REFERENCE_IMAGES} фото — удали одно, чтобы добавить новое.`);
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) return denied('камере');
     const r = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [3, 4], quality: 0.8 });
-    if (!r.canceled && r.assets[0]) setPhoto(r.assets[0].uri);
-  };
+    if (!r.canceled && r.assets[0]) addRefs([r.assets[0].uri]);
+  });
+
+  const blocker = !source ? 'Сначала выбери видео'
+    : source.seconds == null ? 'Длительность видео неизвестна'
+    : refs.length === 0 ? 'Добавь хотя бы одно фото' : null;
 
   const save = () => {
-    if (!photo) return;
-    const d = addDraft({ templateId: t.id, photoUri: photo, duration: dur });
-    setPhoto(null);
+    if (blocker || !source || source.seconds == null) return;
+    const d = addDraft({
+      templateId: t.id, photoUri: refs[0], duration: Math.min(source.seconds, MAX_OUTPUT_SECONDS),
+      model, resolution, sourceVideoUri: source.uri, sourceVideoDurationSeconds: source.seconds,
+      referenceImageUris: refs, prompt: prompt.trim() || undefined,
+    });
+    setSource(null); setRefs([]); setPrompt(''); setError(null);
     router.push(`/draft/${d.id}`);
   };
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: c.background }} contentContainerStyle={{ paddingTop: top + 14, paddingBottom: 130 }} showsVerticalScrollIndicator={false}>
-      <View style={{ paddingHorizontal: 20, gap: 10 }}>
+    <ScrollView style={{ flex: 1, backgroundColor: c.background }} contentContainerStyle={{ paddingTop: top + 14, paddingBottom: 130 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <View style={{ paddingHorizontal: 20, gap: 8 }}>
         <DemoBadge />
         <Text style={[styles.title, { color: c.foreground }]}>Собери свой{'\n'}<Text style={{ color: c.primary }}>танец</Text></Text>
-        <Text style={[styles.sub, { color: c.mutedForeground }]}>Три шага до черновика. Видео в прототипе не создаётся — мы честно сохраним твой выбор.</Text>
+        <Text style={[styles.sub, { color: c.mutedForeground }]}>Видео + фото = черновик. Генерация пока не запускается — сохраним настройки на устройстве.</Text>
       </View>
 
-      <Step n="1" title="Твоё фото" color={c.primary} />
-      <View style={{ paddingHorizontal: 20 }}>
-        {photo ? (
-          <View style={[styles.photoWrap, { borderColor: c.border, backgroundColor: c.muted }]}>
-            <Image source={{ uri: photo }} style={StyleSheet.absoluteFill} contentFit="cover" />
-            <View style={styles.photoActions}>
-              <Bouncy onPress={pickLibrary} style={[styles.round, { backgroundColor: c.card, borderColor: c.border }]}><Feather name="refresh-cw" size={18} color={c.foreground} /></Bouncy>
-              <Bouncy onPress={() => setPhoto(null)} style={[styles.round, { backgroundColor: c.card, borderColor: c.border }]}><Feather name="x" size={18} color={c.foreground} /></Bouncy>
+      <Step n="1" title="Что делаем" color={c.primary} />
+      <View style={styles.pad}><ModelPicker value={model} onChange={setModel} /></View>
+
+      <Step n="2" title="Исходное видео" color={c.secondary} />
+      <View style={[styles.pad, { gap: 6 }]}>
+        {source ? (
+          <>
+            <SourcePreview uri={source.uri} />
+            <View style={styles.srcBar}>
+              <Text style={[styles.srcMeta, { color: c.foreground }]}>
+                {source.seconds == null ? 'Длительность неизвестна' : `${fmtSec(source.seconds)} · в работу ${fmtSec(Math.min(source.seconds, MAX_OUTPUT_SECONDS))}`}
+              </Text>
+              <Bouncy testID="replace-video" onPress={pickVideo} style={[styles.sq, { backgroundColor: c.card, borderColor: c.border }]}><Feather name="refresh-cw" size={16} color={c.foreground} /></Bouncy>
+              <Bouncy testID="remove-video" onPress={() => setSource(null)} style={[styles.sq, { backgroundColor: c.card, borderColor: c.border }]}><Feather name="x" size={16} color={c.foreground} /></Bouncy>
             </View>
-          </View>
+            {source.seconds == null && <Text style={[styles.warn, { color: c.destructive }]}>Галерея не сообщила длину ролика. Выбери другое видео, чтобы сохранить черновик.</Text>}
+          </>
         ) : (
-          <View style={styles.pickRow}>
-            <Bouncy testID="pick-library" onPress={pickLibrary} style={[styles.pick, { backgroundColor: c.secondary, borderColor: c.border, transform: [{ rotate: '-2deg' }] }]}>
-              <Feather name="image" size={30} color={c.foreground} />
-              <Text style={[styles.pickText, { color: c.foreground }]}>Галерея</Text>
-            </Bouncy>
-            <Bouncy testID="pick-camera" onPress={pickCamera} style={[styles.pick, { backgroundColor: c.accent, borderColor: c.border, transform: [{ rotate: '2deg' }] }]}>
-              <Feather name="camera" size={30} color={c.foreground} />
-              <Text style={[styles.pickText, { color: c.foreground }]}>Камера</Text>
-            </Bouncy>
-          </View>
+          <Bouncy testID="pick-video" onPress={pickVideo} style={[styles.pickWide, { backgroundColor: c.secondary, borderColor: c.border }]}>
+            <Feather name="film" size={28} color={c.foreground} />
+            <Text style={[styles.pickText, { color: c.foreground }]}>Выбрать видео</Text>
+          </Bouncy>
         )}
-        <Text style={[styles.hint, { color: c.mutedForeground }]}>Лучше всего — фото в полный рост на чистом фоне.</Text>
+        <Text style={[styles.hint, { color: c.mutedForeground }]}>
+          {model === 'motion-transfer' ? 'Видео с танцем — его движения получит персонаж с фото.' : 'Видео, в котором нужно что-то заменить.'} Берутся первые {MAX_OUTPUT_SECONDS} сек, звук сохраняется.
+        </Text>
       </View>
 
-      <Step n="2" title="Танец" color={c.violet} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12, paddingBottom: 8 }}>
+      <Step n="3" title={m.referenceLabel} color={c.accent} right={<RefCounter n={refs.length} />} />
+      <View style={[styles.pad, { gap: 6 }]}>
+        {refs.length > 0 && <RefGrid uris={refs} onRemove={(i) => setRefs((p) => p.filter((_, j) => j !== i))} />}
+        <View style={styles.pickRow}>
+          <Bouncy testID="pick-library" disabled={refs.length >= MAX_REFERENCE_IMAGES} onPress={pickImages} style={[styles.pick, { backgroundColor: c.card, borderColor: c.border }]}>
+            <Feather name="image" size={20} color={c.foreground} />
+            <Text style={[styles.pickText, { color: c.foreground }]}>Галерея</Text>
+          </Bouncy>
+          <Bouncy testID="pick-camera" disabled={refs.length >= MAX_REFERENCE_IMAGES} onPress={pickCamera} style={[styles.pick, { backgroundColor: c.accent, borderColor: c.border }]}>
+            <Feather name="camera" size={20} color={c.foreground} />
+            <Text style={[styles.pickText, { color: c.foreground }]}>Камера</Text>
+          </Bouncy>
+        </View>
+        <Text style={[styles.hint, { color: c.mutedForeground }]}>
+          {model === 'motion-transfer' ? 'Персонаж или сцена, которые будут танцевать. Лучше в полный рост.' : 'Новый персонаж, одежда или предмет для замены.'} До {MAX_REFERENCE_IMAGES} фото.
+        </Text>
+      </View>
+
+      <Step n="4" title="Подсказка и качество" color={c.sun} />
+      <View style={[styles.pad, { gap: 8 }]}>
+        <TextInput
+          testID="prompt-input" value={prompt} onChangeText={setPrompt} maxLength={MAX_PROMPT} multiline
+          placeholder={model === 'motion-transfer' ? 'Необязательно: например, «танцует на крыше на закате»' : 'Необязательно: например, «заменить куртку на красную»'}
+          placeholderTextColor={c.mutedForeground}
+          style={[styles.input, { borderColor: c.border, backgroundColor: c.card, color: c.foreground }]}
+        />
+        <Text style={[styles.counter, { color: c.mutedForeground }]}>{prompt.length} / {MAX_PROMPT}</Text>
+        <QualityPicker value={resolution} onChange={setResolution} />
+        <CostPreview resolution={resolution} seconds={source?.seconds} />
+      </View>
+
+      <Step n="+" title="Идея для вдохновения" color={c.violet} />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 10, paddingBottom: 8 }}>
         {TEMPLATES.map((x) => {
           const on = x.id === t.id;
           return (
@@ -101,63 +182,60 @@ export default function Create() {
           );
         })}
       </ScrollView>
+      <Text style={[styles.hint, styles.pad, { color: c.mutedForeground }]}>Это иллюстрация-подсказка, а не видео. Движения берутся только из твоего ролика.</Text>
 
-      <Step n="3" title="Длительность" color={c.sun} />
-      <View style={[styles.durRow, { paddingHorizontal: 20 }]}>
-        {[5, 10, 15].map((d) => {
-          const ok = t.durations.includes(d);
-          const on = dur === d;
-          return (
-            <Bouncy key={d} disabled={!ok} onPress={() => setDuration(d)} style={[styles.dur, { borderColor: c.border, backgroundColor: on ? c.sun : c.card }]}>
-              <Text style={[styles.durNum, { color: c.foreground }]}>{d}</Text>
-              <Text style={[styles.durUnit, { color: c.foreground }]}>сек</Text>
-            </Bouncy>
-          );
-        })}
-      </View>
-      <Text style={[styles.hint, { color: c.mutedForeground, paddingHorizontal: 20 }]}>Недоступные длительности не поддерживаются этим танцем.</Text>
-
-      <View style={{ paddingHorizontal: 20, marginTop: 28, gap: 10 }}>
-        <BigButton testID="save-draft" label={photo ? 'Сохранить черновик' : 'Сначала выбери фото'} icon="bookmark" disabled={!photo} onPress={save} />
+      <View style={{ paddingHorizontal: 20, marginTop: 22, gap: 8 }}>
+        {error && (
+          <View style={[styles.err, { borderColor: c.border, backgroundColor: c.destructive }]}>
+            <Feather name="alert-triangle" size={16} color={c.destructiveForeground} />
+            <Text style={[styles.errText, { color: c.destructiveForeground }]}>{error}</Text>
+            <Bouncy onPress={() => setError(null)}><Feather name="x" size={16} color={c.destructiveForeground} /></Bouncy>
+          </View>
+        )}
+        <BigButton testID="save-draft" label={blocker ?? 'Сохранить черновик'} icon="bookmark" disabled={!!blocker} onPress={save} />
         <Text style={[styles.hint, { color: c.mutedForeground, textAlign: 'center' }]}>Черновик хранится только на этом устройстве.</Text>
       </View>
     </ScrollView>
   );
 }
 
-function Step({ n, title, color }: { n: string; title: string; color: string }) {
+function Step({ n, title, color, right }: { n: string; title: string; color: string; right?: React.ReactNode }) {
   const c = useColors();
   return (
     <View style={styles.step}>
       <View style={[styles.stepNum, { backgroundColor: color, borderColor: c.border }]}>
         <Text style={[styles.stepNumText, { color: c.foreground }]}>{n}</Text>
       </View>
-      <Text style={[styles.stepTitle, { color: c.foreground }]}>{title}</Text>
+      <Text style={[styles.stepTitle, { color: c.foreground }]} numberOfLines={1}>{title}</Text>
+      {right}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  pad: { paddingHorizontal: 20 },
   title: { fontFamily: F.display, fontSize: 34, lineHeight: 38, letterSpacing: -1 },
   sub: { fontFamily: F.body, fontSize: 14, lineHeight: 20 },
-  step: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, marginTop: 30, marginBottom: 14 },
-  stepNum: { width: 34, height: 34, borderRadius: 17, borderWidth: 2, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-8deg' }] },
-  stepNumText: { fontFamily: F.display, fontSize: 15 },
-  stepTitle: { fontFamily: F.display, fontSize: 20 },
-  pickRow: { flexDirection: 'row', gap: 5 },
-  pick: { flex: 1, height: 150, borderRadius: 8, borderWidth: 2, alignItems: 'center', justifyContent: 'center', gap: 10 },
+  step: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, marginTop: 22, marginBottom: 10 },
+  stepNum: { width: 30, height: 30, borderRadius: 6, borderWidth: 2, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-8deg' }] },
+  stepNumText: { fontFamily: F.display, fontSize: 14 },
+  stepTitle: { fontFamily: F.display, fontSize: 18, flex: 1 },
+  pickRow: { flexDirection: 'row', gap: 6 },
+  pick: { flex: 1, height: 56, borderRadius: 6, borderWidth: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  pickWide: { height: 150, borderRadius: 8, borderWidth: 2, alignItems: 'center', justifyContent: 'center', gap: 8 },
   pickText: { fontFamily: F.display, fontSize: 15 },
-  photoWrap: { height: 360, borderRadius: 8, borderWidth: 2, overflow: 'hidden' },
-  photoActions: { position: 'absolute', top: 12, right: 12, flexDirection: 'row', gap: 8 },
-  round: { width: 42, height: 42, borderRadius: 21, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  hint: { fontFamily: F.body, fontSize: 12, marginTop: 10 },
+  srcBar: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  srcMeta: { flex: 1, fontFamily: F.bodyHeavy, fontSize: 13 },
+  sq: { width: 38, height: 38, borderRadius: 6, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  hint: { fontFamily: F.body, fontSize: 12, lineHeight: 16 },
+  warn: { fontFamily: F.bodyBold, fontSize: 12 },
+  input: { minHeight: 84, maxHeight: 180, borderWidth: 2, borderRadius: 6, padding: 10, fontFamily: F.bodyBold, fontSize: 14, textAlignVertical: 'top' },
+  counter: { fontFamily: F.bodyBold, fontSize: 11, textAlign: 'right', marginTop: -4 },
   tpl: { width: 120, height: 170, borderRadius: 6, borderWidth: 2, overflow: 'hidden', marginTop: 8 },
   tplImg: { flex: 1 },
   tplLabel: { paddingVertical: 7, paddingHorizontal: 8 },
   tplText: { fontFamily: F.bodyHeavy, fontSize: 12 },
-  check: { position: 'absolute', top: 8, right: 8, width: 26, height: 26, borderRadius: 13, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  durRow: { flexDirection: 'row', gap: 12 },
-  dur: { flex: 1, borderRadius: 8, borderWidth: 2, paddingVertical: 14, alignItems: 'center' },
-  durNum: { fontFamily: F.display, fontSize: 28 },
-  durUnit: { fontFamily: F.bodyBold, fontSize: 12 },
+  check: { position: 'absolute', top: 8, right: 8, width: 26, height: 26, borderRadius: 6, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  err: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 2, borderRadius: 6, padding: 10 },
+  errText: { flex: 1, fontFamily: F.bodyBold, fontSize: 13 },
 });
