@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: video-generations
+    description: Generate dance videos from user photos
 paths:
   /admin/session:
     get:
@@ -115,6 +117,116 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /video-generations:
+    post:
+      operationId: createVideoGeneration
+      tags: [video-generations]
+      summary: Start a dance video generation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VideoGenerationInput"
+      responses:
+        "202":
+          description: Generation accepted by the provider queue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoGenerationSubmission"
+        "400":
+          description: Invalid image or generation settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Quota, concurrency or daily budget limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: Generation paused, budget missing or video provider not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Account blocked or paid subscription required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Idempotency key already used with different settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "502":
+          description: Video provider request failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /video-generations/{requestId}:
+    get:
+      operationId: getVideoGeneration
+      tags: [video-generations]
+      summary: Check a dance video generation
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+      responses:
+        "200":
+          description: Current provider status and generated video URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoGenerationStatus"
+        "400":
+          description: Invalid request id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Generation not found or not owned by caller
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: Video provider is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "502":
+          description: Video provider status could not be retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 components:
   schemas:
     AdminSession:
@@ -241,4 +353,60 @@ components:
           type: string
       required:
         - status
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    VideoGenerationInput:
+      type: object
+      properties:
+        clientRequestId:
+          type: string
+          minLength: 1
+          maxLength: 100
+        imageDataUrl:
+          type: string
+          minLength: 100
+          maxLength: 18000000
+          pattern: "^data:image/(jpeg|png|webp);base64,"
+        styleId:
+          type: string
+          enum:
+            - bubblegum-rush
+            - lime-voltage
+            - hexa-star
+            - confetti-cannon
+            - grid-runner
+            - velvet-orbit
+            - seoul-sparkle
+        duration:
+          type: integer
+          enum: [5, 10, 15]
+      required: [clientRequestId, imageDataUrl, styleId, duration]
+    VideoGenerationSubmission:
+      type: object
+      properties:
+        requestId:
+          type: string
+        status:
+          type: string
+          enum: [queued]
+      required: [requestId, status]
+    VideoGenerationStatus:
+      type: object
+      properties:
+        requestId:
+          type: string
+        status:
+          type: string
+          enum: [queued, processing, completed, failed]
+        videoUrl:
+          type: ["string", "null"]
+        error:
+          type: ["string", "null"]
+        queuePosition:
+          type: ["integer", "null"]
+      required: [requestId, status, videoUrl, error, queuePosition]
 

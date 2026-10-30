@@ -2,8 +2,8 @@ import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
-import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BigButton, Bouncy, DemoBadge, EmptyState, tone } from '@/components/ui';
 import { F } from '@/constants/fonts';
@@ -13,20 +13,55 @@ import { useColors } from '@/hooks/useColors';
 import { CostPreview, RefGrid, SourcePreview, fmtSec, getModel } from '@/components/generation-form';
 import { MAX_OUTPUT_SECONDS } from '@/constants/generation';
 import { deleteVideoFromLibrary, saveVideoToLibrary, shareVideo, VideoLibraryPermissionError } from '@/lib/draft-videos';
+import { photoToDataUrl, readableVideoError } from '@/lib/video-generation';
+import {
+  useCreateVideoGeneration,
+  useGetVideoGeneration,
+  type VideoGenerationInput,
+} from '@workspace/api-client-react';
+
+import { useAuth } from '@clerk/expo';
 
 export default function DraftScreen() {
   const c = useColors();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { drafts, removeDraft, updateDraft, ready } = useDance();
-  const [busy, setBusy] = useState<'save' | 'share' | 'delete' | null>(null);
+  const [busy, setBusy] = useState<'save' | 'share' | 'delete' | 'generate' | null>(null);
+  const createGeneration = useCreateVideoGeneration();
+  const { isSignedIn } = useAuth();
   const d = drafts.find((x) => x.id === id);
   const t = d ? getTemplate(d.templateId) : undefined;
   const m = getModel(d?.model);
   const top = Platform.OS === 'web' ? 67 : insets.top;
   const bottom = Platform.OS === 'web' ? 34 : insets.bottom;
+  const statusQuery = useGetVideoGeneration(d?.generationRequestId ?? '', {
+    query: {
+      enabled: Boolean(isSignedIn && d?.generationRequestId) && !d?.videoUri,
+      refetchInterval: d?.generationStatus === 'queued' || d?.generationStatus === 'processing' ? 4000 : false,
+    },
+  });
 
   const back = () => (router.canGoBack() ? router.back() : router.replace('/studio'));
+
+  useEffect(() => {
+    if (!d?.generationRequestId || !statusQuery.data) return;
+    const { status, videoUrl, error } = statusQuery.data;
+    updateDraft(d.id, {
+      generationStatus: status,
+      generationError: error ?? undefined,
+      ...(videoUrl ? { videoUri: videoUrl } : {}),
+    });
+  }, [d?.id, d?.generationRequestId, statusQuery.data, updateDraft]);
+
+  useEffect(() => {
+    if (!busy && d?.generationStatus === 'submitting' && !d.generationRequestId) {
+      updateDraft(d.id, {
+        generationStatus: 'failed',
+        generationError: 'Запуск генерации прервался. Попробуй отправить фото ещё раз.',
+      });
+    }
+  }, [busy, d?.id, d?.generationRequestId, d?.generationStatus, updateDraft]);
 
   if (!ready) return <View style={{ flex: 1, backgroundColor: c.background }} />;
   if (!d || !t) {
@@ -112,16 +147,73 @@ export default function DraftScreen() {
     ]);
   };
 
+  const generateVideo = async () => {
+    if (busy || m) return;
+    if (!isSignedIn) {
+      router.push('/sign-in');
+      return;
+    }
+    if (d.generationRequestId) {
+      // Recheck the accepted job rather than silently charging for another one.
+      await statusQuery.refetch();
+      return;
+    }
+    setBusy('generate');
+    updateDraft(d.id, {
+      generationStatus: 'submitting',
+      generationRequestId: undefined,
+      generationError: undefined,
+    });
+    try {
+      const imageDataUrl = await photoToDataUrl(d.photoUri);
+      const result = await createGeneration.mutateAsync({
+        data: {
+          clientRequestId: d.id,
+          imageDataUrl,
+          styleId: d.templateId as VideoGenerationInput['styleId'],
+          duration: d.duration as VideoGenerationInput['duration'],
+        },
+      });
+      updateDraft(d.id, {
+        generationStatus: 'queued',
+        generationRequestId: result.requestId,
+        generationError: undefined,
+      });
+    } catch (error) {
+      updateDraft(d.id, {
+        generationStatus: 'failed',
+        generationError: readableVideoError(error),
+      });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const isGenerating = d.generationStatus === 'submitting' ||
+    d.generationStatus === 'queued' ||
+    d.generationStatus === 'processing';
+  const badgeLabel = d.videoUri
+    ? 'ГОТОВОЕ ВИДЕО'
+    : d.generationStatus === 'submitting'
+      ? 'ОТПРАВЛЯЕМ ФОТО'
+      : d.generationStatus === 'queued'
+        ? 'В ОЧЕРЕДИ'
+        : d.generationStatus === 'processing'
+          ? 'СОЗДАЁТСЯ'
+          : d.generationStatus === 'failed'
+            ? 'ОШИБКА ГЕНЕРАЦИИ'
+            : 'ЧЕРНОВИК · БЕЗ ВИДЕО';
+
   return (
     <ScrollView style={{ flex: 1, backgroundColor: c.background }} contentContainerStyle={{ paddingTop: top + 8, paddingBottom: bottom + 30, paddingHorizontal: 20 }}>
       <View style={styles.bar}>
         <Bouncy onPress={back} style={[styles.round, { backgroundColor: c.card, borderColor: c.border }]}>
           <Feather name="arrow-left" size={20} color={c.foreground} />
         </Bouncy>
-        <DemoBadge label={d.videoUri ? 'ГОТОВОЕ ВИДЕО' : 'ЧЕРНОВИК · БЕЗ ВИДЕО'} />
+        <DemoBadge label={badgeLabel} />
       </View>
 
-      <Text style={[styles.title, { color: c.foreground }]}>{d.videoUri ? <>Танец{'\n'}<Text style={{ color: c.primary }}>готов</Text></> : <>Черновик{'\n'}<Text style={{ color: c.primary }}>готов к сцене</Text></>}</Text>
+      <Text style={[styles.title, { color: c.foreground }]}>{d.videoUri ? <>Танец{'\n'}<Text style={{ color: c.primary }}>готов</Text></> : isGenerating ? <>Танец{'\n'}<Text style={{ color: c.primary }}>создаётся</Text></> : <>Черновик{'\n'}<Text style={{ color: c.primary }}>готов к сцене</Text></>}</Text>
 
       {d.videoUri ? (
         <GeneratedVideo uri={d.videoUri} />
@@ -174,14 +266,54 @@ export default function DraftScreen() {
         </View>
       )}
 
-      {!d.videoUri && !m && (
+      {!d.videoUri && m && (
         <View style={[styles.note, { backgroundColor: c.secondary, borderColor: c.border }]}>
           <Feather name="info" size={18} color={c.foreground} />
-          <Text style={[styles.noteText, { color: c.foreground }]}>Готовое видео появится здесь после генерации. Пока сохранены только фото, танец и длительность.</Text>
+          <Text style={[styles.noteText, { color: c.foreground }]}>Сохранены настройки Genjutsu Light. Перенос движений и замена в видео пока не подключены; генерация PixVerse не подменяет выбранную модель.</Text>
+        </View>
+      )}
+      {!d.videoUri && !m && (
+        <View style={[styles.note, { backgroundColor: d.generationStatus === 'failed' ? c.sun : c.secondary, borderColor: c.border }]}>
+          {isGenerating ? (
+            <ActivityIndicator size="small" color={c.foreground} />
+          ) : (
+            <Feather name={d.generationStatus === 'failed' ? 'alert-circle' : 'info'} size={18} color={c.foreground} />
+          )}
+          <Text style={[styles.noteText, { color: c.foreground }]}>
+            {d.generationStatus === 'submitting'
+              ? 'Загружаем фото и отправляем его в очередь генерации.'
+              : d.generationStatus === 'queued'
+                ? `Запрос в очереди${statusQuery.data?.queuePosition ? ` · перед ним ${statusQuery.data.queuePosition}` : ''}. Видео появится здесь автоматически.`
+                : d.generationStatus === 'processing'
+                  ? 'Провайдер создаёт видео. Это может занять несколько минут — экран можно закрыть.'
+                  : d.generationStatus === 'failed'
+                    ? d.generationError ?? 'Не удалось создать видео. Попробуй ещё раз.'
+                    : 'Фото будет отправлено в Higgsfield (PixVerse V6). Генерация расходует баланс Higgsfield.'}
+          </Text>
+        </View>
+      )}
+
+      {!d.videoUri && statusQuery.isError && (
+        <View style={[styles.note, { backgroundColor: c.sun, borderColor: c.border }]}>
+          <Feather name="wifi-off" size={18} color={c.foreground} />
+          <Text style={[styles.noteText, { color: c.foreground }]}>{readableVideoError(statusQuery.error)}</Text>
+          <Bouncy onPress={() => statusQuery.refetch()} style={styles.refreshStatus}>
+            <Feather name="refresh-cw" size={18} color={c.foreground} />
+          </Bouncy>
         </View>
       )}
 
       <View style={{ gap: 12, marginTop: 20 }}>
+        {!d.videoUri && !isGenerating && !m && (
+          <BigButton
+            label={busy === 'generate' ? 'Отправляем фото…' : d.generationRequestId ? 'Проверить запрос' : d.generationStatus === 'failed' ? 'Повторить отправку' : 'Создать танцевальное видео'}
+            icon={busy === 'generate' ? 'loader' : d.generationStatus === 'failed' ? 'refresh-cw' : 'play'}
+            color="primary"
+            onPress={generateVideo}
+            disabled={!!busy}
+            testID="generate-video"
+          />
+        )}
         {d.videoUri && (
           <>
             {d.savedVideoAssetId ? (
@@ -242,4 +374,5 @@ const styles = StyleSheet.create({
   v: { fontFamily: F.bodyHeavy, fontSize: 14, flex: 1, textAlign: 'right' },
   note: { flexDirection: 'row', gap: 10, padding: 14, borderRadius: 20, borderWidth: 2, marginTop: 16 },
   noteText: { flex: 1, fontFamily: F.bodyBold, fontSize: 13, lineHeight: 19 },
+  refreshStatus: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
 });

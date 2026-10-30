@@ -21,3 +21,4 @@ export * from "./dance-accounts";
 export * from "./dance-controls";
 export * from "./dance-jobs";
 export * from "./dance-audit";
+export * from "./dance-video-generations";

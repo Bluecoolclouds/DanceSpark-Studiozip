@@ -173,6 +173,81 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface ApiError {
+  error: string;
+}
+
+export type VideoGenerationInputStyleId = typeof VideoGenerationInputStyleId[keyof typeof VideoGenerationInputStyleId];
+
+
+export const VideoGenerationInputStyleId = {
+  'bubblegum-rush': 'bubblegum-rush',
+  'lime-voltage': 'lime-voltage',
+  'hexa-star': 'hexa-star',
+  'confetti-cannon': 'confetti-cannon',
+  'grid-runner': 'grid-runner',
+  'velvet-orbit': 'velvet-orbit',
+  'seoul-sparkle': 'seoul-sparkle',
+} as const;
+
+export type VideoGenerationInputDuration = typeof VideoGenerationInputDuration[keyof typeof VideoGenerationInputDuration];
+
+
+export const VideoGenerationInputDuration = {
+  NUMBER_5: 5,
+  NUMBER_10: 10,
+  NUMBER_15: 15,
+} as const;
+
+export interface VideoGenerationInput {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  clientRequestId: string;
+  /**
+     * @minLength 100
+     * @maxLength 18000000
+     * @pattern ^data:image/(jpeg|png|webp);base64,
+     */
+  imageDataUrl: string;
+  styleId: VideoGenerationInputStyleId;
+  duration: VideoGenerationInputDuration;
+}
+
+export type VideoGenerationSubmissionStatus = typeof VideoGenerationSubmissionStatus[keyof typeof VideoGenerationSubmissionStatus];
+
+
+export const VideoGenerationSubmissionStatus = {
+  queued: 'queued',
+} as const;
+
+export interface VideoGenerationSubmission {
+  requestId: string;
+  status: VideoGenerationSubmissionStatus;
+}
+
+export type VideoGenerationStatusStatus = typeof VideoGenerationStatusStatus[keyof typeof VideoGenerationStatusStatus];
+
+
+export const VideoGenerationStatusStatus = {
+  queued: 'queued',
+  processing: 'processing',
+  completed: 'completed',
+  failed: 'failed',
+} as const;
+
+export interface VideoGenerationStatus {
+  requestId: string;
+  status: VideoGenerationStatusStatus;
+  /** @nullable */
+  videoUrl: string | null;
+  /** @nullable */
+  error: string | null;
+  /** @nullable */
+  queuePosition: number | null;
+}
+
 export type ListAdminUsersParams = {
 /**
  * @maxLength 120

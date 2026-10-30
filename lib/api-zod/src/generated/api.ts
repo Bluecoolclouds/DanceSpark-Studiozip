@@ -248,3 +248,48 @@ export const HealthCheckResponse = zod.object({
 })
 
 
+/**
+ * @summary Start a dance video generation
+ */
+export const createVideoGenerationBodyClientRequestIdMax = 100;
+
+export const createVideoGenerationBodyImageDataUrlMin = 100;
+export const createVideoGenerationBodyImageDataUrlMax = 18000000;
+
+
+export const createVideoGenerationBodyImageDataUrlRegExp = new RegExp('^data:image/(jpeg|png|webp);base64,');
+
+
+export const CreateVideoGenerationBody = zod.object({
+  "clientRequestId": zod.string().min(1).max(createVideoGenerationBodyClientRequestIdMax),
+  "imageDataUrl": zod.string().min(createVideoGenerationBodyImageDataUrlMin).max(createVideoGenerationBodyImageDataUrlMax).regex(createVideoGenerationBodyImageDataUrlRegExp),
+  "styleId": zod.enum(['bubblegum-rush', 'lime-voltage', 'hexa-star', 'confetti-cannon', 'grid-runner', 'velvet-orbit', 'seoul-sparkle']),
+  "duration": zod.union([zod.literal(5),zod.literal(10),zod.literal(15)])
+})
+
+export const CreateVideoGenerationResponse = zod.object({
+  "requestId": zod.string(),
+  "status": zod.enum(['queued'])
+})
+
+
+/**
+ * @summary Check a dance video generation
+ */
+export const getVideoGenerationPathRequestIdMax = 100;
+
+
+
+export const GetVideoGenerationParams = zod.object({
+  "requestId": zod.coerce.string().min(1).max(getVideoGenerationPathRequestIdMax)
+})
+
+export const GetVideoGenerationResponse = zod.object({
+  "requestId": zod.string(),
+  "status": zod.enum(['queued', 'processing', 'completed', 'failed']),
+  "videoUrl": zod.string().nullable(),
+  "error": zod.string().nullable(),
+  "queuePosition": zod.number().int().nullable()
+})
+
+

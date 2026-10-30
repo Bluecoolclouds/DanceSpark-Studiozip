@@ -29,17 +29,36 @@ app.use(
   }),
 );
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
-app.use(cors({ credentials: true, origin: false }));
-app.use(express.json());
+app.use(cors((req, callback) => {
+  const origin = req.headers.origin;
+  if (!origin) {
+    callback(null, { origin: false });
+    return;
+  }
+  const allowedHosts = [
+    getClerkProxyHost(req),
+    process.env.REPLIT_DEV_DOMAIN,
+    process.env.REPLIT_EXPO_DEV_DOMAIN,
+    process.env.REPLIT_INTERNAL_APP_DOMAIN,
+  ].filter(Boolean);
+  try {
+    const parsed = new URL(origin);
+    callback(null, {
+      origin: parsed.protocol === "https:" && allowedHosts.includes(parsed.host) ? origin : false,
+      credentials: true,
+    });
+  } catch {
+    callback(null, { origin: false });
+  }
+}));
+app.use(express.json({ limit: "18mb" }));
 app.use(express.urlencoded({ extended: true }));
-app.use(
-  clerkMiddleware((req) => ({
-    publishableKey: publishableKeyFromHost(
-      getClerkProxyHost(req) ?? "",
-      process.env.CLERK_PUBLISHABLE_KEY,
-    ),
-  })),
-);
+app.use(clerkMiddleware((req) => ({
+  publishableKey: publishableKeyFromHost(
+    getClerkProxyHost(req) ?? "",
+    process.env.CLERK_PUBLISHABLE_KEY,
+  ),
+})));
 
 app.use("/api", router);
 

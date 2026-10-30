@@ -44,3 +44,8 @@ The user also supplied standard Genjutsu Motion Transfer, Object Swap and Restyl
 **Why:** The user provided the correct documentation route; similarly named models have different contracts and billing rules.
 
 **How to apply:** Consult each exact model's `/api-reference` rather than inferring its contract from another model or a guessed documentation URL. The additional references do not by themselves authorize silently replacing the selected Light models.
+For real generation, the user explicitly selected Higgsfield rather than fal.ai.
+
+**Why:** The user confirmed “Да, используем Higgsfield” when asked to distinguish the providers.
+
+**How to apply:** Use Higgsfield's documented server-side API. Do not silently substitute another billable provider.
