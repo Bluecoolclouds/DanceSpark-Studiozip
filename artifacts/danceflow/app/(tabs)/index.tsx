@@ -79,8 +79,8 @@ export default function Discover() {
         <EmptyState icon="music" title="Тут пока тихо" text="Под такой фильтр танцев нет. Попробуй другой темп." action="Сбросить" onAction={() => { setCat('all'); setSpeed('any'); }} />
       ) : (
         <View style={styles.grid}>
-          {list.map((t, i) => (
-            <View key={t.id} style={{ marginTop: i % 2 === 1 ? 24 : 0 }}>
+          {list.map((t) => (
+            <View key={t.id}>
               <TemplateCard t={t} width={cardW} height={250} onPress={() => router.push(`/template/${t.id}`)} />
             </View>
           ))}
