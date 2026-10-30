@@ -18,3 +18,8 @@ expertMode = true
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[userenv]
+
+[userenv.shared]
+DANCEFLOW_OWNER_EMAIL = "89033784036@mail.ru"

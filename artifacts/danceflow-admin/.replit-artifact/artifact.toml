@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/admin/"
+title = "Danceflow · Админка"
+description = "Закрытая административная панель Danceflow: управление генерациями, пользователями и лимитами, статистика ошибок и расходов, состояние серверного AI-ключа без раскрытия его значения."
+version = "1.0.0"
+id = "artifacts/danceflow-admin"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/admin/" ]
+localPort = 21237
+
+[services.development]
+run = "pnpm --filter @workspace/danceflow-admin run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/danceflow-admin", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/danceflow-admin/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21237"
+BASE_PATH = "/admin/"

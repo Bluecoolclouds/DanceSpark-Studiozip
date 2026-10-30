@@ -26,3 +26,9 @@ The user specified monthly subscriptions: 500 ₽ for 10 generations per day, 1,
 **Why:** These are the user's chosen commercial terms and payment-provider direction, not inferred pricing recommendations.
 
 **How to apply:** Preserve these terms in subscription offers. Do not connect RevenueCat or silently replace unlimited access with a quota. Until payment verification exists, plan selection must not activate paid access.
+
+For the paid service, “unlimited” means no daily generation-count cap, not unrestricted parallel AI spending. Keep administrative emergency controls distinct from the advertised plan allowance. Administrative cost figures must be labelled estimates until provider billing data is available.
+
+**Why:** Real provider unit costs have not been established. A failed upstream job may still incur a charge, so presenting configured estimates as actual expenses or promising unrestricted simultaneous work would be misleading.
+
+**How to apply:** Preserve the unlimited plan's absence of a daily count cap while retaining explicit concurrency and spending protection. Do not claim profitable pricing or an exact provider balance from locally configured estimates.

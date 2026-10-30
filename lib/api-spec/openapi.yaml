@@ -11,6 +11,97 @@ tags:
   - name: health
     description: Health operations
 paths:
+  /admin/session:
+    get:
+      operationId: getAdminSession
+      responses:
+        "200":
+          description: Authenticated identity and server-verified role
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminSession" }
+  /admin/overview:
+    get:
+      operationId: getAdminOverview
+      responses:
+        "200":
+          description: Live database statistics, never sample data
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminOverview" }
+  /admin/users:
+    get:
+      operationId: listAdminUsers
+      parameters:
+        - { in: query, name: q, schema: { type: string, maxLength: 120 } }
+        - { in: query, name: page, schema: { type: integer, minimum: 1, default: 1 } }
+      responses:
+        "200":
+          description: Users, 25 per page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUsersPage" }
+  /admin/users/{id}:
+    patch:
+      operationId: updateAdminUser
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, minLength: 1, maxLength: 150 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminUserUpdate" }
+      responses:
+        "200":
+          description: Updated controls, not a paid subscription grant
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUser" }
+  /admin/generations:
+    get:
+      operationId: listAdminGenerations
+      parameters:
+        - { in: query, name: status, schema: { type: string, enum: [all, queued, running, succeeded, failed], default: all } }
+        - { in: query, name: page, schema: { type: integer, minimum: 1, default: 1 } }
+      responses:
+        "200":
+          description: Generation ledger, 25 per page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminGenerationsPage" }
+  /admin/settings:
+    get:
+      operationId: getAdminSettings
+      responses:
+        "200":
+          description: Generation controls and credential presence only
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminSettings" }
+    patch:
+      operationId: updateAdminSettings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminSettingsInput" }
+      responses:
+        "200":
+          description: Saved settings; optimistic version conflict returns 409
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminSettings" }
+  /admin/audit:
+    get:
+      operationId: listAdminAudit
+      parameters:
+        - { in: query, name: page, schema: { type: integer, minimum: 1, default: 1 } }
+      responses:
+        "200":
+          description: Administrative actions, 25 per page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminAuditPage" }
   /healthz:
     get:
       operationId: healthCheck
@@ -26,6 +117,123 @@ paths:
                 $ref: "#/components/schemas/HealthStatus"
 components:
   schemas:
+    AdminSession:
+      type: object
+      required: [userId, email, isAdmin, environment]
+      properties:
+        userId: { type: string }
+        email: { type: string }
+        isAdmin: { type: boolean }
+        environment: { type: string }
+    AdminOverview:
+      type: object
+      required: [users, blockedUsers, activeSubscriptions, generations, succeeded, failed, queued, running, todayGenerations, todayEstimatedCostRub, estimatedCostRub, unpricedGenerations, generatedAt, telemetryConnected]
+      properties:
+        users: { type: integer }
+        blockedUsers: { type: integer }
+        activeSubscriptions: { type: integer }
+        generations: { type: integer }
+        succeeded: { type: integer }
+        failed: { type: integer }
+        queued: { type: integer }
+        running: { type: integer }
+        todayGenerations: { type: integer }
+        todayEstimatedCostRub: { type: number }
+        estimatedCostRub: { type: number }
+        unpricedGenerations: { type: integer }
+        generatedAt: { type: string }
+        telemetryConnected: { type: boolean }
+    AdminUser:
+      type: object
+      required: [id, email, role, blocked, plan, subscriptionUntil, dailyLimitOverride, totalGenerations, todayGenerations, createdAt]
+      properties:
+        id: { type: string }
+        email: { type: string }
+        role: { type: string, enum: [user, admin] }
+        blocked: { type: boolean }
+        plan: { type: string, enum: [none, warmup, dancefloor, stage] }
+        subscriptionUntil: { type: [string, "null"] }
+        dailyLimitOverride: { type: [integer, "null"], minimum: 0, maximum: 10000 }
+        totalGenerations: { type: integer }
+        todayGenerations: { type: integer }
+        createdAt: { type: string }
+    AdminUserUpdate:
+      type: object
+      additionalProperties: false
+      required: [blocked, dailyLimitOverride]
+      properties:
+        blocked: { type: boolean }
+        dailyLimitOverride: { type: [integer, "null"], minimum: 0, maximum: 10000 }
+    AdminUsersPage:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/AdminUser" } }
+        total: { type: integer }
+        page: { type: integer }
+        pageSize: { type: integer }
+    AdminGeneration:
+      type: object
+      required: [id, userId, userEmail, templateId, status, estimatedCostRub, errorCode, createdAt, completedAt]
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        userEmail: { type: string }
+        templateId: { type: string }
+        status: { type: string, enum: [queued, running, succeeded, failed] }
+        estimatedCostRub: { type: [number, "null"] }
+        errorCode: { type: [string, "null"] }
+        createdAt: { type: string }
+        completedAt: { type: [string, "null"] }
+    AdminGenerationsPage:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/AdminGeneration" } }
+        total: { type: integer }
+        page: { type: integer }
+        pageSize: { type: integer }
+    AdminSettingsInput:
+      type: object
+      additionalProperties: false
+      required: [version, paused, maxConcurrent, perUserConcurrent, maxDailySpendRub, costPerGenerationRub]
+      properties:
+        version: { type: integer, minimum: 0 }
+        paused: { type: boolean }
+        maxConcurrent: { type: integer, minimum: 1, maximum: 50 }
+        perUserConcurrent: { type: integer, minimum: 1, maximum: 5 }
+        maxDailySpendRub: { type: [number, "null"], minimum: 1, maximum: 1000000 }
+        costPerGenerationRub: { type: [number, "null"], minimum: 0.01, maximum: 100000 }
+    AdminSettings:
+      allOf:
+        - { $ref: "#/components/schemas/AdminSettingsInput" }
+        - type: object
+          required: [providerKeyConfigured, provider, keyStorage, telemetryConnected, quotaTimezone, updatedAt]
+          properties:
+            providerKeyConfigured: { type: boolean }
+            provider: { type: string }
+            keyStorage: { type: string }
+            telemetryConnected: { type: boolean }
+            quotaTimezone: { type: string }
+            updatedAt: { type: string }
+    AdminAuditEntry:
+      type: object
+      required: [id, actorId, action, targetId, details, createdAt]
+      properties:
+        id: { type: string }
+        actorId: { type: string }
+        action: { type: string }
+        targetId: { type: [string, "null"] }
+        details: { type: string }
+        createdAt: { type: string }
+    AdminAuditPage:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/AdminAuditEntry" } }
+        total: { type: integer }
+        page: { type: integer }
+        pageSize: { type: integer }
     HealthStatus:
       type: object
       properties:
