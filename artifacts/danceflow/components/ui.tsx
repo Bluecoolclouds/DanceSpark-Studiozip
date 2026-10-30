@@ -115,12 +115,11 @@ export function TemplateCard({ t, onPress, width, height = 280 }: { t: DanceTemp
       </View>
       <View style={s.cardBottom}>
         {t.isNew && <View style={[s.newChip, { backgroundColor: c.accent }]}><Text style={[s.newText, { color: c.foreground }]}>Новинка</Text></View>}
-        <Text style={[s.cardTitle, { color: c.stageForeground }]} numberOfLines={1}>{t.title}</Text>
+        {!t.videoUri && <Text style={[s.cardTitle, { color: c.stageForeground }]} numberOfLines={1}>{t.title}</Text>}
         <View style={s.row}>
-          <Text style={[s.meta, { color: c.stageForeground }]}>
-            {t.videoUri ? `${Math.round(t.sourceDurationSeconds!)} сек / Видео со звуком` : `${t.bpm} BPM · ${t.dancer}`}
-          </Text>
-          {t.videoUri ? <Feather name="play-circle" size={22} color={c.stageForeground} /> : t.energy != null && <EnergyBars level={t.energy} color={col} />}
+          {t.videoUri
+            ? <Feather name="play-circle" size={22} color={c.stageForeground} />
+            : <><Text style={[s.meta, { color: c.stageForeground }]}>{t.bpm} BPM · {t.dancer}</Text>{t.energy != null && <EnergyBars level={t.energy} color={col} />}</>}
         </View>
       </View>
     </Bouncy>
