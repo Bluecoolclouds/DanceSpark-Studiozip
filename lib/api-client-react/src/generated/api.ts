@@ -72,8 +72,8 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export const getGetDanceTemplateMediaUrl = (id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05',
-    asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg',) => {
+export const getGetDanceTemplateMediaUrl = (id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05' | 'trend-06',
+    asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg' | 'character-01.jpg' | 'character-02.jpg' | 'reference-poster.jpg' | 'result.mp4' | 'result-preview.mp4' | 'result.webm',) => {
 
 
 
@@ -84,8 +84,8 @@ export const getGetDanceTemplateMediaUrl = (id: 'trend-01' | 'trend-02' | 'trend
 /**
  * @summary Public video or poster for a published dance template
  */
-export const getDanceTemplateMedia = async (id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05',
-    asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg', options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+export const getDanceTemplateMedia = async (id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05' | 'trend-06',
+    asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg' | 'character-01.jpg' | 'character-02.jpg' | 'reference-poster.jpg' | 'result.mp4' | 'result-preview.mp4' | 'result.webm', options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
 
   return customFetch<Blob>(getGetDanceTemplateMediaUrl(id,asset),
   {
@@ -100,16 +100,16 @@ export const getDanceTemplateMedia = async (id: 'trend-01' | 'trend-02' | 'trend
 
 
 
-export const getGetDanceTemplateMediaQueryKey = (id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05',
-    asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg',) => {
+export const getGetDanceTemplateMediaQueryKey = (id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05' | 'trend-06',
+    asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg' | 'character-01.jpg' | 'character-02.jpg' | 'reference-poster.jpg' | 'result.mp4' | 'result-preview.mp4' | 'result.webm',) => {
     return [
     `/api/dance-templates/${id}/${asset}`
     ] as const;
     }
 
 
-export const getGetDanceTemplateMediaQueryOptions = <TData = Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError = ErrorType<void>>(id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05',
-    asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg', options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getGetDanceTemplateMediaQueryOptions = <TData = Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError = ErrorType<void>>(id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05' | 'trend-06',
+    asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg' | 'character-01.jpg' | 'character-02.jpg' | 'reference-poster.jpg' | 'result.mp4' | 'result-preview.mp4' | 'result.webm', options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -132,8 +132,8 @@ export type GetDanceTemplateMediaQueryError = ErrorType<void>
 
 
 export function useGetDanceTemplateMedia<TData = Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError = ErrorType<void>>(
- id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05',
-    asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg', options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError, TData>> & Pick<
+ id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05' | 'trend-06',
+    asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg' | 'character-01.jpg' | 'character-02.jpg' | 'reference-poster.jpg' | 'result.mp4' | 'result-preview.mp4' | 'result.webm', options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getDanceTemplateMedia>>,
           TError,
@@ -143,8 +143,8 @@ export function useGetDanceTemplateMedia<TData = Awaited<ReturnType<typeof getDa
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetDanceTemplateMedia<TData = Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError = ErrorType<void>>(
- id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05',
-    asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg', options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError, TData>> & Pick<
+ id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05' | 'trend-06',
+    asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg' | 'character-01.jpg' | 'character-02.jpg' | 'reference-poster.jpg' | 'result.mp4' | 'result-preview.mp4' | 'result.webm', options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getDanceTemplateMedia>>,
           TError,
@@ -154,8 +154,8 @@ export function useGetDanceTemplateMedia<TData = Awaited<ReturnType<typeof getDa
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetDanceTemplateMedia<TData = Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError = ErrorType<void>>(
- id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05',
-    asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg', options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05' | 'trend-06',
+    asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg' | 'character-01.jpg' | 'character-02.jpg' | 'reference-poster.jpg' | 'result.mp4' | 'result-preview.mp4' | 'result.webm', options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -163,8 +163,8 @@ export function useGetDanceTemplateMedia<TData = Awaited<ReturnType<typeof getDa
  */
 
 export function useGetDanceTemplateMedia<TData = Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError = ErrorType<void>>(
- id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05',
-    asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg', options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05' | 'trend-06',
+    asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg' | 'character-01.jpg' | 'character-02.jpg' | 'reference-poster.jpg' | 'result.mp4' | 'result-preview.mp4' | 'result.webm', options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 

@@ -12,8 +12,8 @@ import * as zod from 'zod';
  * @summary Public video or poster for a published dance template
  */
 export const GetDanceTemplateMediaParams = zod.object({
-  "id": zod.enum(['trend-01', 'trend-02', 'trend-03', 'trend-04', 'trend-05']),
-  "asset": zod.enum(['video.mp4', 'preview.mp4', 'preview.webm', 'poster.jpg'])
+  "id": zod.enum(['trend-01', 'trend-02', 'trend-03', 'trend-04', 'trend-05', 'trend-06']),
+  "asset": zod.enum(['video.mp4', 'preview.mp4', 'preview.webm', 'poster.jpg', 'character-01.jpg', 'character-02.jpg', 'reference-poster.jpg', 'result.mp4', 'result-preview.mp4', 'result.webm'])
 })
 
 export const GetDanceTemplateMediaHeader = zod.object({

@@ -3,12 +3,17 @@ import { createReadStream } from "node:fs";
 import { cachedTemplateFile } from "../lib/template-storage";
 
 const router: IRouter = Router();
-const templateIds = new Set(["trend-01", "trend-02", "trend-03", "trend-04", "trend-05"]);
+const templateIds = new Set(["trend-01", "trend-02", "trend-03", "trend-04", "trend-05", "trend-06"]);
+const templateAssets = new Set([
+  "video.mp4", "preview.mp4", "preview.webm", "poster.jpg",
+  "character-01.jpg", "character-02.jpg", "reference-poster.jpg",
+  "result.mp4", "result-preview.mp4", "result.webm",
+]);
 
 // Only explicitly published catalogue assets are accessible; never arbitrary bucket paths.
 router.get("/dance-templates/:id/:asset", async (req, res) => {
   const { id, asset } = req.params;
-  if (!templateIds.has(id) || !["video.mp4", "preview.mp4", "preview.webm", "poster.jpg"].includes(asset)) {
+  if (!templateIds.has(id) || !templateAssets.has(asset)) {
     res.sendStatus(404);
     return;
   }
@@ -17,7 +22,7 @@ router.get("/dance-templates/:id/:asset", async (req, res) => {
     if (res.destroyed) return;
     if (!Number.isSafeInteger(size) || size <= 0) throw new Error("Invalid media size");
     res.set({
-      "Content-Type": asset === "preview.webm" ? "video/webm" : asset.endsWith(".mp4") ? "video/mp4" : "image/jpeg",
+      "Content-Type": asset.endsWith(".webm") ? "video/webm" : asset.endsWith(".mp4") ? "video/mp4" : "image/jpeg",
       "Cache-Control": "public, max-age=3600",
       "Accept-Ranges": "bytes",
       "X-Content-Type-Options": "nosniff",

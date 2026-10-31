@@ -40,7 +40,7 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
     ? { uri: t.videoUri, seconds: t.sourceDurationSeconds } : null;
   const [model, setModel] = useState<GenerationModel>('object-swap');
   const [source, setSource] = useState<SourceVideo | null>(original);
-  const [refs, setRefs] = useState<string[]>([]);
+  const [refs, setRefs] = useState<string[]>(() => t?.referenceImageUris ?? []);
   const [prompt, setPrompt] = useState<string>('');
   const [resolution, setResolution] = useState<GenerationResolution>('720p');
   const [error, setError] = useState<string | null>(null);
@@ -106,7 +106,7 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
   });
 
   const reset = () => {
-    setModel('object-swap'); setSource(original); setRefs([]); setPrompt(''); setResolution('720p'); setError(null);
+    setModel('object-swap'); setSource(original); setRefs(t?.referenceImageUris ?? []); setPrompt(''); setResolution('720p'); setError(null);
     setExpanded(null);
   };
 
@@ -146,12 +146,7 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
       </Bouncy>
     );
   };
-  const openImageSection = () => {
-    if (expanded === 'images') {
-      setExpanded(null);
-      return;
-    }
-    setExpanded('images');
+  const chooseImageSource = () => {
     if (refs.length >= MAX_REFERENCE_IMAGES) return full();
     if (Platform.OS === 'web') {
       void pickImages();
@@ -162,6 +157,14 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
       { text: 'Камера', onPress: () => { void pickCamera(); } },
       { text: 'Отмена', style: 'cancel' },
     ]);
+  };
+  const openImageSection = () => {
+    if (expanded === 'images') {
+      setExpanded(null);
+      return;
+    }
+    setExpanded('images');
+    if (refs.length === 0) chooseImageSource();
   };
   const input = (
     <View style={{ gap: 10 }}>
@@ -188,7 +191,7 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
           ? (source.seconds == null ? 'Видео выбрано' : fmtSec(source.seconds))
           : 'До 1 видео', source && isOriginal ? (
             <View style={styles.mediaThumb}>
-              <Image source={t.image} style={StyleSheet.absoluteFill} contentFit="cover" />
+              <Image source={t.videoPoster ?? t.image} style={StyleSheet.absoluteFill} contentFit="cover" />
               <View style={[styles.mediaPlay, { backgroundColor: c.scrim }]}>
                 <Feather name="play" size={13} color={c.primaryForeground} />
               </View>
@@ -214,11 +217,21 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
             {!original && <Text style={[styles.hint, { color: c.mutedForeground }]}>У этого танца нет исходного ролика — загрузи своё видео.</Text>}
           </View>}
         </View>}
-        {compactRow('images', 'image', 'Добавь персонажей, товары или одежду', `${refs.length ? `${refs.length} из ${MAX_REFERENCE_IMAGES} добавлено` : `До ${MAX_REFERENCE_IMAGES} изображений`}`, undefined, openImageSection)}
+        {compactRow('images', 'image', 'Добавь персонажей, товары или одежду', `${refs.length ? `${refs.length} из ${MAX_REFERENCE_IMAGES} добавлено` : `До ${MAX_REFERENCE_IMAGES} изображений`}`,
+          refs.length > 0 ? (
+            <View style={styles.refThumbs}>
+              {refs.slice(0, 2).map((uri, index) => (
+                <Image key={`${uri}-${index}`} source={{ uri }} style={styles.refThumb} contentFit="cover" />
+              ))}
+            </View>
+          ) : undefined, openImageSection)}
         {expanded === 'images' && <View style={[styles.expandedContent, { backgroundColor: c.card, borderColor: c.border }]}>
           <View style={{ gap: 8 }}>
             {refs.length > 0 && <RefGrid uris={refs} onRemove={(i) => setRefs((p) => p.filter((_, j) => j !== i))} />}
-            <Text style={[styles.hint, { color: c.mutedForeground }]}>До {MAX_REFERENCE_IMAGES} фото. Первое станет обложкой черновика.</Text>
+            <View style={[styles.row, { justifyContent: 'space-between' }]}>
+              <Text style={[styles.hint, { color: c.mutedForeground }]}>До {MAX_REFERENCE_IMAGES} фото. Первое станет обложкой черновика.</Text>
+              <Sq id="pick-library" icon="plus" label="Добавить фото" onPress={chooseImageSource} />
+            </View>
           </View>
         </View>}
         {compactRow('prompt', 'star', 'Промпт', prompt.trim() ? prompt.trim() : 'Опиши новую сцену')}
@@ -254,16 +267,26 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
 
   const result = (
     <View style={[panel, { gap: 12 }]}>
-      <View style={styles.row}><Text style={[styles.panelTitle, { color: c.foreground }]}>Результат</Text><Feather name="star" size={16} color={N.pink} /></View>
-      <View style={[styles.empty, { borderColor: c.border, backgroundColor: c.muted }]}>
-        <View style={[styles.emptyIcon, { backgroundColor: N.pink, borderColor: 'transparent' }]}>
-          <Feather name="film" size={20} color={c.primaryForeground} />
-        </View>
-        <Text style={[styles.emptyTitle, { color: c.foreground }]}>Здесь пока пусто</Text>
-        <Text style={[styles.hint, { color: c.mutedForeground, textAlign: 'center', maxWidth: 280 }]}>
-          Обработка Light Swapper ещё не подключена. Настройки сохранятся как черновик на этом устройстве — без запуска и списаний.
-        </Text>
+      <View style={styles.row}>
+        <Text style={[styles.panelTitle, { color: c.foreground }]}>{t.exampleResultUri ? 'Пример результата' : 'Результат'}</Text>
+        <Feather name="star" size={16} color={N.pink} />
       </View>
+      {t.exampleResultUri ? (
+        <View style={{ gap: 8 }}>
+          <SourcePreview uri={t.exampleResultUri} height={wide ? 520 : Math.round(Math.min(width - 66, 400) * 16 / 9)} />
+          <Text style={[styles.hint, { color: c.mutedForeground }]}>Пример из каталога. Новая генерация не запускалась.</Text>
+        </View>
+      ) : (
+        <View style={[styles.empty, { borderColor: c.border, backgroundColor: c.muted }]}>
+          <View style={[styles.emptyIcon, { backgroundColor: N.pink, borderColor: 'transparent' }]}>
+            <Feather name="film" size={20} color={c.primaryForeground} />
+          </View>
+          <Text style={[styles.emptyTitle, { color: c.foreground }]}>Здесь пока пусто</Text>
+          <Text style={[styles.hint, { color: c.mutedForeground, textAlign: 'center', maxWidth: 280 }]}>
+            Обработка Light Swapper ещё не подключена. Настройки сохранятся как черновик на этом устройстве — без запуска и списаний.
+          </Text>
+        </View>
+      )}
     </View>
   );
 
@@ -360,6 +383,8 @@ const styles = StyleSheet.create({
   rowIcon: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   mediaThumb: { width: 76, height: 76, borderRadius: 12, overflow: 'hidden', flexShrink: 0, alignItems: 'center', justifyContent: 'center' },
   mediaPlay: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  refThumbs: { width: 76, height: 56, borderRadius: 10, overflow: 'hidden', flexDirection: 'row', gap: 2, flexShrink: 0 },
+  refThumb: { flex: 1, height: '100%' },
   rowCopy: { flex: 1, minWidth: 0, gap: 2 },
   rowTitle: { fontFamily: F.bodyHeavy, fontSize: 13, lineHeight: 17, flexShrink: 1 },
   rowSubtitle: { fontFamily: F.body, fontSize: 11, lineHeight: 14 },

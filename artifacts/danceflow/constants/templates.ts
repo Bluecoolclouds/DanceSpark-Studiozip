@@ -15,8 +15,11 @@ export interface DanceTemplate {
   durations: number[];
   moves: string[];
   image: number | { uri: string };
+  videoPoster?: number | { uri: string };
   videoUri?: string;
   sourceDurationSeconds?: number;
+  referenceImageUris?: string[];
+  exampleResultUri?: string;
   color: ColorKey;
   isNew?: boolean;
 }
@@ -105,6 +108,15 @@ const uploaded = [
   { id: 'trend-03', seconds: 41.988005, color: 'violet' as const },
   { id: 'trend-04', seconds: 20.064, color: 'accent' as const },
   { id: 'trend-05', seconds: 21.566667, color: 'primary' as const },
+  {
+    id: 'trend-06', seconds: 11.055011, color: 'secondary' as const,
+    videoPoster: { uri: mediaUrl('trend-06', 'reference-poster.jpg') },
+    referenceImageUris: [
+      mediaUrl('trend-06', 'character-01.jpg'),
+      mediaUrl('trend-06', 'character-02.jpg'),
+    ],
+    exampleResultUri: mediaUrl('trend-06', 'result.mp4'),
+  },
 ];
 
 export const TEMPLATES: DanceTemplate[] = uploaded.map((item, index) => ({
@@ -119,8 +131,11 @@ export const TEMPLATES: DanceTemplate[] = uploaded.map((item, index) => ({
   durations: [Math.min(Math.floor(item.seconds), 15)],
   moves: [],
   image: { uri: mediaUrl(item.id, 'poster.jpg') },
+  videoPoster: 'videoPoster' in item ? item.videoPoster : undefined,
   videoUri: mediaUrl(item.id, 'video.mp4'),
   sourceDurationSeconds: item.seconds,
+  referenceImageUris: 'referenceImageUris' in item ? item.referenceImageUris : undefined,
+  exampleResultUri: 'exampleResultUri' in item ? item.exampleResultUri : undefined,
   color: item.color,
   isNew: true,
 }));
