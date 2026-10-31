@@ -94,7 +94,7 @@ test("imported metadata with unavailable originals stays private, including old 
   await importCatalogue();
   assert.equal((await readCatalogue()).length, 0);
 });
-test("existing metadata import is idempotent and never restores an unpublished record", async () => {
+test("restored seed media is returned by the public catalogue without restoring owner-unpublished cards", async () => {
   process.env.CLOUDFLARE_R2_ACCOUNT_ID = "a".repeat(32);
   process.env.CLOUDFLARE_R2_BUCKET_NAME = "catalogue-test";
   process.env.CLOUDFLARE_R2_ACCESS_KEY_ID = "synthetic";
@@ -102,8 +102,20 @@ test("existing metadata import is idempotent and never restores an unpublished r
   mock.method(S3Client.prototype, "send", async () => ({ ETag: '"file"', ContentLength: 100 }));
   await pool.query("DELETE FROM dance_catalogue WHERE id IN ('trend-01','trend-02','trend-03')");
   await importCatalogue();
-  assert.deepEqual((await readCatalogue()).map(t => t.id).sort(), ["trend-01", "trend-02", "trend-03"]);
-  await pool.query("UPDATE dance_catalogue SET published=false WHERE id='trend-02'");
+  assert.deepEqual((await readCatalogue()).map(t => t.id).sort(), [
+    "trend-01", "trend-02", "trend-03", "trend-04", "trend-05", "trend-06",
+  ]);
+  await serve(ownerApp(), async root => {
+    const response = await fetch(`${root}/catalogue?limit=50`);
+    assert.equal(response.status, 200);
+    const page = await response.json();
+    assert.equal(page.total, 6);
+    assert.equal(page.items.length, 6);
+    assert.ok(page.items.every((item: any) => item.imageUri && item.videoUri));
+  });
+  await pool.query(`UPDATE dance_catalogue
+    SET published=false, metadata=metadata || '{"_ownerUnpublished":true}'::jsonb
+    WHERE id='trend-02'`);
   await importCatalogue();
   assert.equal((await readCatalogue()).some(t => t.id === "trend-02"), false);
   assert.equal((await readCatalogue(true)).length, 6);

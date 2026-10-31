@@ -29,9 +29,21 @@ export async function importCatalogue() {
   const newIds = new Set(inserted.map(row => row.id));
   const rows = await db.select().from(danceCatalogue).where(inArray(danceCatalogue.id, initialCatalogue.map(row => row.id)));
   await Promise.all(rows.map(async row => {
-    if (row.metadata._importMediaChecked === true) return;
+    const seed = initialCatalogue.find(item => item.id === row.id);
+    const ownerUnpublished = row.metadata._ownerUnpublished === true;
+    let unchangedSeed = false;
+    if (seed && !ownerUnpublished) {
+      try {
+        unchangedSeed = JSON.stringify(InputSchema.parse({
+          ...row.metadata, published: false, sortOrder: seed.sortOrder,
+        })) === JSON.stringify(InputSchema.parse({
+          ...seed.metadata, published: false, sortOrder: seed.sortOrder,
+        }));
+      } catch { /* Invalid or owner-edited metadata is not an automatic seed. */ }
+    }
+    if (ownerUnpublished || (row.metadata._importMediaChecked === true && !unchangedSeed)) return;
     let published = false;
-    if (row.published || newIds.has(row.id)) {
+    if (unchangedSeed || row.published || newIds.has(row.id)) {
       try { await verifyCatalogueMedia(row.id, InputSchema.parse(row.metadata)); published = true; }
       catch { /* Metadata stays as an owner-editable draft until original uploads exist. */ }
     }

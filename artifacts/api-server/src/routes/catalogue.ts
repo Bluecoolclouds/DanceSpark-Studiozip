@@ -52,7 +52,10 @@ router.put("/admin/catalogue/:id", async (req, res) => {
       res.status(409).json({ error: "Публикация невозможна: загрузите исходное видео, постер и все указанные дополнительные файлы; проверьте доступ к R2" }); return;
     }
   }
-  await db.update(danceCatalogue).set({ metadata: { ...metadata, _importMediaChecked: true }, published: metadata.published, sortOrder: metadata.sortOrder }).where(eq(danceCatalogue.id, id));
+  await db.update(danceCatalogue).set({
+    metadata: { ...metadata, _importMediaChecked: true, _ownerUnpublished: !metadata.published },
+    published: metadata.published, sortOrder: metadata.sortOrder,
+  }).where(eq(danceCatalogue.id, id));
   res.json(catalogueTemplate(id, metadata));
 });
 export default router;
