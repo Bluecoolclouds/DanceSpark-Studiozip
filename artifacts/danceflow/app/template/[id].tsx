@@ -146,8 +146,8 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
           const on = x.id === model;
           return (
             <Bouncy key={x.id} testID={`model-${x.id}`} accessibilityLabel={`${x.id === 'object-swap' ? 'Замена объекта' : 'Перенос движения'}${on ? ', выбрано' : ''}`} onPress={() => setModel(x.id)} scaleTo={0.97}
-              style={[styles.segItem, on && { backgroundColor: x.id === 'object-swap' ? N.pink : '#16A9C4', borderColor: 'transparent' }]}>
-              <Text style={[styles.segText, { color: c.foreground }]}>{x.id === 'object-swap' ? 'Замена объекта' : 'Перенос движения'}</Text>
+              style={[styles.segItem, on && { backgroundColor: x.id === 'object-swap' ? N.pink : N.violet, borderColor: 'transparent' }]}>
+              <Text style={[styles.segText, { color: on ? c.primaryForeground : c.foreground }]}>{x.id === 'object-swap' ? 'Замена объекта' : 'Перенос движения'}</Text>
             </Bouncy>
           );
         })}
@@ -226,7 +226,7 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
   const result = (
     <View style={[panel, { gap: 12 }]}>
       <View style={styles.row}><Text style={[styles.panelTitle, { color: c.foreground }]}>Результат</Text><Feather name="star" size={16} color={N.pink} /></View>
-      <View style={[styles.empty, { borderColor: N.cyan, backgroundColor: 'rgba(18,6,58,0.6)' }]}>
+      <View style={[styles.empty, { borderColor: c.border, backgroundColor: c.muted }]}>
         <View style={[styles.emptyIcon, { backgroundColor: N.pink, borderColor: 'transparent' }]}>
           <Feather name="film" size={20} color={c.primaryForeground} />
         </View>
@@ -253,7 +253,7 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: N.deep, overflow: 'hidden', width: '100%', maxWidth: '100%' }}>
+    <View style={{ flex: 1, backgroundColor: c.background, overflow: 'hidden', width: '100%', maxWidth: '100%' }}>
       <Stage />
       <KeyboardAwareScrollViewCompat bottomOffset={24} style={{ width: '100%' }} contentContainerStyle={{ overflow: 'hidden', paddingTop: top + 8, paddingBottom: bottom + 40 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={[styles.wrap, { maxWidth: wide ? 1120 : 640 }]}>
@@ -268,11 +268,11 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
             <View style={{ flex: 1, gap: 8, zIndex: 2 }}>
               <View style={styles.logo}>
                 <Text style={[styles.logoA, { color: c.foreground }]}>DANCE</Text>
-                <Text style={[styles.logoB, { color: N.yellow }]}>FLOW</Text>
+                <Text style={[styles.logoB, { color: c.foreground }]}>FLOW</Text>
               </View>
               <View style={styles.row}>
                 <View style={[styles.tag, { backgroundColor: N.pink }]}><Text style={styles.tagText}>Genjutsu Light</Text></View>
-                <View style={[styles.tag, { backgroundColor: N.cyan }]}><Text style={[styles.tagText, { color: N.deep }]}>{categoryLabel(t.category)}</Text></View>
+                <View style={[styles.tag, { backgroundColor: N.yellow }]}><Text style={[styles.tagText, { color: N.deep }]}>{categoryLabel(t.category)}</Text></View>
               </View>
               <Text style={[styles.title, { color: c.foreground }]} numberOfLines={2}>{t.title}</Text>
               <Text style={[styles.sub, { color: c.mutedForeground }]} numberOfLines={2}>{t.tagline}</Text>
@@ -296,12 +296,12 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
 function Stage() {
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
-      <LinearGradient colors={['#3A0F8C', N.deep, '#140540']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-      <View style={[styles.slab, { top: -60, left: -120, width: 320, backgroundColor: N.pink, opacity: 0.85 }]} />
-      <View style={[styles.slab, { top: 40, right: -160, width: 360, backgroundColor: N.yellow, opacity: 0.75 }]} />
-      <View style={[styles.slab, { top: 620, right: -140, width: 260, height: 70, backgroundColor: N.cyan, opacity: 0.7 }]} />
-      <View style={[styles.slab, { top: 760, left: -150, width: 300, height: 60, backgroundColor: N.pink, opacity: 0.55 }]} />
-      <View style={[styles.slab, { top: 300, left: -200, width: 280, height: 26, backgroundColor: '#7A2BFF', opacity: 0.8 }]} />
+      <LinearGradient colors={[N.card, N.background, N.secondary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+      <View style={[styles.slab, { top: -70, left: -150, width: 340, backgroundColor: N.pink, opacity: 0.16 }]} />
+      <View style={[styles.slab, { top: 30, right: -170, width: 380, backgroundColor: N.yellow, opacity: 0.25 }]} />
+      <View style={[styles.slab, { top: 620, right: -140, width: 280, height: 70, backgroundColor: N.cyan, opacity: 0.12 }]} />
+      <View style={[styles.slab, { top: 760, left: -150, width: 300, height: 60, backgroundColor: N.pink, opacity: 0.12 }]} />
+      <View style={[styles.slab, { top: 300, left: -200, width: 280, height: 26, backgroundColor: N.violet, opacity: 0.12 }]} />
     </View>
   );
 }
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
   goText: { fontFamily: F.display, fontSize: 18, flexShrink: 1 },
   dropIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   tag: { borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
-  tagText: { fontFamily: F.bodyHeavy, fontSize: 11, color: '#FFF7FC' },
+  tagText: { fontFamily: F.bodyHeavy, fontSize: 11, color: '#FFFCFF' },
   title: { fontFamily: F.display, fontSize: 28, letterSpacing: -0.8, lineHeight: 32 },
   sub: { fontFamily: F.body, fontSize: 14, lineHeight: 19 },
   cols: { flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
