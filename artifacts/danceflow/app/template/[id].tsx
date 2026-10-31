@@ -1,4 +1,4 @@
-import { Feather, Ionicons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
@@ -45,7 +45,7 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
   const [resolution, setResolution] = useState<GenerationResolution>('720p');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [expanded, setExpanded] = useState<'video' | 'images' | 'prompt' | 'quality' | null>(null);
+  const [expanded, setExpanded] = useState<'video' | 'images' | 'prompt' | null>(null);
 
   if (!t) {
     return (
@@ -111,8 +111,8 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
   };
 
   const blocker = !source ? 'Добавь видео'
-    : source.seconds == null || !(source.seconds > 0) ? 'Длительность видео неизвестна'
-    : refs.length === 0 ? 'Добавь хотя бы одно фото' : null;
+    : source.seconds == null || !(source.seconds > 0) ? 'Выбери другое видео'
+    : refs.length === 0 ? 'Добавь фото' : null;
 
   const save = () => {
     if (blocker || saving || !source || source.seconds == null) return;
@@ -131,7 +131,7 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
 
   const panel = [styles.panel, { backgroundColor: c.card, borderColor: c.glassEdge }];
 
-  const toggle = (key: 'video' | 'images' | 'prompt' | 'quality') => setExpanded((value) => value === key ? null : key);
+  const toggle = (key: 'video' | 'images' | 'prompt') => setExpanded((value) => value === key ? null : key);
   const compactRow = (key: 'video' | 'images' | 'prompt', icon: React.ComponentProps<typeof Feather>['name'], title: string, subtitle: string, media?: React.ReactNode, onPress?: () => void) => {
     const active = expanded === key;
     return (
@@ -228,20 +228,27 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
             placeholderTextColor={c.mutedForeground} style={[styles.input, { borderColor: c.border, backgroundColor: c.muted, color: c.foreground }]} />
           <Text style={[styles.count, { color: c.mutedForeground, textAlign: 'right' }]}>{prompt.length} / {MAX_PROMPT}</Text>
         </View>}
-        <View style={styles.qualityArea}>
-          <Bouncy testID="quality-toggle" accessibilityLabel={`Качество ${resolution}${expanded === 'quality' ? ', закрыть выбор' : ', изменить'}`} onPress={() => toggle('quality')}
-            style={[styles.qualityPill, { backgroundColor: c.muted, borderColor: c.border }]}>
-            <Ionicons name="diamond-outline" size={15} color={c.foreground} />
-            <Text style={[styles.qualityText, { color: c.foreground }]}>{resolution}</Text>
-            <Feather name={expanded === 'quality' ? 'chevron-up' : 'chevron-down'} size={15} color={c.mutedForeground} />
-          </Bouncy>
-          {expanded === 'quality' && <View style={[styles.qualityPopup, { backgroundColor: c.card, borderColor: c.border }]}>
-            <QualityPicker value={resolution} onChange={(value) => { setResolution(value); setExpanded(null); }} />
-          </View>}
+        <View style={{ gap: 6 }}>
+          <Text style={[styles.label, { color: c.foreground }]}>Качество</Text>
+          <QualityPicker value={resolution} onChange={setResolution} />
         </View>
       </View>
+      {draftStorageIssue && <Text style={[styles.warn, { color: c.destructive }]}>Хранилище черновиков сейчас недоступно — черновик может не сохраниться после перезапуска.</Text>}
+      {error && (
+        <View accessibilityRole="alert" style={[styles.err, { borderColor: c.border, backgroundColor: c.destructive }]}>
+          <Feather name="alert-triangle" size={16} color={c.destructiveForeground} />
+          <Text style={[styles.errText, { color: c.destructiveForeground }]}>{error}</Text>
+          <Bouncy accessibilityLabel="Закрыть" onPress={() => setError(null)}><Feather name="x" size={16} color={c.destructiveForeground} /></Bouncy>
+        </View>
+      )}
+      <Bouncy testID="save-draft" accessibilityLabel={blocker ?? 'Сохранить черновик'} disabled={!!blocker || saving} onPress={save} scaleTo={0.97}
+        style={[styles.go, { opacity: blocker || saving ? 0.55 : 1 }]}>
+        <LinearGradient colors={[N.pink, '#FF7A6B', N.yellow]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={StyleSheet.absoluteFill} />
+        <Feather name={blocker ? 'lock' : 'bookmark'} size={20} color={c.primaryForeground} />
+        <Text style={[styles.goText, { color: c.primaryForeground }]} numberOfLines={1}>{blocker ?? (saving ? 'Сохраняем…' : 'Сохранить черновик')}</Text>
+      </Bouncy>
       <CostPreview resolution={resolution} seconds={source?.seconds} />
-      <Text style={[styles.hint, { color: c.mutedForeground }]}>Модель берёт первые {MAX_OUTPUT_SECONDS} сек исходного видео и оставляет его оригинальный звук.</Text>
+      <Text style={[styles.hint, { color: c.mutedForeground }]}>{`Модель берёт первые ${MAX_OUTPUT_SECONDS} сек исходного видео и оставляет его оригинальный звук.`}</Text>
     </View>
   );
 
@@ -257,20 +264,6 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
           Обработка Light Swapper ещё не подключена. Настройки сохранятся как черновик на этом устройстве — без запуска и списаний.
         </Text>
       </View>
-      {draftStorageIssue && <Text style={[styles.warn, { color: c.destructive }]}>Хранилище черновиков сейчас недоступно — черновик может не сохраниться после перезапуска.</Text>}
-      {error && (
-        <View accessibilityRole="alert" style={[styles.err, { borderColor: c.border, backgroundColor: c.destructive }]}>
-          <Feather name="alert-triangle" size={16} color={c.destructiveForeground} />
-          <Text style={[styles.errText, { color: c.destructiveForeground }]}>{error}</Text>
-          <Bouncy accessibilityLabel="Закрыть" onPress={() => setError(null)}><Feather name="x" size={16} color={c.destructiveForeground} /></Bouncy>
-        </View>
-      )}
-      <Bouncy testID="save-draft" accessibilityLabel={blocker ?? 'Сохранить черновик'} disabled={!!blocker || saving} onPress={save} scaleTo={0.97}
-        style={[styles.go, { opacity: blocker || saving ? 0.55 : 1 }]}>
-        <LinearGradient colors={[N.pink, '#FF7A6B', N.yellow]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={StyleSheet.absoluteFill} />
-        <Feather name={blocker ? 'lock' : 'bookmark'} size={20} color={N.deep} />
-        <Text style={[styles.goText, { color: N.deep }]} numberOfLines={1}>{blocker ?? (saving ? 'Сохраняем…' : 'Сохранить черновик')}</Text>
-      </Bouncy>
     </View>
   );
 
@@ -376,10 +369,6 @@ const styles = StyleSheet.create({
   rowSubtitle: { fontFamily: F.body, fontSize: 11, lineHeight: 14 },
   expandedContent: { borderWidth: 1, borderRadius: 14, padding: 10, gap: 8 },
   resetIcon: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22 },
-  qualityArea: { alignSelf: 'flex-start', position: 'relative' },
-  qualityPill: { minHeight: 44, borderRadius: 999, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10 },
-  qualityText: { fontFamily: F.display, fontSize: 13 },
-  qualityPopup: { position: 'absolute', zIndex: 3, top: 44, left: 0, width: 220, borderWidth: 1, borderRadius: 14, padding: 8 },
   label: { fontFamily: F.bodyHeavy, fontSize: 14, flex: 1 },
   count: { fontFamily: F.bodyHeavy, fontSize: 12 },
   ghost: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, minHeight: 36 },
