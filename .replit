@@ -26,5 +26,9 @@ DANCEFLOW_OWNER_EMAIL = "89033784036@mail.ru"
 CLOUDFLARE_R2_ACCOUNT_ID = "9b879b0faf68469fa9bf38c821281cab"
 CLOUDFLARE_R2_BUCKET_NAME = "danceflow-media"
 
+[userenv.development]
+LOGTO_ENDPOINT = "https://hkbe8z.logto.app/"
+LOGTO_WEB_APP_ID = "fht56le86bfpe7iglau3d"
+
 [nix]
 channel = "stable-25_05"
