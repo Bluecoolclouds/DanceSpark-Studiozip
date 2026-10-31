@@ -19,6 +19,7 @@ export interface DanceTemplate {
   videoUri?: string;
   sourceDurationSeconds?: number;
   referenceImageUris?: string[];
+  prompt?: string;
   exampleResultUri?: string;
   color: ColorKey;
   isNew?: boolean;
@@ -115,6 +116,7 @@ const uploaded = [
       mediaUrl('trend-06', 'character-01.jpg'),
       mediaUrl('trend-06', 'character-02.jpg'),
     ],
+    prompt: 'Музыкальная студия с однотонной оранжевой стеной и желтым полом. Слева стоит человек с фото-референса 1, справа — человек с фото-референса 2, оба в повседневной одежде. Между ними с потолка на проводе свисает один студийный микрофон. Герои по очереди читают рэп, кивают в такт и жестикулируют, время от времени поворачиваются друг к другу. Лица строго как на референсах, не менять черты. Static camera, medium shot, soft even studio light, 35mm, natural skin texture. Без второго микрофона, без логотипов и текста.',
     exampleResultUri: mediaUrl('trend-06', 'result.mp4'),
   },
 ];
@@ -135,6 +137,7 @@ export const TEMPLATES: DanceTemplate[] = uploaded.map((item, index) => ({
   videoUri: mediaUrl(item.id, 'video.mp4'),
   sourceDurationSeconds: item.seconds,
   referenceImageUris: 'referenceImageUris' in item ? item.referenceImageUris : undefined,
+  prompt: 'prompt' in item ? item.prompt : undefined,
   exampleResultUri: 'exampleResultUri' in item ? item.exampleResultUri : undefined,
   color: item.color,
   isNew: true,

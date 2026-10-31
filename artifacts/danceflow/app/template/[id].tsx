@@ -41,11 +41,11 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
   const [model, setModel] = useState<GenerationModel>('object-swap');
   const [source, setSource] = useState<SourceVideo | null>(original);
   const [refs, setRefs] = useState<string[]>(() => t?.referenceImageUris ?? []);
-  const [prompt, setPrompt] = useState<string>('');
+  const [prompt, setPrompt] = useState<string>(() => t?.prompt ?? '');
   const [resolution, setResolution] = useState<GenerationResolution>('720p');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [expanded, setExpanded] = useState<'video' | 'images' | 'prompt' | null>(null);
+  const [expanded, setExpanded] = useState<'video' | 'images' | 'prompt' | null>(() => t?.prompt ? 'prompt' : null);
 
   if (!t) {
     return (
@@ -106,8 +106,8 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
   });
 
   const reset = () => {
-    setModel('object-swap'); setSource(original); setRefs(t?.referenceImageUris ?? []); setPrompt(''); setResolution('720p'); setError(null);
-    setExpanded(null);
+    setModel('object-swap'); setSource(original); setRefs(t?.referenceImageUris ?? []); setPrompt(t?.prompt ?? ''); setResolution('720p'); setError(null);
+    setExpanded(t?.prompt ? 'prompt' : null);
   };
 
   const blocker = !source ? 'Добавь видео'
