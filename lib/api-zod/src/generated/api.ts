@@ -776,6 +776,25 @@ export const CreateLightSwapperGenerationResponse = zod.object({
 
 
 /**
+ * @summary Recover an owned Light Swapper job without submitting
+ */
+export const findLightSwapperGenerationPathClientRequestIdRegExp = new RegExp('^[A-Za-z0-9_-]{8,150}$');
+
+
+export const FindLightSwapperGenerationParams = zod.object({
+  "clientRequestId": zod.coerce.string().regex(findLightSwapperGenerationPathClientRequestIdRegExp)
+})
+
+export const FindLightSwapperGenerationResponse = zod.union([zod.object({
+  "requestId": zod.string(),
+  "status": zod.enum(['queued', 'processing', 'completed', 'failed']),
+  "videoUrl": zod.string().nullable(),
+  "error": zod.string().nullable(),
+  "queuePosition": zod.number().int().nullable()
+}),zod.null()])
+
+
+/**
  * @summary Start a dance video generation
  */
 export const createVideoGenerationBodyClientRequestIdMax = 100;

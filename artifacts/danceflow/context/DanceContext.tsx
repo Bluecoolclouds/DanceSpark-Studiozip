@@ -11,7 +11,8 @@ export interface Draft extends GenerationDraftSettings {
   photoUri: string;
   duration: number;
   createdAt: number;
-  generationStatus?: 'submitting' | 'queued' | 'processing' | 'completed' | 'failed';
+  generationStatus?: 'uploading' | 'submitting' | 'unknown' | 'queued' | 'processing' | 'completed' | 'failed';
+  lightSubmissionStarted?: boolean;
   generationRequestId?: string;
   generationError?: string;
   videoUri?: string;
@@ -21,6 +22,7 @@ export interface Draft extends GenerationDraftSettings {
 export type DraftStorageIssue = 'read' | 'write' | 'corrupt' | null;
 
 interface Ctx {
+  ownerId: string;
   ready: boolean;
   favorites: string[];
   drafts: Draft[];
@@ -31,9 +33,12 @@ interface Ctx {
   isFavorite: (id: string) => boolean;
   toggleFavorite: (id: string) => void;
   addDraft: (d: Omit<Draft, 'id' | 'createdAt'>) => Draft;
-  updateDraft: (id: string, updates: Partial<Pick<Draft, 'generationStatus' | 'generationRequestId' | 'generationError' | 'videoUri' | 'savedVideoAssetId'>>) => void;
+  updateDraft: (id: string, updates: DraftUpdates) => void;
+  persistDraft: (id: string, updates: DraftUpdates) => Promise<boolean>;
   removeDraft: (id: string) => void;
 }
+
+export type DraftUpdates = Partial<Pick<Draft, 'generationStatus' | 'generationRequestId' | 'generationError' | 'videoUri' | 'savedVideoAssetId' | 'lightSubmissionStarted'>>;
 
 const DanceContext = createContext<Ctx | null>(null);
 const FAV_KEY = 'danceflow:favorites';
@@ -100,6 +105,7 @@ export function DanceProvider({ children, ownerId }: { children: React.ReactNode
         }
       }
 
+      if (!mountedRef.current) return;
       const next = loadedDrafts ?? [];
       const hasLocalChanges = changedWhileUnavailableRef.current;
       const combined = hasLocalChanges ? mergeDrafts(next, draftsRef.current) : next;
@@ -171,6 +177,7 @@ export function DanceProvider({ children, ownerId }: { children: React.ReactNode
   }, [draftKey, persistDrafts, setStorageIssue]);
 
   const changeDrafts = useCallback((next: Draft[]) => {
+    if (!mountedRef.current) return;
     draftsRef.current = next;
     setDrafts(next);
     if (canPersistDraftsRef.current) {
@@ -194,19 +201,27 @@ export function DanceProvider({ children, ownerId }: { children: React.ReactNode
     return draft;
   }, [changeDrafts]);
 
-  const updateDraft = useCallback((id: string, updates: Partial<Pick<Draft, 'generationStatus' | 'generationRequestId' | 'generationError' | 'videoUri' | 'savedVideoAssetId'>>) => {
+  const updateDraft = useCallback((id: string, updates: DraftUpdates) => {
     changeDrafts(draftsRef.current.map((draft) => draft.id === id ? { ...draft, ...updates } : draft));
   }, [changeDrafts]);
+
+  const persistDraft = useCallback(async (id: string, updates: DraftUpdates) => {
+    if (!mountedRef.current || !canPersistDraftsRef.current || !draftsRef.current.some(d => d.id === id)) return false;
+    const next = draftsRef.current.map(d => d.id === id ? { ...d, ...updates } : d);
+    draftsRef.current = next;
+    setDrafts(next);
+    return persistDrafts(next);
+  }, [persistDrafts]);
 
   const removeDraft = useCallback((id: string) => {
     changeDrafts(draftsRef.current.filter((draft) => draft.id !== id));
   }, [changeDrafts]);
 
   const value = useMemo<Ctx>(() => ({
-    ready, favorites, drafts, draftStorageIssue, retryDraftRead, retryDraftSave, replaceCorruptDrafts,
+    ownerId, ready, favorites, drafts, draftStorageIssue, retryDraftRead, retryDraftSave, replaceCorruptDrafts,
     isFavorite: (id) => favorites.includes(id),
-    toggleFavorite, addDraft, updateDraft, removeDraft,
-  }), [ready, favorites, drafts, draftStorageIssue, retryDraftRead, retryDraftSave, replaceCorruptDrafts, toggleFavorite, addDraft, updateDraft, removeDraft]);
+    toggleFavorite, addDraft, updateDraft, persistDraft, removeDraft,
+  }), [ownerId, ready, favorites, drafts, draftStorageIssue, retryDraftRead, retryDraftSave, replaceCorruptDrafts, toggleFavorite, addDraft, updateDraft, persistDraft, removeDraft]);
 
   return <DanceContext.Provider value={value}>{children}</DanceContext.Provider>;
 }

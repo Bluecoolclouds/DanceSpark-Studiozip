@@ -1853,6 +1853,107 @@ export const useCreateLightSwapperGeneration = <TError = ErrorType<void>,
       return useMutation(getCreateLightSwapperGenerationMutationOptions(options), queryClient);
     }
 
+export const getFindLightSwapperGenerationUrl = (clientRequestId: string,) => {
+
+
+
+
+  return `/api/light-swapper/generations/by-client/${clientRequestId}`
+}
+
+/**
+ * @summary Recover an owned Light Swapper job without submitting
+ */
+export const findLightSwapperGeneration = async (clientRequestId: string, options?: Parameters<typeof customFetch>[1]): Promise<VideoGenerationStatus | null> => {
+
+  return customFetch<VideoGenerationStatus | null>(getFindLightSwapperGenerationUrl(clientRequestId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getFindLightSwapperGenerationQueryKey = (clientRequestId: string,) => {
+    return [
+    `/api/light-swapper/generations/by-client/${clientRequestId}`
+    ] as const;
+    }
+
+
+export const getFindLightSwapperGenerationQueryOptions = <TData = Awaited<ReturnType<typeof findLightSwapperGeneration>>, TError = ErrorType<void>>(clientRequestId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof findLightSwapperGeneration>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getFindLightSwapperGenerationQueryKey(clientRequestId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof findLightSwapperGeneration>>> = ({ signal }) => findLightSwapperGeneration(clientRequestId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: clientRequestId !== null && clientRequestId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof findLightSwapperGeneration>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type FindLightSwapperGenerationQueryResult = NonNullable<Awaited<ReturnType<typeof findLightSwapperGeneration>>>
+export type FindLightSwapperGenerationQueryError = ErrorType<void>
+
+
+export function useFindLightSwapperGeneration<TData = Awaited<ReturnType<typeof findLightSwapperGeneration>>, TError = ErrorType<void>>(
+ clientRequestId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof findLightSwapperGeneration>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof findLightSwapperGeneration>>,
+          TError,
+          Awaited<ReturnType<typeof findLightSwapperGeneration>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useFindLightSwapperGeneration<TData = Awaited<ReturnType<typeof findLightSwapperGeneration>>, TError = ErrorType<void>>(
+ clientRequestId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof findLightSwapperGeneration>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof findLightSwapperGeneration>>,
+          TError,
+          Awaited<ReturnType<typeof findLightSwapperGeneration>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useFindLightSwapperGeneration<TData = Awaited<ReturnType<typeof findLightSwapperGeneration>>, TError = ErrorType<void>>(
+ clientRequestId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof findLightSwapperGeneration>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Recover an owned Light Swapper job without submitting
+ */
+
+export function useFindLightSwapperGeneration<TData = Awaited<ReturnType<typeof findLightSwapperGeneration>>, TError = ErrorType<void>>(
+ clientRequestId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof findLightSwapperGeneration>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getFindLightSwapperGenerationQueryOptions(clientRequestId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getCreateVideoGenerationUrl = () => {
 
 

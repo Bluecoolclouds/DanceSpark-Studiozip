@@ -39,6 +39,13 @@ export async function createOwnedGeneration(ownerId: string, input: VideoGenerat
   }
 }
 
+export async function findOwnedLightSwapperGeneration(ownerId: string, clientRequestId: string) {
+  const [job] = await db.select({ id: danceJobs.id, model: danceJobs.providerModel }).from(danceJobs)
+    .where(and(eq(danceJobs.userId, ownerId), eq(danceJobs.idempotencyKey, clientRequestId))).limit(1);
+  if (!job?.model?.startsWith("higgsfield/genjutsu-light/")) return null;
+  return getOwnedGeneration(ownerId, job.id);
+}
+
 export async function getOwnedGeneration(ownerId: string, requestId: string) {
   if (!/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(requestId)) throw new VideoNotFoundError();
   const [generation] = await db.select().from(danceJobs)

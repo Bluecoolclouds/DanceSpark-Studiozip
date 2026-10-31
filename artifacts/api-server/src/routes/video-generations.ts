@@ -7,7 +7,7 @@ import {
   GetVideoGenerationResponse,
 } from "@workspace/api-zod";
 import { VideoProviderError, VideoProviderNotConfiguredError } from "../lib/video-generation";
-import { createOwnedGeneration, getOwnedGeneration, VideoNotFoundError } from "../lib/generation-access";
+import { createOwnedGeneration, getOwnedGeneration, findOwnedLightSwapperGeneration, VideoNotFoundError } from "../lib/generation-access";
 import { GenerationPolicyError } from "../lib/generation-governance";
 import { requireAccount } from "../middlewares/admin-auth";
 import { protectAdminMutation } from "../middlewares/admin-auth";
@@ -15,6 +15,23 @@ import { createOwnedLightSwapper } from "../lib/light-swapper";
 import { CreateLightSwapperGenerationBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
+
+router.get("/light-swapper/generations/by-client/:clientRequestId", requireAccount, async (req, res): Promise<void> => {
+  res.setHeader("Cache-Control", "no-store");
+  const ownerId = getAuth(req).userId;
+  if (!ownerId) { res.status(401).json({ error: "Войди в аккаунт." }); return; }
+  const clientId = req.params.clientRequestId;
+  if (typeof clientId !== "string" || !/^[A-Za-z0-9_-]{8,150}$/.test(clientId)) {
+    res.status(400).json({ error: "Некорректный номер черновика." }); return;
+  }
+  try {
+    const status = await findOwnedLightSwapperGeneration(ownerId, clientId);
+    res.json(status ? GetVideoGenerationResponse.parse(status) : null);
+  } catch {
+    req.log.warn({ category: "light_recovery_failed" }, "Light Swapper recovery unavailable");
+    res.status(502).json({ error: "Не удалось проверить статус. Платный запрос повторно не отправлен." });
+  }
+});
 
 router.post("/light-swapper/generations", requireAccount, protectAdminMutation, async (req, res): Promise<void> => {
   const ownerId = getAuth(req).userId;

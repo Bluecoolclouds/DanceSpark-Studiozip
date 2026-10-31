@@ -13,6 +13,7 @@ import { useDance } from '@/context/DanceContext';
 import { useColors } from '@/hooks/useColors';
 import { CostPreview, RefGrid, SourcePreview, fmtSec, getModel } from '@/components/generation-form';
 import { MAX_OUTPUT_SECONDS } from '@/constants/generation';
+import { LightGeneration } from '@/components/light-generation';
 import { deleteVideoFromLibrary, saveVideoToLibrary, shareVideo, VideoLibraryPermissionError } from '@/lib/draft-videos';
 import { photoToDataUrl, readableVideoError } from '@/lib/video-generation';
 import {
@@ -38,7 +39,7 @@ export default function DraftScreen() {
   const bottom = Platform.OS === 'web' ? 34 : insets.bottom;
   const statusQuery = useGetVideoGeneration(d?.generationRequestId ?? '', {
     query: {
-      enabled: Boolean(isSignedIn && d?.generationRequestId) && !d?.videoUri,
+      enabled: Boolean(isSignedIn && !m && d?.generationRequestId) && !d?.videoUri,
       refetchInterval: d?.generationStatus === 'queued' || d?.generationStatus === 'processing' ? 4000 : false,
     },
   });
@@ -56,13 +57,13 @@ export default function DraftScreen() {
   }, [d?.id, d?.generationRequestId, statusQuery.data, updateDraft]);
 
   useEffect(() => {
-    if (!busy && d?.generationStatus === 'submitting' && !d.generationRequestId) {
+    if (!m && !busy && d?.generationStatus === 'submitting' && !d.generationRequestId) {
       updateDraft(d.id, {
         generationStatus: 'failed',
         generationError: 'Запуск генерации прервался. Попробуй отправить фото ещё раз.',
       });
     }
-  }, [busy, d?.id, d?.generationRequestId, d?.generationStatus, updateDraft]);
+  }, [m, busy, d?.id, d?.generationRequestId, d?.generationStatus, updateDraft]);
 
   if (!ready) return <View style={{ flex: 1, backgroundColor: c.background }} />;
   if (!d || !t) {
@@ -190,7 +191,7 @@ export default function DraftScreen() {
     }
   };
 
-  const isGenerating = d.generationStatus === 'submitting' ||
+  const isGenerating = d.generationStatus === 'uploading' || d.generationStatus === 'unknown' || d.generationStatus === 'submitting' ||
     d.generationStatus === 'queued' ||
     d.generationStatus === 'processing';
   const badgeLabel = d.videoUri
@@ -221,7 +222,7 @@ export default function DraftScreen() {
       ) : m ? (
         <View style={[styles.empty, { borderColor: c.border, backgroundColor: c.muted }]}>
           <Feather name="film" size={22} color={c.mutedForeground} />
-          <Text style={[styles.emptyText, { color: c.mutedForeground }]}>Результата пока нет. Генерация ещё не запускалась.</Text>
+          <Text style={[styles.emptyText, { color: c.mutedForeground }]}>{isGenerating ? 'Здесь появится твоё готовое видео, не пример каталога.' : 'Результата пока нет.'}</Text>
         </View>
       ) : (
         <View style={styles.collage}>
@@ -267,12 +268,7 @@ export default function DraftScreen() {
         </View>
       )}
 
-      {!d.videoUri && m && (
-        <View style={[styles.note, { backgroundColor: c.secondary, borderColor: c.border }]}>
-          <Feather name="info" size={18} color={c.foreground} />
-          <Text style={[styles.noteText, { color: c.foreground }]}>Сохранены настройки Light Swapper. Перенос движений и замена в видео пока не подключены; генерация PixVerse не подменяет выбранную модель.</Text>
-        </View>
-      )}
+      {m && <LightGeneration key={d.id} draft={d} />}
       {!d.videoUri && !m && (
         <View style={[styles.note, { backgroundColor: d.generationStatus === 'failed' ? c.sun : c.secondary, borderColor: c.border }]}>
           {isGenerating ? (

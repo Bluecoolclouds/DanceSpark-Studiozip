@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { CostPreview, QualityPicker, RefGrid, SourcePreview, fmtSec, getModel } from '@/components/generation-form';
 import { Bouncy } from '@/components/ui';
@@ -14,6 +14,8 @@ import { useCatalogue } from '@/hooks/useCatalogue';
 import { useDance } from '@/context/DanceContext';
 import { useColors } from '@/hooks/useColors';
 import { CUSTOM_VIDEO_ID } from '@/lib/draft-meta';
+import { photoToDataUrl } from '@/lib/video-generation';
+import { persistDraftPhoto, persistDraftVideo } from '@/lib/draft-media';
 
 export const MAX_PROMPT = 10000;
 interface SourceVideo { uri: string; seconds: number | null }
@@ -24,14 +26,20 @@ const trendSource = (t?: DanceTemplate | null): SourceVideo | null =>
 
 /**
  * Shared Light Swapper input form for /create and /template/:id.
- * Draft-only: saving never starts a generation or charges anything.
+ * Saving never starts a generation. Paid consent lives on the saved draft.
  */
 export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = 'object-swap', wide }: {
   initialTrend: DanceTemplate | null; allowTrendPicker?: boolean; defaultModel?: GenerationModel; wide?: boolean;
 }) {
   const catalogue = useCatalogue({ limit: 12 });
   const c = useColors();
-  const { addDraft, draftStorageIssue } = useDance();
+  const { addDraft, persistDraft, ownerId, draftStorageIssue } = useDance();
+  const active = useRef(true);
+  const savingRef = useRef(false);
+  useEffect(() => {
+    active.current = true;
+    return () => { active.current = false; };
+  }, []);
   const [trend, setTrend] = useState<DanceTemplate | null>(initialTrend);
   const original = trendSource(trend);
   const [model, setModel] = useState<GenerationModel>(defaultModel);
@@ -81,7 +89,7 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) return denied('галерее');
     const r = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'], allowsMultipleSelection: true, selectionLimit: MAX_REFERENCE_IMAGES - refs.length, quality: 0.8,
+      mediaTypes: ['images'], allowsMultipleSelection: true, orderedSelection: true, selectionLimit: MAX_REFERENCE_IMAGES - refs.length, quality: 0.8,
     });
     if (!r.canceled) addRefs(r.assets.map((a) => a.uri));
   });
@@ -118,20 +126,32 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
     : source.seconds == null || !(source.seconds > 0) ? 'Выбери другое видео'
     : refs.length === 0 ? 'Добавь фото' : null;
 
-  const save = () => {
-    if (blocker || saving || !source || source.seconds == null) return;
+  const save = async () => {
+    if (blocker || savingRef.current || !source || source.seconds == null) return;
+    savingRef.current = true;
     setSaving(true);
     try {
+      // Store photo bytes, not transient picker blob/cache URLs.
+      const photos: string[] = [];
+      for (const uri of refs) {
+        if (!active.current) return;
+        photos.push(await persistDraftPhoto(await photoToDataUrl(uri), ownerId));
+      }
+      if (!active.current) return;
+      const videoUri = await persistDraftVideo(source.uri, ownerId);
+      if (!active.current) return;
       const d = addDraft({
         // Own-source drafts never inherit a catalogue trend.
-        templateId: trend?.id ?? CUSTOM_VIDEO_ID, templateSnapshot: trend ?? undefined, photoUri: refs[0], duration: Math.min(source.seconds, MAX_OUTPUT_SECONDS),
-        model, resolution, sourceVideoUri: source.uri, sourceVideoDurationSeconds: source.seconds,
-        referenceImageUris: refs, prompt: prompt.trim() || undefined,
+        templateId: trend?.id ?? CUSTOM_VIDEO_ID, templateSnapshot: trend ?? undefined, photoUri: photos[0], duration: Math.min(source.seconds, MAX_OUTPUT_SECONDS),
+        model, resolution, sourceVideoUri: videoUri, sourceVideoDurationSeconds: source.seconds,
+        referenceImageUris: photos, prompt,
       });
+      if (!await persistDraft(d.id, {})) throw new Error('Хранилище недоступно. Материалы остались на экране; восстанови сохранение.');
+      if (!active.current) return;
       router.push(`/draft/${d.id}`);
     } catch (e) {
       setError(e instanceof Error ? `Черновик не сохранён: ${e.message}` : 'Черновик не сохранён. Попробуй ещё раз.');
-    } finally { setSaving(false); }
+    } finally { savingRef.current = false; if (active.current) setSaving(false); }
   };
 
   const toggle = (key: Section) => setExpanded((v) => v === key ? null : key);
@@ -300,7 +320,7 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
       </Bouncy>
       <View style={[s.note, { borderColor: c.border }]}>
         <Feather name="shield" size={14} color={c.mutedForeground} />
-        <Text style={[s.hint, { color: c.mutedForeground, flex: 1 }]}>Только черновик на этом устройстве: генерация Light Swapper не запускается, ничего не списывается.</Text>
+        <Text style={[s.hint, { color: c.mutedForeground, flex: 1 }]}>Только черновик на этом устройстве: ничего не списывается. На следующем экране можно отдельно подтвердить запуск Light Swapper для оригинала каталога. Свои видео пока только сохраняются.</Text>
       </View>
       <CostPreview resolution={resolution} seconds={source?.seconds} />
     </View>

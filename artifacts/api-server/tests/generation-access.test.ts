@@ -2,7 +2,7 @@ import "./helpers/setup.mjs";
 import assert from "node:assert/strict";
 import { beforeEach, test, type TestContext } from "node:test";
 import { isolatedDatabase } from "./helpers/database";
-import { createOwnedGeneration, getOwnedGeneration, VideoNotFoundError } from "../src/lib/generation-access";
+import { createOwnedGeneration, getOwnedGeneration, findOwnedLightSwapperGeneration, VideoNotFoundError } from "../src/lib/generation-access";
 import { GenerationPolicyError, reserveGeneration } from "../src/lib/generation-governance";
 import { recoverStaleSubmissions } from "../src/lib/generation-recovery";
 import { userProjection } from "../src/lib/admin-data";
@@ -48,6 +48,23 @@ function provider(t: TestContext, failSubmission = false) {
   });
   return calls;
 }
+
+test("Light recovery is owner-scoped, read-only and cannot return PixVerse jobs", async (t) => {
+  const calls = provider(t);
+  const reservation = await reserveGeneration({
+    userId: "u1", idempotencyKey: "light-recovery-123", templateId: "dance-one",
+    model: "higgsfield/genjutsu-light/object-swap/v1.0", fingerprint: "fixed", minimumCostRub: 5,
+  });
+  const found = await findOwnedLightSwapperGeneration("u1", "light-recovery-123");
+  assert.equal(found?.requestId, reservation.id);
+  assert.equal(found?.status, "queued");
+  assert.equal(await findOwnedLightSwapperGeneration("u2", "light-recovery-123"), null);
+  assert.equal(await findOwnedLightSwapperGeneration("u1", "missing-request"), null);
+  await reserveGeneration({ userId: "u1", idempotencyKey: input.clientRequestId, templateId: input.styleId });
+  assert.equal(await findOwnedLightSwapperGeneration("u1", input.clientRequestId), null);
+  assert.equal(calls.length, 0);
+  assert.equal((await pool.query("SELECT count(*)::int AS total FROM df_jobs")).rows[0].total, 2);
+});
 
 test("unpaid users cannot spend provider balance", async (t) => {
   const calls = provider(t);

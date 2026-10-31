@@ -110,9 +110,39 @@ malformed/unsafe output are likewise not fabricated as successful completions.
 Apply the additive `df_jobs` schema changes in development with
 `pnpm --filter @workspace/db push`. The existing post-merge script also applies
 the schema. No production enablement, real generation or subscription changes
-are part of this implementation. The dependent mobile task should persist
-`clientRequestId`, retry only status reads, and never turn an uncertain launch
-into a fresh automatic paid attempt.
+are part of this implementation.
+
+## Mobile launch and recovery
+
+- Saving a draft never submits a generation. Its own screen has an explicit
+  consent panel with the selected endpoint, resolution, photo count, approximate
+  USD provider cost and the paid/material-transfer warning. Cancelling leaves
+  the draft untouched. PixVerse remains a separate path.
+- The mobile client persists the ordered photo bytes and exact prompt. Native
+  picker media is copied out of the temporary cache; browser picker media
+  is stored in IndexedDB, not in transient blob URLs or size-limited
+  localStorage values. Local copies remain
+  device/browser-specific and are not a cloud backup.
+- This API still only accepts published catalogue originals. A draft with a
+  user-selected video, a different preview URL, or insufficient legacy metadata
+  is explicitly blocked from Light submission. It remains saveable/viewable;
+  the client never silently replaces it with the catalogue video or PixVerse.
+  Supporting custom-video generation requires a separate authenticated upload
+  contract, trusted validation/duration and spending checks on the server.
+- Before POST the client must durably save `lightSubmissionStarted`. If local
+  persistence fails, no POST is sent. A lost response keeps that marker and
+  never causes another automatic POST, including after closing the screen.
+- `GET /api/light-swapper/generations/by-client/{clientRequestId}` is an
+  authenticated owner-scoped recovery read. It returns `VideoGenerationStatus`
+  or JSON `null` when no matching owned Light reservation exists; it cannot
+  create a job. It excludes PixVerse jobs and returns `Cache-Control: no-store`.
+  A null result is not proof that a paid provider request was rejected.
+- Queued, processing, uncertain and failed attempts retain the same draft key.
+  Reopening observes the same reservation. Transient status errors do not clear
+  IDs, consent markers or results. Uncertain attempts direct the user to manual
+  verification in Higgsfield Console, not a fresh billable request.
+- Generated `videoUri` is separate from any catalogue example. The existing
+  playback, library-save and share actions use only that generated URI.
 
 ## Verification without spending
 

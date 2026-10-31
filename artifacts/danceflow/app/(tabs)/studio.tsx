@@ -11,6 +11,7 @@ import { useCatalogueTemplate } from '@/hooks/useCatalogue';
 import { useDance } from '@/context/DanceContext';
 import { useColors } from '@/hooks/useColors';
 import { AccountSubscription } from '@/components/AccountSubscription';
+import { DraftImage } from '@/components/draft-image';
 
 export default function Studio() {
   const c = useColors();
@@ -75,14 +76,19 @@ export default function Studio() {
               return (
                 <View key={d.id} style={[styles.draft, { backgroundColor: c.card, borderColor: c.border, shadowColor: c.border }]}>
                   <Bouncy accessibilityLabel={`Открыть черновик: ${t.title}`} scaleTo={0.97} onPress={() => router.push(`/draft/${d.id}`)} style={styles.draftOpen}>
-                  <Image source={{ uri: d.photoUri }} style={[styles.thumb, { borderColor: c.border, backgroundColor: c.muted }]} contentFit="cover" />
+                  <DraftImage uri={d.photoUri} style={[styles.thumb, { borderColor: c.border, backgroundColor: c.muted }]} contentFit="cover" />
                   <Image source={t.image} style={[styles.thumbSmall, { borderColor: c.border }]} contentFit="cover" />
                   <View style={{ flex: 1, gap: 4 }}>
                     <Text style={[styles.dTitle, { color: c.foreground }]} numberOfLines={1}>{t.title}</Text>
                     <Text style={[styles.dMeta, { color: c.mutedForeground }]}>{d.duration} сек · {new Date(d.createdAt).toLocaleDateString('ru-RU')}</Text>
                     <View style={[styles.badge, { backgroundColor: tone(c, t.color), borderColor: c.border }]}>
                       <Text style={[styles.badgeText, { color: c.foreground }]}>
-                        {d.savedVideoAssetId ? 'СОХРАНЕНО' : d.videoUri ? 'ГОТОВОЕ ВИДЕО' : 'ЧЕРНОВИК'}
+                        {d.savedVideoAssetId ? 'СОХРАНЕНО' : d.videoUri ? 'ГОТОВОЕ ВИДЕО' :
+                          d.generationStatus === 'uploading' ? 'ПОДГОТОВКА' :
+                          d.generationStatus === 'submitting' || d.generationStatus === 'unknown' ? 'ПРОВЕРЯЕМ ЗАПРОС' :
+                          d.generationStatus === 'queued' ? 'В ОЧЕРЕДИ' :
+                          d.generationStatus === 'processing' ? 'СОЗДАЁТСЯ' :
+                          d.generationStatus === 'failed' ? 'ОШИБКА' : 'ЧЕРНОВИК'}
                       </Text>
                     </View>
                   </View>

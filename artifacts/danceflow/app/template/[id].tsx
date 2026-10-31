@@ -66,7 +66,7 @@ function TemplatePlaygroundForm({ id, t }: { id: string; t: DanceTemplate }) {
           </View>
           <Text style={[styles.emptyTitle, { color: c.foreground }]}>Здесь пока пусто</Text>
           <Text style={[styles.hint, { color: c.mutedForeground, textAlign: 'center', maxWidth: 280 }]}>
-            Обработка Light Swapper ещё не подключена. Настройки сохранятся как черновик на этом устройстве — без запуска и списаний.
+            Сохрани настройки в черновик. Отдельный запуск Light Swapper с подтверждением и твоё готовое видео будут на экране черновика.
           </Text>
         </View>
       )}

@@ -1,5 +1,4 @@
 import { Feather } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -11,13 +10,33 @@ import {
 } from '@/constants/generation';
 import { useColors } from '@/hooks/useColors';
 import { templatePreviewCandidates } from '@/lib/template-preview';
+import { resolveDraftVideo } from '@/lib/draft-media';
+import { DraftImage } from '@/components/draft-image';
 
 export const fmtSec = (s: number) => `${Number(s.toFixed(2)).toString().replace('.', ',')} сек`;
 export const fmtUsd = (v: number) => `$${v.toFixed(2)}`;
 export const getModel = (id?: GenerationModel) => GENERATION_MODELS.find((m) => m.id === id);
 
 export function SourcePreview({ uri, height = 300 }: { uri: string; height?: number }) {
-  return <PreviewSession key={uri} uri={uri} height={height} />;
+  return <StoredPreview key={uri} uri={uri} height={height} />;
+}
+
+function StoredPreview({ uri, height }: { uri: string; height: number }) {
+  const c = useColors();
+  const [source, setSource] = useState<string | null>(uri.startsWith('danceflow-media:') ? null : uri);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    let dispose = () => {};
+    void resolveDraftVideo(uri).then(result => {
+      if (!active) { result.dispose(); return; }
+      dispose = result.dispose;
+      setSource(result.uri);
+    }).catch(() => { if (active) setError('Не удалось открыть сохранённое видео. Возможно, хранилище браузера было очищено.'); });
+    return () => { active = false; dispose(); };
+  }, [uri]);
+  return source ? <PreviewSession uri={source} height={height} /> :
+    <Text style={{ color: c.mutedForeground }}>{error ?? 'Загружаем сохранённое видео…'}</Text>;
 }
 
 function PreviewSession({ uri, height }: { uri: string; height: number }) {
@@ -111,7 +130,7 @@ export function RefGrid({ uris, onRemove }: { uris: string[]; onRemove?: (i: num
     <View style={s.grid}>
       {uris.map((u, i) => (
         <View key={`${u}-${i}`} style={[s.ref, { borderColor: c.border, backgroundColor: c.muted }]}>
-          <Image source={{ uri: u }} style={StyleSheet.absoluteFill} contentFit="cover" />
+          <DraftImage uri={u} style={StyleSheet.absoluteFill} contentFit="cover" />
           <View style={[s.refN, { backgroundColor: c.card, borderColor: c.border }]}>
             <Text style={[s.refNText, { color: c.foreground }]}>{i + 1}</Text>
           </View>

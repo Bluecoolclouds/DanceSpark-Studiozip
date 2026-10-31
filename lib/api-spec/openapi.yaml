@@ -329,6 +329,28 @@ paths:
         "429": { description: "Quota, concurrency or budget exhausted" }
         "502": { description: Upload failed or submission acknowledgement uncertain; never automatically resubmit }
         "503": { description: "Paused, unconfigured provider or unavailable original" }
+  /light-swapper/generations/by-client/{clientRequestId}:
+    get:
+      operationId: findLightSwapperGeneration
+      tags: [video-generations]
+      summary: Recover an owned Light Swapper job without submitting
+      parameters:
+        - name: clientRequestId
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[A-Za-z0-9_-]{8,150}$" }
+      responses:
+        "200":
+          description: Owned job status, or null if no reservation exists
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/VideoGenerationStatus"
+                nullable: true
+        "401": { description: Authentication required }
+        "400": { description: Invalid client request id }
+        "502": { description: Status unavailable; safe to retry this read }
   /video-generations:
     post:
       operationId: createVideoGeneration

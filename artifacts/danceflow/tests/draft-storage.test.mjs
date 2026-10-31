@@ -63,3 +63,18 @@ test('account-scoped values are read and written with their own keys', async () 
   assert.deepEqual(JSON.parse(values.get('danceflow:drafts:user-b')), []);
   assert.deepEqual(JSON.parse(values.get('danceflow:drafts:user-a')), []);
 });
+
+test('Light state survives reopen with ordered photos, exact prompt and result alongside legacy drafts', async () => {
+  let raw;
+  const storage = { setItem: async (_key, value) => { raw = value; }, getItem: async () => raw };
+  const light = {
+    ...storedDraft, id: 'light-draft', model: 'motion-transfer', resolution: '1080p',
+    referenceImageUris: ['data:image/jpeg;base64,AQ==', 'data:image/png;base64,Ag=='],
+    sourceVideoUri: 'https://example.invalid/original.mp4', prompt: '  unchanged\nprompt  ',
+    sourceVideoDurationSeconds: 8.5, generationStatus: 'unknown', lightSubmissionStarted: true,
+    generationRequestId: 'existing-job', videoUri: 'https://example.invalid/result.mp4',
+    savedVideoAssetId: 'library-id',
+  };
+  await writeDrafts(storage, 'owner-a', [storedDraft, light]);
+  assert.deepEqual(await readDrafts(storage, 'owner-a'), [storedDraft, light]);
+});
