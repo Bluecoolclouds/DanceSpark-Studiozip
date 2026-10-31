@@ -132,11 +132,11 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
   const panel = [styles.panel, { backgroundColor: c.card, borderColor: c.glassEdge }];
 
   const toggle = (key: 'video' | 'images' | 'prompt' | 'quality') => setExpanded((value) => value === key ? null : key);
-  const compactRow = (key: 'video' | 'images' | 'prompt', icon: React.ComponentProps<typeof Feather>['name'], title: string, subtitle: string, media?: React.ReactNode) => {
+  const compactRow = (key: 'video' | 'images' | 'prompt', icon: React.ComponentProps<typeof Feather>['name'], title: string, subtitle: string, media?: React.ReactNode, onPress?: () => void) => {
     const active = expanded === key;
     return (
       <Bouncy testID={`input-row-${key}`} accessibilityLabel={`${title}. ${subtitle}${active ? ', свернуть' : ', открыть'}`}
-        onPress={() => toggle(key)} style={[styles.compactRow, key === 'prompt' && styles.promptRow, { backgroundColor: c.muted, borderColor: c.border }]}>
+        onPress={onPress ?? (() => toggle(key))} style={[styles.compactRow, key === 'prompt' && styles.promptRow, { backgroundColor: c.muted, borderColor: c.border }]}>
         {media ?? <View style={[styles.rowIcon, { backgroundColor: c.card }]}><Feather name={icon} size={18} color={c.foreground} /></View>}
         <View style={styles.rowCopy}>
           <Text style={[styles.rowTitle, { color: c.foreground }]}>{title}</Text>
@@ -145,6 +145,23 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
         <Feather name={active ? 'chevron-up' : 'chevron-right'} size={19} color={c.mutedForeground} />
       </Bouncy>
     );
+  };
+  const openImageSection = () => {
+    if (expanded === 'images') {
+      setExpanded(null);
+      return;
+    }
+    setExpanded('images');
+    if (refs.length >= MAX_REFERENCE_IMAGES) return full();
+    if (Platform.OS === 'web') {
+      void pickImages();
+      return;
+    }
+    Alert.alert('Добавить фото', undefined, [
+      { text: 'Галерея', onPress: () => { void pickImages(); } },
+      { text: 'Камера', onPress: () => { void pickCamera(); } },
+      { text: 'Отмена', style: 'cancel' },
+    ]);
   };
   const input = (
     <View style={{ gap: 10 }}>
@@ -197,18 +214,10 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
             {!original && <Text style={[styles.hint, { color: c.mutedForeground }]}>У этого танца нет исходного ролика — загрузи своё видео.</Text>}
           </View>}
         </View>}
-        {compactRow('images', 'image', 'Добавь персонажей, товары или одежду', `${refs.length ? `${refs.length} из ${MAX_REFERENCE_IMAGES} добавлено` : `До ${MAX_REFERENCE_IMAGES} изображений`}`)}
+        {compactRow('images', 'image', 'Добавь персонажей, товары или одежду', `${refs.length ? `${refs.length} из ${MAX_REFERENCE_IMAGES} добавлено` : `До ${MAX_REFERENCE_IMAGES} изображений`}`, undefined, openImageSection)}
         {expanded === 'images' && <View style={[styles.expandedContent, { backgroundColor: c.card, borderColor: c.border }]}>
           <View style={{ gap: 8 }}>
             {refs.length > 0 && <RefGrid uris={refs} onRemove={(i) => setRefs((p) => p.filter((_, j) => j !== i))} />}
-            <View style={styles.row}>
-              <Bouncy testID="pick-library" disabled={refs.length >= MAX_REFERENCE_IMAGES} onPress={pickImages} style={[styles.pick, { borderColor: c.border, backgroundColor: c.muted, opacity: refs.length >= MAX_REFERENCE_IMAGES ? 0.5 : 1 }]}>
-                <Feather name="image" size={18} color={c.foreground} /><Text style={[styles.pickText, { color: c.foreground }]}>Галерея</Text>
-              </Bouncy>
-              {Platform.OS !== 'web' && <Bouncy testID="pick-camera" disabled={refs.length >= MAX_REFERENCE_IMAGES} onPress={pickCamera} style={[styles.pick, { borderColor: c.border, backgroundColor: c.muted, opacity: refs.length >= MAX_REFERENCE_IMAGES ? 0.5 : 1 }]}>
-                <Feather name="camera" size={18} color={c.foreground} /><Text style={[styles.pickText, { color: c.foreground }]}>Камера</Text>
-              </Bouncy>}
-            </View>
             <Text style={[styles.hint, { color: c.mutedForeground }]}>До {MAX_REFERENCE_IMAGES} фото. Первое станет обложкой черновика.</Text>
           </View>
         </View>}
