@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { setBaseUrl } from '@workspace/api-client-react';
 import { setAuthTokenGetter } from '@workspace/api-client-react';
@@ -20,7 +20,9 @@ import { DanceProvider } from '@/context/DanceContext';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 
-setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
+// Expo web is mounted behind Replit's artifact proxy: /api is same-origin there,
+// while native builds run outside the proxy and need an absolute API origin.
+setBaseUrl(Platform.OS === 'web' ? null : `https://${process.env.EXPO_PUBLIC_DOMAIN}`);
 const clerkKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
 if (!clerkKey) throw new Error('CLERK_PUBLISHABLE_KEY is required for account authentication.');
 
