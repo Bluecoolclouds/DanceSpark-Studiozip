@@ -13,6 +13,62 @@ tags:
   - name: video-generations
     description: Generate dance videos from user photos
 paths:
+  /admin/dance-templates/{id}/{asset}:
+    put:
+      operationId: putCatalogueMedia
+      summary: Upload or atomically replace an allowlisted catalogue file
+      description: Requires a verified administrator and same-origin request or verified native bearer token. Raw binary body; maximum 100 MiB for videos or 10 MiB for JPEG. Does not accept arbitrary bucket keys.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [trend-01, trend-02, trend-03, trend-04, trend-05, trend-06]
+        - name: asset
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [video.mp4, preview.mp4, preview.webm, poster.jpg, character-01.jpg, character-02.jpg, reference-poster.jpg, result.mp4, result-preview.mp4, result.webm]
+      requestBody:
+        required: true
+        content:
+          video/mp4:
+            schema: { $ref: "#/components/schemas/CatalogueMediaInput" }
+          video/webm:
+            schema: { $ref: "#/components/schemas/CatalogueMediaInput" }
+          image/jpeg:
+            schema: { $ref: "#/components/schemas/CatalogueMediaInput" }
+      responses:
+        "200":
+          description: File saved; id, asset, size in bytes, and storage ETag
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  asset: { type: string }
+                  size: { type: integer }
+                  etag: { type: string }
+                required: [id, asset, size]
+        "400":
+          description: Empty body, interrupted upload or content signature mismatch
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator required or mutation origin rejected
+        "404":
+          description: File is not allowlisted
+        "413":
+          description: File too large
+        "415":
+          description: Incorrect Content-Type or compressed request
+        "429":
+          description: Another upload is in progress; retry after five seconds
+        "503":
+          description: R2 not configured or save could not be confirmed
   /dance-templates/{id}/{asset}:
     get:
       operationId: getDanceTemplateMedia
@@ -54,7 +110,9 @@ paths:
             image/jpeg:
               schema: { type: string, format: binary }
         "404":
-          description: Unknown template or asset
+          description: Unknown template, asset, or missing object
+        "304":
+          description: Cached ETag or Last-Modified is still current
         "416":
           description: Invalid or unsatisfiable byte range
         "503":
@@ -290,6 +348,9 @@ paths:
                 $ref: "#/components/schemas/ApiError"
 components:
   schemas:
+    CatalogueMediaInput:
+      type: string
+      format: binary
     AccountSubscription:
       type: object
       required: [accountId, plan, status, subscriptionUntil]

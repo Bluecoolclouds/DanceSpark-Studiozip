@@ -9,6 +9,23 @@ import * as zod from 'zod';
 
 
 /**
+ * Requires a verified administrator and same-origin request or verified native bearer token. Raw binary body; maximum 100 MiB for videos or 10 MiB for JPEG. Does not accept arbitrary bucket keys.
+ * @summary Upload or atomically replace an allowlisted catalogue file
+ */
+export const PutCatalogueMediaParams = zod.object({
+  "id": zod.enum(['trend-01', 'trend-02', 'trend-03', 'trend-04', 'trend-05', 'trend-06']),
+  "asset": zod.enum(['video.mp4', 'preview.mp4', 'preview.webm', 'poster.jpg', 'character-01.jpg', 'character-02.jpg', 'reference-poster.jpg', 'result.mp4', 'result-preview.mp4', 'result.webm'])
+})
+
+export const PutCatalogueMediaResponse = zod.object({
+  "id": zod.string(),
+  "asset": zod.string(),
+  "size": zod.number().int(),
+  "etag": zod.string().optional()
+})
+
+
+/**
  * @summary Public video or poster for a published dance template
  */
 export const GetDanceTemplateMediaParams = zod.object({

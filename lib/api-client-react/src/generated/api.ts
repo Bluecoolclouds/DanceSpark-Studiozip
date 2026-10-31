@@ -40,6 +40,7 @@ import type {
   ListAdminAuditParams,
   ListAdminGenerationsParams,
   ListAdminUsersParams,
+  PutCatalogueMedia200,
   VideoGenerationInput,
   VideoGenerationStatus,
   VideoGenerationSubmission
@@ -71,6 +72,98 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getPutCatalogueMediaUrl = (id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05' | 'trend-06',
+    asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg' | 'character-01.jpg' | 'character-02.jpg' | 'reference-poster.jpg' | 'result.mp4' | 'result-preview.mp4' | 'result.webm',) => {
+
+
+
+
+  return `/api/admin/dance-templates/${id}/${asset}`
+}
+
+/**
+ * Requires a verified administrator and same-origin request or verified native bearer token. Raw binary body; maximum 100 MiB for videos or 10 MiB for JPEG. Does not accept arbitrary bucket keys.
+ * @summary Upload or atomically replace an allowlisted catalogue file
+ */
+export const putCatalogueMedia = async (id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05' | 'trend-06',
+    asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg' | 'character-01.jpg' | 'character-02.jpg' | 'reference-poster.jpg' | 'result.mp4' | 'result-preview.mp4' | 'result.webm',
+    putCatalogueMediaBody: Blob, options?: Parameters<typeof customFetch>[1]): Promise<PutCatalogueMedia200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PutCatalogueMedia200>(getPutCatalogueMediaUrl(id,asset),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'video/mp4', ...getHeaders(options?.headers) },
+    body: putCatalogueMediaBody
+  }
+);}
+
+
+
+
+
+export const getPutCatalogueMediaMutationKey = () => ['putCatalogueMedia'] as const;
+
+export const getPutCatalogueMediaMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putCatalogueMedia>>, TError,PutCatalogueMediaMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof putCatalogueMedia>>, TError,PutCatalogueMediaMutationVariables, TContext> => {
+
+const mutationKey = getPutCatalogueMediaMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof putCatalogueMedia>>, PutCatalogueMediaMutationVariables> = (props) => {
+          const {id,asset,data} = props ?? {};
+
+          return  putCatalogueMedia(id,asset,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PutCatalogueMediaMutationResult = NonNullable<Awaited<ReturnType<typeof putCatalogueMedia>>>
+    export type PutCatalogueMediaMutationBody = BodyType<Blob>
+    export type PutCatalogueMediaMutationError = ErrorType<void>
+    export type PutCatalogueMediaMutationVariables = {id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05' | 'trend-06';asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg' | 'character-01.jpg' | 'character-02.jpg' | 'reference-poster.jpg' | 'result.mp4' | 'result-preview.mp4' | 'result.webm';data: BodyType<Blob>}
+
+    /**
+ * @summary Upload or atomically replace an allowlisted catalogue file
+ */
+export const usePutCatalogueMedia = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putCatalogueMedia>>, TError,PutCatalogueMediaMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof putCatalogueMedia>>,
+        TError,
+        PutCatalogueMediaMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPutCatalogueMediaMutationOptions(options), queryClient);
+    }
 
 export const getGetDanceTemplateMediaUrl = (id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05' | 'trend-06',
     asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg' | 'character-01.jpg' | 'character-02.jpg' | 'reference-poster.jpg' | 'result.mp4' | 'result-preview.mp4' | 'result.webm',) => {

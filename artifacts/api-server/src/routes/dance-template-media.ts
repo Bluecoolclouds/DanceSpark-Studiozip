@@ -1,113 +1,77 @@
 import { Router, type IRouter } from "express";
-import { createReadStream } from "node:fs";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import {
-  cachedTemplateFile,
-  isAllowedTemplateAsset,
-  TemplateMediaError,
-  uploadTemplateFile,
+  allowedTemplateFile, templateMetadata, readTemplate, templateMime, templateLimit,
+  TemplateStorageConfigurationError, storageStatus,
 } from "../lib/template-storage";
-import {
-  protectAdminMutation,
-  requireAccount,
-  requireAdmin,
-} from "../middlewares/admin-auth";
 
 const router: IRouter = Router();
 
-function routeParam(value: string | string[] | undefined): string {
-  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
-}
-
 // Only explicitly published catalogue assets are accessible; never arbitrary bucket paths.
 router.get("/dance-templates/:id/:asset", async (req, res) => {
-  const id = routeParam(req.params.id);
-  const asset = routeParam(req.params.asset);
-  if (!isAllowedTemplateAsset(id, asset)) {
-    res.sendStatus(404);
-    return;
-  }
+  const id = String(req.params.id), asset = String(req.params.asset);
+  if (!allowedTemplateFile(id, asset)) { res.sendStatus(404); return; }
+  const abort = new AbortController();
+  const onClose = () => abort.abort();
+  res.on("close", onClose);
   try {
-    const { path, size } = await cachedTemplateFile(id, asset);
+    const metadata = await templateMetadata(id, asset);
     if (res.destroyed) return;
-    if (!Number.isSafeInteger(size) || size <= 0) throw new Error("Invalid media size");
+    const size = metadata.ContentLength!;
+    if (!Number.isSafeInteger(size) || size <= 0 || size > templateLimit(asset) || !metadata.ETag) throw new Error("Invalid media metadata");
     res.set({
-      "Content-Type": asset.endsWith(".webm") ? "video/webm" : asset.endsWith(".mp4") ? "video/mp4" : "image/jpeg",
-      "Cache-Control": "public, max-age=3600",
+      "Content-Type": templateMime(asset),
+      "Cache-Control": "public, max-age=0, must-revalidate",
       "Accept-Ranges": "bytes",
       "X-Content-Type-Options": "nosniff",
+      ETag: metadata.ETag,
     });
-    let start = 0;
-    let end = size - 1;
-    if (req.headers.range) {
-      const match = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range);
-      if (!match || (!match[1] && !match[2])) {
-        res.set("Content-Range", `bytes */${size}`).sendStatus(416);
-        return;
+    if (metadata.LastModified) res.set("Last-Modified", metadata.LastModified.toUTCString());
+    if (req.fresh) { res.status(304).end(); return; }
+    let start = 0, end = size - 1;
+    // A mismatched If-Range must return the complete current object.
+    const ifRange = req.get("if-range");
+    const useRange = req.headers.range && (!ifRange || ifRange === metadata.ETag ||
+      (metadata.LastModified && Date.parse(ifRange) >= Math.floor(metadata.LastModified.getTime() / 1000) * 1000));
+    if (useRange) {
+      const match = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range!);
+      const first = Number(match?.[1]), last = Number(match?.[2]);
+      if (!match || (!match[1] && !match[2]) || !Number.isSafeInteger(first) || !Number.isSafeInteger(last) ||
+          (!match[1] && last === 0)) {
+        res.status(416).set("Content-Range", `bytes */${size}`).end(); return;
       }
-      if (!match[1]) {
-        start = Math.max(0, size - Number(match[2]));
-      } else {
-        start = Number(match[1]);
-        end = match[2] ? Math.min(Number(match[2]), end) : end;
-      }
-      if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start > end || start >= size) {
-        res.set("Content-Range", `bytes */${size}`).sendStatus(416);
-        return;
+      if (!match[1]) start = Math.max(0, size - last);
+      else { start = first; end = match[2] ? Math.min(last, end) : end; }
+      if (start > end || start >= size) {
+        res.status(416).set("Content-Range", `bytes */${size}`).end(); return;
       }
       res.status(206).set("Content-Range", `bytes ${start}-${end}/${size}`);
     }
     res.set("Content-Length", String(end - start + 1));
-    if (req.method === "HEAD") {
-      res.end();
-      return;
-    }
-    const stream = createReadStream(path, { start, end });
-    res.on("close", () => stream.destroy());
-    stream.on("error", () => {
-      req.log.error({ templateId: id, asset }, "Template media stream failed");
-      if (!res.headersSent) res.status(502).json({ error: "Не удалось загрузить шаблон" });
-      else res.destroy();
-    });
-    stream.pipe(res);
-  } catch (error) {
-    req.log.error({ templateId: id, asset }, "Template media unavailable");
-    if (!res.headersSent) {
-      const statusCode = error instanceof TemplateMediaError ? error.statusCode : 503;
-      res.status(statusCode).json({ error: "Видео шаблона временно недоступно" });
-    }
-  }
-});
-
-router.put(
-  "/admin/dance-templates/:id/:asset",
-  requireAccount,
-  requireAdmin,
-  protectAdminMutation,
-  async (req, res): Promise<void> => {
-    const id = routeParam(req.params.id);
-    const asset = routeParam(req.params.asset);
-    if (!isAllowedTemplateAsset(id, asset)) {
-      res.sendStatus(404);
-      return;
-    }
-    const contentLength = Number(req.get("content-length"));
-    const contentType = req.get("content-type")?.split(";")[0]?.trim();
-    if (!contentType || !Number.isSafeInteger(contentLength)) {
-      res.status(411).json({ error: "Укажи размер и тип файла" });
-      return;
-    }
+    if (req.method === "HEAD") { res.end(); return; }
+    // IfMatch prevents mixing metadata from one version with bytes from a replacement.
+    const { result, dispose } = await readTemplate(id, asset, metadata.ETag,
+      useRange ? `bytes=${start}-${end}` : undefined, abort.signal);
     try {
-      await uploadTemplateFile(id, asset, req, contentLength, contentType);
-      res.status(204).end();
-    } catch (error) {
-      if (error instanceof TemplateMediaError) {
-        res.status(error.statusCode).json({ error: error.message });
-        return;
-      }
-      req.log.error({ templateId: id, asset }, "Template media upload failed");
-      res.status(502).json({ error: "Не удалось сохранить медиа" });
-    }
-  },
-);
+      if (!(result.Body instanceof Readable)) throw new Error("Missing media body");
+      await pipeline(result.Body, res);
+    } finally { dispose(); }
+  } catch (error) {
+    if (res.destroyed) return;
+    req.log.error({ templateId: id, asset }, "Template media unavailable");
+    if (res.headersSent) { res.destroy(); return; }
+    res.removeHeader("Content-Length");
+    res.removeHeader("Content-Range");
+    res.removeHeader("ETag");
+    res.removeHeader("Last-Modified");
+    res.set("Cache-Control", "no-store");
+    const status = storageStatus(error);
+    if (status === 404) res.status(404).json({ error: "Файл каталога не найден" });
+    else if (error instanceof TemplateStorageConfigurationError) {
+      res.status(503).json({ code: "r2_not_configured", error: "Хранилище R2 не настроено" });
+    } else res.status(503).json({ error: "Медиа каталога временно недоступно" });
+  } finally { res.off("close", onClose); }
+});
 
 export default router;

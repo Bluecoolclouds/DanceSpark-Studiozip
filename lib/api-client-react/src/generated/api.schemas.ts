@@ -5,6 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type CatalogueMediaInput = Blob;
+
 export type AccountSubscriptionPlan = typeof AccountSubscriptionPlan[keyof typeof AccountSubscriptionPlan];
 
 
@@ -274,6 +276,13 @@ export interface VideoGenerationStatus {
   /** @nullable */
   queuePosition: number | null;
 }
+
+export type PutCatalogueMedia200 = {
+  id: string;
+  asset: string;
+  size: number;
+  etag?: string;
+};
 
 export type ListAdminUsersParams = {
 /**
