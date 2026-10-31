@@ -49,7 +49,7 @@ function PreviewPlayer({ playbackUri, height, onFallback, onRetry }: {
   }, [player, onFallback]);
   return (
     <View style={[s.video, { height, borderColor: c.border, backgroundColor: c.stage }]}>
-      <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="contain" nativeControls />
+      <VideoView player={player} style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]} contentFit="contain" nativeControls />
       {!failed && <Bouncy testID="template-video-toggle" onPress={() => playing ? player.pause() : player.play()}
         style={{ position: 'absolute', top: 12, right: 12, minHeight: 44, backgroundColor: c.card, borderRadius: 22, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <Feather name={playing ? 'pause' : 'play'} size={18} color={c.foreground} />

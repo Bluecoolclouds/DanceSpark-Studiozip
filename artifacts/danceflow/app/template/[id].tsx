@@ -29,7 +29,7 @@ export default function TemplatePlayground() {
 function TemplatePlaygroundForm({ id }: { id: string }) {
   const c = useColors();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { width, height: windowHeight } = useWindowDimensions();
   const t = getTemplate(id);
   const { addDraft, draftStorageIssue } = useDance();
   const top = Platform.OS === 'web' ? 67 : insets.top;
@@ -273,7 +273,7 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
       </View>
       {t.exampleResultUri ? (
         <View style={{ gap: 8 }}>
-          <SourcePreview uri={t.exampleResultUri} height={wide ? 520 : Math.round(Math.min(width - 66, 400) * 16 / 9)} />
+          <SourcePreview uri={t.exampleResultUri} height={Math.round(Math.min(wide ? 480 : 420, windowHeight * 0.5))} />
           <Text style={[styles.hint, { color: c.mutedForeground }]}>Пример из каталога. Новая генерация не запускалась.</Text>
         </View>
       ) : (
