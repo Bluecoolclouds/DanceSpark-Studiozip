@@ -5,6 +5,7 @@ An Expo dance-video app with a separate web admin panel and Express API.
 ## Run & Operate
 
 - Install dependencies with `pnpm install --frozen-lockfile`.
+- Use the `nodejs-24` Replit module. Remove the imported `vue-node-20` module as well as `nodejs-20`; otherwise the Vue module can keep Node.js 20 on PATH, below Expo's required Node.js 22.13 minimum.
 - Start services through their managed Replit workflows, which supply `PORT` and routing:
   - `artifacts/danceflow: expo` — mobile app and Expo web preview.
   - `artifacts/danceflow-admin: web` — admin panel at `/admin/`.
@@ -55,4 +56,5 @@ _Populate as you build — explicit user instructions worth remembering across s
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
 - YooKassa preparation and launch checklist: [docs/payments/yookassa-readiness.md](docs/payments/yookassa-readiness.md). This is a specification, not an active payment integration.
 - Catalogue clips and posters live in App Storage under the public `dance-templates` prefix. The API serves only allowlisted catalogue assets, with byte ranges for video playback. App Storage settings must be available to the API in the target environment.
+- Imported workspace setup: the existing App Storage settings currently return HTTP 401 for catalogue assets, surfaced as HTTP 503 by the media API. The ZIP does not contain those clips/posters. Restore the `dance-templates` files into this project's own App Storage before expecting catalogue previews or source-video generation to work; do not bypass storage authorization or replace the clips with mock results.
 - Original MP4 files are used as draft inputs; WebM versions are for browser previews only. The API's local media cache is disposable, not durable storage.
