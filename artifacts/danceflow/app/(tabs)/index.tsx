@@ -18,6 +18,7 @@ const SPEEDS = [
   { key: 'chill', label: 'До 110 BPM' },
   { key: 'hype', label: '110+ BPM' },
 ] as const;
+const CATALOG_PAGE_SIZE = 4;
 
 export default function Discover() {
   const c = useColors();
@@ -27,6 +28,7 @@ export default function Discover() {
   const [cat, setCat] = useState<Category | 'all'>('all');
   const [speed, setSpeed] = useState<'any' | 'chill' | 'hype'>('any');
   const [search, setSearch] = useState('');
+  const [visibleCount, setVisibleCount] = useState(CATALOG_PAGE_SIZE);
   const top = Platform.OS === 'web' ? 67 : insets.top;
 
   const bob = useSharedValue(0);
@@ -54,6 +56,7 @@ export default function Discover() {
         (speed === 'any' || (t.bpm != null && (speed === 'chill' ? t.bpm < 110 : t.bpm >= 110)));
     });
   }, [cat, search, speed]);
+  const visibleList = list.slice(0, visibleCount);
 
   const cardW = (Math.min(width, 600) - 12 * 2 - 2) / 2;
   const featured = TEMPLATES.filter((t) => t.isNew);
@@ -117,9 +120,14 @@ export default function Discover() {
   }, [videoPlayer]);
 
   const handlePageScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    pageScrollY.current = event.nativeEvent.contentOffset.y;
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    pageScrollY.current = contentOffset.y;
     updateFeaturedVisibility();
-  }, [updateFeaturedVisibility]);
+    const distanceFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height);
+    if (distanceFromBottom < layoutMeasurement.height * 0.7) {
+      setVisibleCount((current) => Math.min(list.length, current + CATALOG_PAGE_SIZE));
+    }
+  }, [list.length, updateFeaturedVisibility]);
 
   const selectFeaturedAtOffset = useCallback((offsetX: number) => {
     const next = Math.max(0, Math.min(featured.length - 1, Math.round(offsetX / (featuredCardWidth + 2))));
@@ -216,7 +224,7 @@ export default function Discover() {
           testID="catalog-search"
           accessibilityLabel="Поиск по каталогу"
           value={search}
-          onChangeText={setSearch}
+          onChangeText={(value) => { setSearch(value); setVisibleCount(CATALOG_PAGE_SIZE); }}
           placeholder="Название, описание, движение…"
           placeholderTextColor={c.mutedForeground}
           returnKeyType="search"
@@ -226,7 +234,7 @@ export default function Discover() {
           <Bouncy
             testID="catalog-search-clear"
             accessibilityLabel="Очистить поиск"
-            onPress={() => setSearch('')}
+            onPress={() => { setSearch(''); setVisibleCount(CATALOG_PAGE_SIZE); }}
             style={styles.searchClear}
           >
             <Feather name="x-circle" size={20} color={c.mutedForeground} />
@@ -234,10 +242,10 @@ export default function Discover() {
         )}
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 5, paddingVertical: 4 }}>
-        {CATEGORIES.filter((k) => k.key === 'all' || TEMPLATES.some((t) => t.category === k.key)).map((k) => <Pill key={k.key} label={k.label} active={cat === k.key} onPress={() => setCat(k.key)} />)}
+        {CATEGORIES.filter((k) => k.key === 'all' || TEMPLATES.some((t) => t.category === k.key)).map((k) => <Pill key={k.key} label={k.label} active={cat === k.key} onPress={() => { setCat(k.key); setVisibleCount(CATALOG_PAGE_SIZE); }} />)}
       </ScrollView>
       {TEMPLATES.some((t) => t.bpm != null) && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 5, paddingVertical: 10 }}>
-        {SPEEDS.map((k) => <Pill key={k.key} color="secondary" label={k.label} active={speed === k.key} onPress={() => setSpeed(k.key)} />)}
+        {SPEEDS.map((k) => <Pill key={k.key} color="secondary" label={k.label} active={speed === k.key} onPress={() => { setSpeed(k.key); setVisibleCount(CATALOG_PAGE_SIZE); }} />)}
       </ScrollView>}
 
       {list.length === 0 ? (
@@ -246,16 +254,21 @@ export default function Discover() {
           title="Ничего не найдено"
           text={search.trim() ? 'Попробуй изменить запрос или сбросить поиск и фильтры.' : 'Для выбранных фильтров танцев нет. Попробуй выбрать другие.'}
           action="Очистить поиск и фильтры"
-          onAction={() => { setSearch(''); setCat('all'); setSpeed('any'); }}
+          onAction={() => { setSearch(''); setCat('all'); setSpeed('any'); setVisibleCount(CATALOG_PAGE_SIZE); }}
         />
       ) : (
         <View style={styles.grid}>
-          {list.map((t) => (
+          {visibleList.map((t) => (
             <View key={t.id}>
               <TemplateCard t={t} width={cardW} height={250} onPress={() => router.push(`/template/${t.id}`)} />
             </View>
           ))}
         </View>
+      )}
+      {visibleList.length < list.length && (
+        <Text style={{ color: c.mutedForeground, fontFamily: F.body, fontSize: 12, textAlign: 'center', marginTop: 12 }}>
+          Показано {visibleList.length} из {list.length} · прокрути ниже, чтобы увидеть ещё
+        </Text>
       )}
 
       <View style={[styles.honest, { backgroundColor: c.card, borderColor: c.border }]}>
