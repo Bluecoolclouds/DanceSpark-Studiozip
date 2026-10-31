@@ -140,6 +140,12 @@ export const TEMPLATES: DanceTemplate[] = uploaded.map((item, index) => ({
   isNew: true,
 }));
 
+// Editorial recommendations are intentionally fixed and independent of user data.
+export const RECOMMENDED_TEMPLATE_IDS = ['trend-06', 'trend-03', 'trend-01'] as const;
+export const RECOMMENDED_TEMPLATES = RECOMMENDED_TEMPLATE_IDS
+  .map((id) => TEMPLATES.find((template) => template.id === id))
+  .filter((template): template is DanceTemplate => template != null);
+
 export const getTemplate = (id?: string) =>
   TEMPLATES.find((t) => t.id === id) ?? LEGACY_TEMPLATES.find((t) => t.id === id);
 export const categoryLabel = (c: Category) => CATEGORIES.find((x) => x.key === c)?.label ?? c;

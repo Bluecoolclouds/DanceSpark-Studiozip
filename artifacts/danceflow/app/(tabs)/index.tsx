@@ -4,12 +4,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useVideoPlayer } from 'expo-video';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { NativeScrollEvent, NativeSyntheticEvent, Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { NativeScrollEvent, NativeSyntheticEvent, Platform, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import Animated, { useReducedMotion, Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BigButton, Bouncy, Pill, SectionTitle, TemplateCard, EmptyState } from '@/components/ui';
 import { F } from '@/constants/fonts';
-import { CATEGORIES, Category, HERO_IMAGE, TEMPLATES } from '@/constants/templates';
+import { CATEGORIES, Category, categoryLabel, HERO_IMAGE, RECOMMENDED_TEMPLATES, TEMPLATES } from '@/constants/templates';
 import { useColors } from '@/hooks/useColors';
 import { templatePreviewCandidates } from '@/lib/template-preview';
 
@@ -26,6 +26,7 @@ export default function Discover() {
   const { height: viewportHeight } = useWindowDimensions();
   const [cat, setCat] = useState<Category | 'all'>('all');
   const [speed, setSpeed] = useState<'any' | 'chill' | 'hype'>('any');
+  const [search, setSearch] = useState('');
   const top = Platform.OS === 'web' ? 67 : insets.top;
 
   const bob = useSharedValue(0);
@@ -36,9 +37,23 @@ export default function Discover() {
   }, [bob, reduced]);
   const bobStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${-6 + bob.value * 6}deg` }, { scale: 1 + bob.value * 0.06 }] }));
 
-  const list = useMemo(() => TEMPLATES.filter((t) =>
-    (cat === 'all' || t.category === cat) &&
-    (speed === 'any' || (t.bpm != null && (speed === 'chill' ? t.bpm < 110 : t.bpm >= 110)))), [cat, speed]);
+  const list = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase();
+    return TEMPLATES.filter((t) => {
+      const matchesQuery = !query || [
+        t.title,
+        t.category,
+        categoryLabel(t.category),
+        t.dancer,
+        t.tagline,
+        t.description,
+        ...t.moves,
+      ].some((field) => field.toLocaleLowerCase().includes(query));
+      return matchesQuery &&
+        (cat === 'all' || t.category === cat) &&
+        (speed === 'any' || (t.bpm != null && (speed === 'chill' ? t.bpm < 110 : t.bpm >= 110)));
+    });
+  }, [cat, search, speed]);
 
   const cardW = (Math.min(width, 600) - 12 * 2 - 2) / 2;
   const featured = TEMPLATES.filter((t) => t.isNew);
@@ -186,7 +201,38 @@ export default function Discover() {
       </View>
 
       <View style={{ height: 28 }} />
+      <SectionTitle kicker="ВЫБРАЛИ ДЛЯ ТЕБЯ" title="Рекомендуем" />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 4, paddingBottom: 8 }}>
+        {RECOMMENDED_TEMPLATES.map((t) => (
+          <TemplateCard key={t.id} t={t} width={Math.min(width * 0.58, 230)} height={250} onPress={() => router.push(`/template/${t.id}`)} />
+        ))}
+      </ScrollView>
+
+      <View style={{ height: 24 }} />
       <SectionTitle kicker="ВЕСЬ КАТАЛОГ" title="Выбери свой стиль" right={<Text style={[styles.count, { color: c.mutedForeground }]}>{list.length}</Text>} />
+      <View style={[styles.searchBox, { backgroundColor: c.card, borderColor: c.border }]}>
+        <Feather name="search" size={19} color={c.mutedForeground} />
+        <TextInput
+          testID="catalog-search"
+          accessibilityLabel="Поиск по каталогу"
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Название, описание, движение…"
+          placeholderTextColor={c.mutedForeground}
+          returnKeyType="search"
+          style={[styles.searchInput, { color: c.foreground }]}
+        />
+        {!!search && (
+          <Bouncy
+            testID="catalog-search-clear"
+            accessibilityLabel="Очистить поиск"
+            onPress={() => setSearch('')}
+            style={styles.searchClear}
+          >
+            <Feather name="x-circle" size={20} color={c.mutedForeground} />
+          </Bouncy>
+        )}
+      </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 5, paddingVertical: 4 }}>
         {CATEGORIES.filter((k) => k.key === 'all' || TEMPLATES.some((t) => t.category === k.key)).map((k) => <Pill key={k.key} label={k.label} active={cat === k.key} onPress={() => setCat(k.key)} />)}
       </ScrollView>
@@ -195,7 +241,13 @@ export default function Discover() {
       </ScrollView>}
 
       {list.length === 0 ? (
-        <EmptyState icon="music" title="Тут пока тихо" text="Под такой фильтр танцев нет. Попробуй другой темп." action="Сбросить" onAction={() => { setCat('all'); setSpeed('any'); }} />
+        <EmptyState
+          icon="search"
+          title="Ничего не найдено"
+          text={search.trim() ? 'Попробуй изменить запрос или сбросить поиск и фильтры.' : 'Для выбранных фильтров танцев нет. Попробуй выбрать другие.'}
+          action="Очистить поиск и фильтры"
+          onAction={() => { setSearch(''); setCat('all'); setSpeed('any'); }}
+        />
       ) : (
         <View style={styles.grid}>
           {list.map((t) => (
@@ -224,6 +276,9 @@ const styles = StyleSheet.create({
   marquee: { borderTopWidth: 1, borderBottomWidth: 1, paddingVertical: 10, transform: [{ rotate: '-3deg' }], marginTop: -18, marginHorizontal: -10, marginBottom: 30 },
   marqueeText: { fontFamily: F.display, fontSize: 15 },
   count: { fontFamily: F.display, fontSize: 22 },
+  searchBox: { minHeight: 52, marginHorizontal: 12, marginTop: 2, marginBottom: 10, paddingHorizontal: 14, borderRadius: 16, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  searchInput: { flex: 1, minWidth: 0, paddingVertical: 12, fontFamily: F.body, fontSize: 15 },
+  searchClear: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   featuredArrow: { position: 'absolute', top: 148, width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center', zIndex: 10 },
   featuredArrowLeft: { left: 6 },
   featuredArrowRight: { right: 6 },
