@@ -1,24 +1,30 @@
 import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Alert, Linking, Platform, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CostPreview, QualityPicker, RefCounter, RefGrid, SourcePreview, fmtSec, getModel } from '@/components/generation-form';
-import { BigButton, Bouncy, EmptyState, FavButton, tone } from '@/components/ui';
+import { Bouncy, EmptyState, FavButton } from '@/components/ui';
+import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
+import colors from '@/constants/colors';
 import { F } from '@/constants/fonts';
 import { GENERATION_MODELS, GenerationModel, GenerationResolution, MAX_OUTPUT_SECONDS, MAX_REFERENCE_IMAGES } from '@/constants/generation';
 import { categoryLabel, getTemplate } from '@/constants/templates';
 import { useDance } from '@/context/DanceContext';
-import { useColors } from '@/hooks/useColors';
+import { ColorScope, useColors } from '@/hooks/useColors';
+
+const N = colors.neon;
+const HERO = require('@/assets/images/dance-hero.png');
 
 const MAX_PROMPT = 10000;
 interface SourceVideo { uri: string; seconds: number | null }
 
 export default function TemplatePlayground() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  return <TemplatePlaygroundForm key={id} id={id} />;
+  return <ColorScope.Provider value={N}><TemplatePlaygroundForm key={id} id={id} /></ColorScope.Provider>;
 }
 
 function TemplatePlaygroundForm({ id }: { id: string }) {
@@ -122,12 +128,13 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
     } finally { setSaving(false); }
   };
 
-  const panel = [styles.panel, { backgroundColor: c.card, borderColor: c.border }];
+  const panel = [styles.panel, { backgroundColor: c.card, borderColor: c.glassEdge }];
 
   const input = (
     <View style={[panel, { gap: 14 }]}>
       <View style={styles.panelHead}>
         <Text style={[styles.panelTitle, { color: c.foreground }]}>Ввод</Text>
+        <View style={{ flex: 1 }} />
         <Bouncy testID="reset-form" onPress={reset} style={[styles.ghost, { borderColor: c.border }]}>
           <Feather name="rotate-ccw" size={14} color={c.foreground} />
           <Text style={[styles.ghostText, { color: c.foreground }]}>Сбросить</Text>
@@ -138,9 +145,9 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
         {GENERATION_MODELS.map((x) => {
           const on = x.id === model;
           return (
-            <Bouncy key={x.id} testID={`model-${x.id}`} accessibilityLabel={`${x.id === 'object-swap' ? 'Object Swap' : 'Motion Transfer'}${on ? ', выбрано' : ''}`} onPress={() => setModel(x.id)} scaleTo={0.97}
-              style={[styles.segItem, on && { backgroundColor: x.id === 'object-swap' ? c.accent : c.secondary, borderColor: c.border }]}>
-              <Text style={[styles.segText, { color: c.foreground }]}>{x.id === 'object-swap' ? 'Object Swap' : 'Motion Transfer'}</Text>
+            <Bouncy key={x.id} testID={`model-${x.id}`} accessibilityLabel={`${x.id === 'object-swap' ? 'Замена объекта' : 'Перенос движения'}${on ? ', выбрано' : ''}`} onPress={() => setModel(x.id)} scaleTo={0.97}
+              style={[styles.segItem, on && { backgroundColor: x.id === 'object-swap' ? N.pink : '#16A9C4', borderColor: 'transparent' }]}>
+              <Text style={[styles.segText, { color: c.foreground }]}>{x.id === 'object-swap' ? 'Замена объекта' : 'Перенос движения'}</Text>
             </Bouncy>
           );
         })}
@@ -164,10 +171,10 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
           </View>
         ) : (
           <View style={{ gap: 8 }}>
-            <Bouncy testID="pick-video" onPress={pickVideo} style={[styles.drop, { borderColor: c.border, backgroundColor: c.secondary }]}>
-              <Feather name="film" size={22} color={c.foreground} />
+            <Bouncy testID="pick-video" onPress={pickVideo} style={[styles.drop, { borderColor: N.cyan, backgroundColor: c.muted }]}>
+              <View style={[styles.dropIcon, { backgroundColor: c.muted }]}><Feather name="video" size={22} color={N.cyan} /></View>
               <Text style={[styles.dropTitle, { color: c.foreground }]}>Добавить видео</Text>
-              <Text style={[styles.hint, { color: c.foreground }]}>Только одно</Text>
+              <Text style={[styles.hint, { color: c.mutedForeground }]}>Только одно, движения возьмём из него</Text>
             </Bouncy>
             {original && <Bouncy testID="restore-video" onPress={() => setSource(original)} style={[styles.ghost, { borderColor: c.border, alignSelf: 'flex-start' }]}>
               <Feather name="corner-up-left" size={14} color={c.foreground} />
@@ -183,12 +190,12 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
           {refs.length > 0 && <RefGrid uris={refs} onRemove={(i) => setRefs((p) => p.filter((_, j) => j !== i))} />}
           <View style={styles.row}>
             <Bouncy testID="pick-library" disabled={refs.length >= MAX_REFERENCE_IMAGES} onPress={pickImages}
-              style={[styles.pick, { borderColor: c.border, backgroundColor: c.background, opacity: refs.length >= MAX_REFERENCE_IMAGES ? 0.5 : 1 }]}>
+              style={[styles.pick, { borderColor: c.border, backgroundColor: c.muted, opacity: refs.length >= MAX_REFERENCE_IMAGES ? 0.5 : 1 }]}>
               <Feather name="image" size={18} color={c.foreground} />
               <Text style={[styles.pickText, { color: c.foreground }]}>Галерея</Text>
             </Bouncy>
             {Platform.OS !== 'web' && <Bouncy testID="pick-camera" disabled={refs.length >= MAX_REFERENCE_IMAGES} onPress={pickCamera}
-              style={[styles.pick, { borderColor: c.border, backgroundColor: c.background, opacity: refs.length >= MAX_REFERENCE_IMAGES ? 0.5 : 1 }]}>
+              style={[styles.pick, { borderColor: c.border, backgroundColor: c.muted, opacity: refs.length >= MAX_REFERENCE_IMAGES ? 0.5 : 1 }]}>
               <Feather name="camera" size={18} color={c.foreground} />
               <Text style={[styles.pickText, { color: c.foreground }]}>Камера</Text>
             </Bouncy>}
@@ -202,7 +209,7 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
           testID="prompt-input" value={prompt} onChangeText={setPrompt} maxLength={MAX_PROMPT} multiline
           placeholder={model === 'object-swap' ? 'Опиши новую сцену: «заменить куртку на красную»' : 'Необязательно: «танцует на крыше на закате»'}
           placeholderTextColor={c.mutedForeground}
-          style={[styles.input, { borderColor: c.border, backgroundColor: c.background, color: c.foreground }]}
+          style={[styles.input, { borderColor: c.border, backgroundColor: c.muted, color: c.foreground }]}
         />
       </Field>
 
@@ -218,9 +225,9 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
 
   const result = (
     <View style={[panel, { gap: 12 }]}>
-      <Text style={[styles.panelTitle, { color: c.foreground }]}>Результат</Text>
-      <View style={[styles.empty, { borderColor: c.border, backgroundColor: c.muted }]}>
-        <View style={[styles.emptyIcon, { backgroundColor: c.violet, borderColor: c.border }]}>
+      <View style={styles.row}><Text style={[styles.panelTitle, { color: c.foreground }]}>Результат</Text><Feather name="star" size={16} color={N.pink} /></View>
+      <View style={[styles.empty, { borderColor: N.cyan, backgroundColor: 'rgba(18,6,58,0.6)' }]}>
+        <View style={[styles.emptyIcon, { backgroundColor: N.pink, borderColor: 'transparent' }]}>
           <Feather name="film" size={20} color={c.primaryForeground} />
         </View>
         <Text style={[styles.emptyTitle, { color: c.foreground }]}>Здесь пока пусто</Text>
@@ -236,39 +243,65 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
           <Bouncy accessibilityLabel="Закрыть" onPress={() => setError(null)}><Feather name="x" size={16} color={c.destructiveForeground} /></Bouncy>
         </View>
       )}
-      <BigButton testID="save-draft" label={blocker ?? (saving ? 'Сохраняем…' : 'Сохранить черновик')} icon="bookmark" disabled={!!blocker || saving} onPress={save} />
+      <Bouncy testID="save-draft" accessibilityLabel={blocker ?? 'Сохранить черновик'} disabled={!!blocker || saving} onPress={save} scaleTo={0.97}
+        style={[styles.go, { opacity: blocker || saving ? 0.55 : 1 }]}>
+        <LinearGradient colors={[N.pink, '#FF7A6B', N.yellow]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={StyleSheet.absoluteFill} />
+        <Feather name={blocker ? 'lock' : 'bookmark'} size={20} color={N.deep} />
+        <Text style={[styles.goText, { color: N.deep }]} numberOfLines={1}>{blocker ?? (saving ? 'Сохраняем…' : 'Сохранить черновик')}</Text>
+      </Bouncy>
     </View>
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: c.background }}>
-      <ScrollView contentContainerStyle={{ paddingTop: top + 8, paddingBottom: bottom + 40 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+    <View style={{ flex: 1, backgroundColor: N.deep, overflow: 'hidden', width: '100%', maxWidth: '100%' }}>
+      <Stage />
+      <KeyboardAwareScrollViewCompat bottomOffset={24} style={{ width: '100%' }} contentContainerStyle={{ overflow: 'hidden', paddingTop: top + 8, paddingBottom: bottom + 40 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={[styles.wrap, { maxWidth: wide ? 1120 : 640 }]}>
           <View style={styles.topBar}>
-            <Bouncy testID="back" accessibilityLabel="Назад" onPress={() => router.back()} style={[styles.round, { backgroundColor: c.card, borderColor: c.border }]}>
+            <Bouncy testID="back" accessibilityLabel="Назад" onPress={() => router.back()} style={[styles.round, { backgroundColor: c.glass, borderColor: c.glassEdge }]}>
               <Feather name="arrow-left" size={20} color={c.foreground} />
             </Bouncy>
             <FavButton id={t.id} size={44} />
           </View>
 
-          <View style={styles.header}>
-            <Image source={t.image} style={[styles.thumb, { borderColor: c.border, backgroundColor: tone(c, t.color) }]} contentFit="cover" />
-            <View style={{ flex: 1, gap: 4 }}>
+          <View style={[styles.hero, { minHeight: wide ? 260 : 210 }]}>
+            <View style={{ flex: 1, gap: 8, zIndex: 2 }}>
+              <View style={styles.logo}>
+                <Text style={[styles.logoA, { color: c.foreground }]}>DANCE</Text>
+                <Text style={[styles.logoB, { color: N.yellow }]}>FLOW</Text>
+              </View>
               <View style={styles.row}>
-                <View style={[styles.tag, { backgroundColor: c.accent, borderColor: c.border }]}><Text style={[styles.tagText, { color: c.foreground }]}>Genjutsu Light</Text></View>
-                <View style={[styles.tag, { backgroundColor: tone(c, t.color), borderColor: c.border }]}><Text style={[styles.tagText, { color: c.foreground }]}>{categoryLabel(t.category)}</Text></View>
+                <View style={[styles.tag, { backgroundColor: N.pink }]}><Text style={styles.tagText}>Genjutsu Light</Text></View>
+                <View style={[styles.tag, { backgroundColor: N.cyan }]}><Text style={[styles.tagText, { color: N.deep }]}>{categoryLabel(t.category)}</Text></View>
               </View>
               <Text style={[styles.title, { color: c.foreground }]} numberOfLines={2}>{t.title}</Text>
               <Text style={[styles.sub, { color: c.mutedForeground }]} numberOfLines={2}>{t.tagline}</Text>
             </View>
+            <View style={[styles.dancerWrap, { width: wide ? 230 : 140, height: wide ? 270 : 200 }]}>
+              <View style={[styles.dancerSlash, { backgroundColor: N.pink }]} />
+              <Image source={t.image ?? HERO} style={styles.dancer} contentFit="cover" />
+            </View>
           </View>
 
-          <View style={[wide ? styles.cols : { gap: 14 }]}>
+          <View style={[wide ? styles.cols : { gap: 18 }]}>
             <View style={wide ? { flex: 1.1 } : undefined}>{input}</View>
             <View style={wide ? { flex: 0.9 } : undefined}>{result}</View>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollViewCompat>
+    </View>
+  );
+}
+
+function Stage() {
+  return (
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
+      <LinearGradient colors={['#3A0F8C', N.deep, '#140540']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+      <View style={[styles.slab, { top: -60, left: -120, width: 320, backgroundColor: N.pink, opacity: 0.85 }]} />
+      <View style={[styles.slab, { top: 40, right: -160, width: 360, backgroundColor: N.yellow, opacity: 0.75 }]} />
+      <View style={[styles.slab, { top: 620, right: -140, width: 260, height: 70, backgroundColor: N.cyan, opacity: 0.7 }]} />
+      <View style={[styles.slab, { top: 760, left: -150, width: 300, height: 60, backgroundColor: N.pink, opacity: 0.55 }]} />
+      <View style={[styles.slab, { top: 300, left: -200, width: 280, height: 26, backgroundColor: '#7A2BFF', opacity: 0.8 }]} />
     </View>
   );
 }
@@ -289,7 +322,7 @@ function Field({ label, right, children }: { label: string; right?: React.ReactN
 function Sq({ id, icon, label, onPress }: { id: string; icon: React.ComponentProps<typeof Feather>['name']; label: string; onPress: () => void }) {
   const c = useColors();
   return (
-    <Bouncy testID={id} accessibilityLabel={label} onPress={onPress} style={[styles.sq, { backgroundColor: c.background, borderColor: c.border }]}>
+    <Bouncy testID={id} accessibilityLabel={label} onPress={onPress} style={[styles.sq, { backgroundColor: c.muted, borderColor: c.border }]}>
       <Feather name={icon} size={16} color={c.foreground} />
     </Bouncy>
   );
@@ -299,36 +332,45 @@ const styles = StyleSheet.create({
   wrap: { width: '100%', alignSelf: 'center', paddingHorizontal: 16, gap: 14 },
   topBar: { flexDirection: 'row', justifyContent: 'space-between' },
   round: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  header: { flexDirection: 'row', gap: 14, alignItems: 'center' },
-  thumb: { width: 76, height: 96, borderRadius: 8, borderWidth: 1, transform: [{ rotate: '-3deg' }] },
-  tag: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
-  tagText: { fontFamily: F.bodyHeavy, fontSize: 11 },
+  hero: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 4 },
+  logo: { transform: [{ rotate: '-6deg' }], alignSelf: 'flex-start', marginBottom: 6 },
+  logoA: { fontFamily: F.display, fontSize: 30, lineHeight: 30, letterSpacing: -1 },
+  logoB: { fontFamily: F.display, fontSize: 30, lineHeight: 30, letterSpacing: -1, marginLeft: 22 },
+  dancerWrap: { alignItems: 'center', justifyContent: 'flex-end', overflow: 'hidden' },
+  dancerSlash: { position: 'absolute', width: '140%', height: 60, bottom: 50, transform: [{ rotate: '-18deg' }], opacity: 0.8 },
+  dancer: { width: '100%', height: '100%', borderTopLeftRadius: 120, borderTopRightRadius: 120 },
+  slab: { position: 'absolute', height: 140, transform: [{ rotate: '-28deg' }] },
+  go: { minHeight: 60, borderRadius: 30, overflow: 'hidden', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 20 },
+  goText: { fontFamily: F.display, fontSize: 18, flexShrink: 1 },
+  dropIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  tag: { borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
+  tagText: { fontFamily: F.bodyHeavy, fontSize: 11, color: '#FFF7FC' },
   title: { fontFamily: F.display, fontSize: 28, letterSpacing: -0.8, lineHeight: 32 },
   sub: { fontFamily: F.body, fontSize: 14, lineHeight: 19 },
   cols: { flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
-  panel: { borderWidth: 1, borderRadius: 10, padding: 14 },
+  panel: { borderWidth: 1, borderRadius: 22, padding: 16 },
   panelHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  panelTitle: { fontFamily: F.display, fontSize: 20 },
+  panelTitle: { fontFamily: F.display, fontSize: 22 },
   label: { fontFamily: F.bodyHeavy, fontSize: 14, flex: 1 },
   count: { fontFamily: F.bodyHeavy, fontSize: 12 },
   ghost: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, minHeight: 36 },
   ghostText: { fontFamily: F.bodyBold, fontSize: 13 },
-  seg: { flexDirection: 'row', borderWidth: 1, borderRadius: 8, padding: 3, gap: 3 },
-  segItem: { flex: 1, minHeight: 42, borderRadius: 6, borderWidth: 1, borderColor: 'transparent', alignItems: 'center', justifyContent: 'center' },
+  seg: { flexDirection: 'row', borderWidth: 1, borderRadius: 999, padding: 3, gap: 3 },
+  segItem: { flex: 1, minHeight: 42, borderRadius: 999, borderWidth: 1, borderColor: 'transparent', alignItems: 'center', justifyContent: 'center' },
   segText: { fontFamily: F.display, fontSize: 14 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   meta: { flex: 1, fontFamily: F.bodyHeavy, fontSize: 13 },
-  sq: { width: 40, height: 40, borderRadius: 6, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  drop: { height: 130, borderRadius: 8, borderWidth: 1, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', gap: 4 },
+  sq: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  drop: { height: 150, borderRadius: 18, borderWidth: 1, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', gap: 4 },
   dropTitle: { fontFamily: F.display, fontSize: 16 },
-  pick: { flex: 1, minHeight: 48, borderRadius: 6, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  pick: { flex: 1, minHeight: 52, borderRadius: 16, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   pickText: { fontFamily: F.display, fontSize: 14 },
-  input: { minHeight: 96, maxHeight: 200, borderWidth: 1, borderRadius: 6, padding: 10, fontFamily: F.bodyBold, fontSize: 14, textAlignVertical: 'top' },
+  input: { minHeight: 96, maxHeight: 200, borderWidth: 1, borderRadius: 16, padding: 12, fontFamily: F.bodyBold, fontSize: 14, textAlignVertical: 'top' },
   hint: { fontFamily: F.body, fontSize: 12, lineHeight: 16 },
   warn: { fontFamily: F.bodyBold, fontSize: 12 },
-  empty: { minHeight: 240, borderRadius: 8, borderWidth: 1, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 20 },
-  emptyIcon: { width: 44, height: 44, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '6deg' }] },
+  empty: { minHeight: 240, borderRadius: 20, borderWidth: 1, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 20 },
+  emptyIcon: { width: 52, height: 52, borderRadius: 26, borderWidth: 1, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '6deg' }] },
   emptyTitle: { fontFamily: F.display, fontSize: 17 },
-  err: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 6, padding: 10 },
+  err: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 14, padding: 10 },
   errText: { flex: 1, fontFamily: F.bodyBold, fontSize: 13 },
 });

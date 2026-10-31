@@ -34,6 +34,19 @@ const colors = {
     focus: '#F0167F',
     glassEdge: 'rgba(255,255,255,0.7)',
   },
+  // Scoped stage palette for the template playground only (via ColorScope).
+  neon: {
+    text: '#F6F0FF', tint: '#FF2E93', background: '#1E0B4F', foreground: '#F6F0FF',
+    card: 'rgba(28,12,74,0.72)', cardForeground: '#F6F0FF', primary: '#FF2E93', primaryForeground: '#FFF7FC',
+    secondary: 'rgba(46,230,255,0.22)', secondaryForeground: '#F6F0FF', muted: 'rgba(255,255,255,0.07)',
+    mutedForeground: '#B9A8EE', accent: 'rgba(255,46,147,0.55)', accentForeground: '#FFF7FC',
+    destructive: '#FF3D5A', destructiveForeground: '#FFF7FC', border: 'rgba(206,180,255,0.22)',
+    input: 'rgba(255,255,255,0.06)', violet: '#7A2BFF', sun: 'rgba(255,214,46,0.4)', stage: '#12063A',
+    stageForeground: '#FBF6FF', scrim: 'rgba(12,4,40,0.82)', clear: 'rgba(12,4,40,0)',
+    glass: 'rgba(36,16,92,0.7)', glassFallback: 'rgba(36,16,92,0.96)', glow: '#FF2E93', focus: '#2EE6FF',
+    glassEdge: 'rgba(206,180,255,0.3)',
+    pink: '#FF2E93', yellow: '#FFD62E', cyan: '#2EE6FF', deep: '#2A0E6E',
+  },
   radius: 14,
 };
 

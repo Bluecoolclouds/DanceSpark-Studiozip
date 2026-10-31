@@ -47,6 +47,12 @@ For the paid service, “unlimited” means no daily generation-count cap, not u
 
 The user explicitly selected both Higgsfield **Genjutsu Light v1.0** modes: Motion Transfer and Object Swap, and named their playgrounds as references for the creation page.
 
+For the trend page's visual appearance, the user supplied a neon Just Dance-style reference: deep violet background, pink/yellow/cyan diagonals, translucent dark input panels and a gradient action button.
+
+**Why:** The user explicitly said “вот дизайн тренд страницы”; this is a page-specific visual direction, not a request to darken the entire app.
+
+**How to apply:** Use Danceflow branding and Russian labels, preserve real form behavior, and do not copy the reference's example output as a generated result.
+
 The user also wants the trend page itself to follow the Object Swap playground, with the same input fields, rather than just information about the dance.
 
 **Why:** They explicitly supplied the Genjutsu Light Object Swap playground as the reference for improving the trend page.
