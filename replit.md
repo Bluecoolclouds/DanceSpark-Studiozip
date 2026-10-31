@@ -5,6 +5,8 @@ An Expo dance-video app with a separate web admin panel and Express API.
 ## Run & Operate
 
 - Install dependencies with `pnpm install --frozen-lockfile`.
+- On a fresh import, the development database starts empty: apply the existing schema with `pnpm --filter @workspace/db run push` before using the API. This does not restore the source project's users or data.
+- Authentication and media credentials do not transfer with the repository. Reconnect the existing Clerk instance and restore its `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, and matching `VITE_CLERK_PUBLISHABLE_KEY` through workspace configuration before expecting either frontend or the API health endpoint to work. Preserve the existing authentication gates.
 - Use the `nodejs-24` Replit module. Remove the imported `vue-node-20` module as well as `nodejs-20`; otherwise the Vue module can keep Node.js 20 on PATH, below Expo's required Node.js 22.13 minimum.
 - Start services through their managed Replit workflows, which supply `PORT` and routing:
   - `artifacts/danceflow: expo` — mobile app and Expo web preview.
