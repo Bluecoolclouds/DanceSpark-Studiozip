@@ -9,6 +9,10 @@ The preview browser reported generic MP4 support but no support for the uploaded
 
 **How to apply:** Retain original source URLs and measured input durations in drafts; treat browser-compatible previews as presentation assets only. Verify explicit codec support or actual playback with advancing current time, not just HTTP 200/206 or `canPlayType('video/mp4')`. Provide an explicit touch-accessible play control.
 
+Do not force WebM for every web browser. Select a preview using explicit codec support and retain an alternative format on decoding failure.
+
+**Why:** A version that plays in the testing Chromium is not proof it will play in a user's Safari or embedded browser. Playback failures must not automatically be blamed on the user's connection.
+
 Expo image picker in the installed version returns video duration in seconds on web (from HTMLVideoElement), but milliseconds on native.
 
 **Why:** Treating both as milliseconds turned a 13-second uploaded video into 0.013 seconds and understated the estimate.

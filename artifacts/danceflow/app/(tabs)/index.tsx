@@ -11,6 +11,7 @@ import { BigButton, Bouncy, Pill, SectionTitle, TemplateCard, EmptyState } from 
 import { F } from '@/constants/fonts';
 import { CATEGORIES, Category, HERO_IMAGE, TEMPLATES } from '@/constants/templates';
 import { useColors } from '@/hooks/useColors';
+import { templatePreviewCandidates } from '@/lib/template-preview';
 
 const SPEEDS = [
   { key: 'any', label: 'Любой темп' },
@@ -62,9 +63,7 @@ export default function Discover() {
     featuredScroll.current?.scrollTo({ x: next * (featuredCardWidth + 2), y: 0, animated: true });
   }, [activeFeaturedIndex, featured.length, featuredCardWidth]);
   const previewUri = activeFeatured?.videoUri
-    ? Platform.OS === 'web'
-      ? activeFeatured.videoUri.replace(/\/video\.mp4$/, '/preview.webm')
-      : activeFeatured.videoUri.replace(/\/video\.mp4$/, '/preview.mp4')
+    ? templatePreviewCandidates(activeFeatured.videoUri)[0]
     : null;
   const videoPlayer = useVideoPlayer(null, (player) => {
     player.loop = true;

@@ -1,8 +1,8 @@
 import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { VideoView, useVideoPlayer } from 'expo-video';
-import React, { useEffect, useState } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { Bouncy } from '@/components/ui';
 import { F } from '@/constants/fonts';
 import {
@@ -10,27 +10,43 @@ import {
   MAX_OUTPUT_SECONDS, MAX_REFERENCE_IMAGES, estimateGenerationCost,
 } from '@/constants/generation';
 import { useColors } from '@/hooks/useColors';
+import { templatePreviewCandidates } from '@/lib/template-preview';
 
 export const fmtSec = (s: number) => `${Number(s.toFixed(2)).toString().replace('.', ',')} сек`;
 export const fmtUsd = (v: number) => `$${v.toFixed(2)}`;
 export const getModel = (id?: GenerationModel) => GENERATION_MODELS.find((m) => m.id === id);
 
 export function SourcePreview({ uri, height = 300 }: { uri: string; height?: number }) {
+  return <PreviewSession key={uri} uri={uri} height={height} />;
+}
+
+function PreviewSession({ uri, height }: { uri: string; height: number }) {
+  const candidates = useMemo(() => templatePreviewCandidates(uri), [uri]);
+  const [attempt, setAttempt] = useState(0);
+  const [retry, setRetry] = useState(0);
+  return <PreviewPlayer key={`${attempt}:${retry}`} playbackUri={candidates[attempt]} height={height}
+    onFallback={attempt + 1 < candidates.length ? () => setAttempt(attempt + 1) : undefined}
+    onRetry={() => { setAttempt(0); setRetry((n) => n + 1); }} />;
+}
+
+function PreviewPlayer({ playbackUri, height, onFallback, onRetry }: {
+  playbackUri: string; height: number; onFallback?: () => void; onRetry: () => void;
+}) {
   const c = useColors();
-  // Preview-only alternative: draft/provider input keeps the original MP4 URI.
-  const playbackUri = Platform.OS === 'web' && uri.includes('/api/dance-templates/')
-    ? uri.replace(/\/video\.mp4$/, '/preview.webm')
-    : uri;
   const player = useVideoPlayer(playbackUri, (p) => { p.loop = false; p.muted = false; });
   const [failed, setFailed] = useState(false);
   const [playing, setPlaying] = useState(false);
   useEffect(() => {
-    setFailed(player.status === 'error');
+    const handleStatus = (status: string) => {
+      if (status === 'error' && onFallback) { onFallback(); return; }
+      setFailed(status === 'error');
+    };
+    handleStatus(player.status);
     setPlaying(player.playing);
-    const subscription = player.addListener('statusChange', ({ status }) => setFailed(status === 'error'));
+    const subscription = player.addListener('statusChange', ({ status }) => handleStatus(status));
     const playingSubscription = player.addListener('playingChange', ({ isPlaying }) => setPlaying(isPlaying));
     return () => { subscription.remove(); playingSubscription.remove(); };
-  }, [player]);
+  }, [player, onFallback]);
   return (
     <View style={[s.video, { height, borderColor: c.border, backgroundColor: c.stage }]}>
       <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="contain" nativeControls />
@@ -40,8 +56,8 @@ export function SourcePreview({ uri, height = 300 }: { uri: string; height?: num
         <Text style={{ color: c.foreground, fontFamily: F.bodyBold }}>{playing ? 'Пауза' : 'Смотреть'}</Text>
       </Bouncy>}
       {failed && <View style={[StyleSheet.absoluteFill, { backgroundColor: c.stage, padding: 20, alignItems: 'center', justifyContent: 'center', gap: 12 }]}>
-        <Text style={{ color: c.stageForeground, fontFamily: F.bodyBold, textAlign: 'center' }}>Не удалось загрузить видео. Проверь подключение.</Text>
-        <Bouncy onPress={() => { setFailed(false); void player.replaceAsync(playbackUri).catch(() => setFailed(true)); }} style={{ backgroundColor: c.accent, padding: 12, borderRadius: 12 }}>
+        <Text style={{ color: c.stageForeground, fontFamily: F.bodyBold, textAlign: 'center' }}>Не удалось воспроизвести видео. Файл недоступен или его формат не поддерживается этим устройством.</Text>
+        <Bouncy onPress={onRetry} style={{ backgroundColor: c.accent, padding: 12, borderRadius: 12 }}>
           <Text style={{ color: c.foreground, fontFamily: F.bodyBold }}>Повторить</Text>
         </Bouncy>
       </View>}
