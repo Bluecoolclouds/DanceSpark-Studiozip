@@ -166,7 +166,7 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
             <Feather name="rotate-ccw" size={15} color={c.mutedForeground} />
           </Bouncy>
         </View>
-        {compactRow('video', 'video', 'Добавь видео для переноса движений', source ? `${isOriginal ? 'Видео танца' : 'Твоё видео'} · ${source.seconds == null ? 'длительность неизвестна' : fmtSec(source.seconds)}` : 'До 1 видео')}
+        {compactRow('video', 'video', 'Добавь видео для переноса движений', source ? `${isOriginal ? `Шаблон «${t.title}»` : 'Твоё видео'} · ${source.seconds == null ? 'длительность неизвестна' : fmtSec(source.seconds)}` : 'До 1 видео')}
         {expanded === 'video' && <View style={[styles.expandedContent, { backgroundColor: c.card, borderColor: c.border }]}>
           {source ? <View style={{ gap: 8 }}>
             <SourcePreview key={source.uri} uri={source.uri} height={wide ? 220 : 190} />
