@@ -5,6 +5,7 @@ import {
   submitDanceVideo,
   getDanceVideoStatus,
   VideoProviderNotConfiguredError,
+  VideoSubmissionUnknownError,
 } from "../src/lib/video-generation.ts";
 
 // Dummy credentials and HTTP stubs only: no provider requests or paid generations.
@@ -124,9 +125,21 @@ test("unknown state or missing/unsafe output remains an error, not a fake comple
 
 test("ambiguous submission timeout warns about duplicates and never retries automatically", async (t) => {
   const calls = stub(t, [json(uploadHandle), new Response(null), new Error("Timeout")]);
-  await assert.rejects(submitDanceVideo(input), /не оплатить дубликат/);
+  await assert.rejects(submitDanceVideo(input), VideoSubmissionUnknownError);
   assert.equal(calls.length, 3);
 });
+
+for (const response of [
+  () => json({ status: "queued" }),
+  () => new Response("invalid-json", { status: 200 }),
+  () => json({ detail: "unknown acceptance" }, 500),
+]) {
+  test("unconfirmed paid submission retains ambiguous classification without retry", async (t) => {
+    const calls = stub(t, [json(uploadHandle), new Response(null), response()]);
+    await assert.rejects(submitDanceVideo(input), VideoSubmissionUnknownError);
+    assert.equal(calls.length, 3);
+  });
+}
 
 test("invalid images and request IDs are rejected without network requests", async (t) => {
   const calls = stub(t, []);

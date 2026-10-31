@@ -1,6 +1,6 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db, danceJobs } from "@workspace/db";
-import { assertVideoProviderConfigured, getDanceVideoStatus, submitDanceVideo } from "./video-generation";
+import { getDanceVideoStatus, submitDanceVideo, VideoSubmissionUnknownError } from "./video-generation";
 import { reserveGeneration, beginGeneration, finishGeneration, GenerationPolicyError } from "./generation-governance";
 import type { VideoGenerationInput } from "@workspace/api-zod";
 
@@ -11,7 +11,6 @@ export class VideoNotFoundError extends Error {
 }
 
 export async function createOwnedGeneration(ownerId: string, input: VideoGenerationInput) {
-  assertVideoProviderConfigured();
   // Shared with the admin app: subscription, block, pause, budget, quota and
   // concurrency checks are atomic. Never submit again on an idempotent replay.
   const reservation = await reserveGeneration({
@@ -24,14 +23,18 @@ export async function createOwnedGeneration(ownerId: string, input: VideoGenerat
     await finishGeneration(reservation.id, "failed", "cancelled");
     throw new GenerationPolicyError("generation_paused", 503);
   }
+  let acceptedByProvider = false;
   try {
     const provider = await submitDanceVideo(input);
+    acceptedByProvider = true;
     await db.update(danceJobs)
       .set({ providerRequestId: provider.requestId })
-      .where(eq(danceJobs.id, reservation.id));
+      .where(and(eq(danceJobs.id, reservation.id), inArray(danceJobs.status, ["queued", "running"]), isNull(danceJobs.providerRequestId)));
     return { requestId: reservation.id };
   } catch (error) {
-    await finishGeneration(reservation.id, "failed", "provider_error");
+    await finishGeneration(reservation.id, "failed",
+      acceptedByProvider || error instanceof VideoSubmissionUnknownError ? "submission_unknown" : "provider_error");
+    if (acceptedByProvider) throw new VideoSubmissionUnknownError();
     throw error;
   }
 }
@@ -47,10 +50,9 @@ export async function getOwnedGeneration(ownerId: string, requestId: string) {
     return { ...base, status: "failed" as const, error: "Генерация не выполнена. Проверь запросы в Higgsfield Console перед повторной платной попыткой." };
   }
   if (!generation.providerRequestId) {
-    if (Date.now() - generation.createdAt.getTime() > 120000) {
-      await finishGeneration(generation.id, "failed", "timeout");
-      return { ...base, status: "failed" as const, error: "Отправка прервалась. Проверь запросы в Higgsfield Console." };
-    }
+    // Recovery owns the age threshold and conditional transition. A status read
+    // must not race an upload or mutate a completed record.
+    if (generation.status === "succeeded") return { ...base, status: "completed" as const, error: null };
     return { ...base, status: "queued" as const, error: null };
   }
   const status = await getDanceVideoStatus(generation.providerRequestId);

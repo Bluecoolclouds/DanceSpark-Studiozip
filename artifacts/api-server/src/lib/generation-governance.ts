@@ -49,7 +49,7 @@ export async function reserveGeneration(input: {
     const { rows: [usage] } = await client.query(`
       SELECT count(*) FILTER (WHERE status IN ('queued','running'))::int AS active,
         count(*) FILTER (WHERE user_id=$1 AND status IN ('queued','running'))::int AS user_active,
-        count(*) FILTER (WHERE user_id=$1 AND status!='failed' AND
+        count(*) FILTER (WHERE user_id=$1 AND (status!='failed' OR error_code='submission_unknown') AND
           created_at >= date_trunc('day',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')::int AS today,
         COALESCE(sum(estimated_cost_rub) FILTER (WHERE
           created_at >= date_trunc('day',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'),0)::float AS spend
@@ -99,11 +99,11 @@ export async function beginGeneration(id: string): Promise<boolean> {
   } finally { client.release(); }
 }
 
-/** Terminal transitions are idempotent. Failed attempts release daily quota, not estimated spend. */
-export async function finishGeneration(id: string, status: "succeeded" | "failed", errorCode?: "provider_error" | "timeout" | "cancelled"): Promise<boolean> {
+/** Ambiguous submissions retain daily quota; every attempt retains estimated spend. */
+export async function finishGeneration(id: string, status: "succeeded" | "failed", errorCode?: "provider_error" | "timeout" | "cancelled" | "submission_unknown"): Promise<boolean> {
   if (!["succeeded", "failed"].includes(status)) throw new GenerationPolicyError("invalid_status", 400);
   const safeCode = status === "failed"
-    ? (["provider_error", "timeout", "cancelled"].includes(errorCode ?? "") ? errorCode : "provider_error")
+    ? (["provider_error", "timeout", "cancelled", "submission_unknown"].includes(errorCode ?? "") ? errorCode : "provider_error")
     : null;
   const result = await pool.query(
     "UPDATE df_jobs SET status=$2,error_code=$3,completed_at=now() WHERE id=$1 AND status IN ('queued','running') RETURNING id",

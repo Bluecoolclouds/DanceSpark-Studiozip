@@ -37,7 +37,8 @@ export const userProjection = `
   a.daily_limit_override AS "dailyLimitOverride",a.created_at AS "createdAt",
   (SELECT count(*)::int FROM df_jobs j WHERE j.user_id=a.id) AS "totalGenerations",
   (SELECT count(*)::int FROM df_jobs j WHERE j.user_id=a.id AND
-    j.status != 'failed' AND j.created_at >= date_trunc('day',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')
+    (j.status != 'failed' OR j.error_code='submission_unknown') AND
+    j.created_at >= date_trunc('day',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')
     AS "todayGenerations"`;
 
 export function serializeUser(row: Record<string, unknown>) {

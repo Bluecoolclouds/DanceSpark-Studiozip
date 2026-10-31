@@ -20,6 +20,14 @@ export class VideoProviderError extends Error {
   }
 }
 
+/** The paid POST may have reached the provider. Never retry or refund quota automatically. */
+export class VideoSubmissionUnknownError extends VideoProviderError {
+  constructor() {
+    super("Higgsfield не подтвердил запуск. Проверь запросы в Higgsfield Console перед повторной платной попыткой.");
+    this.name = "VideoSubmissionUnknownError";
+  }
+}
+
 const stylePrompts: Record<VideoGenerationInput["styleId"], string> = {
   "bubblegum-rush":
     "An energetic K-pop chorus dance with sharp arm accents, a shoulder wave, a cross-step turn, and a joyful star pose. Bright, playful stage presence.",
@@ -187,19 +195,25 @@ export async function submitDanceVideo(input: VideoGenerationInput): Promise<{
     "Show the full body throughout the vertical video; use natural, anatomically correct movement and smooth continuous choreography.",
     "One dancer only, fixed camera, no cuts, no extra people, no text, no logos.",
   ].join(" ");
-  const queued = await apiRequest(VIDEO_ENDPOINT, credentials, {
-    image_url: imageUrl,
-    prompt,
-    duration: input.duration,
-    resolution: "720p",
-    generate_audio: false,
-    negative_prompt:
-      "extra limbs, extra people, face changes, identity changes, warped hands, distorted body, camera cuts, blurry image, text, logos",
-  });
-  if (typeof queued.request_id !== "string" || !/^[A-Za-z0-9_-]{1,100}$/.test(queued.request_id)) {
-    throw new VideoProviderError("Higgsfield не вернул номер запроса. Проверь Console перед повторной отправкой.");
+  // Everything before this point is a proven pre-submission failure. Once the
+  // paid POST starts, even a transport/response error cannot prove non-acceptance.
+  try {
+    const queued = await apiRequest(VIDEO_ENDPOINT, credentials, {
+      image_url: imageUrl,
+      prompt,
+      duration: input.duration,
+      resolution: "720p",
+      generate_audio: false,
+      negative_prompt:
+        "extra limbs, extra people, face changes, identity changes, warped hands, distorted body, camera cuts, blurry image, text, logos",
+    });
+    if (typeof queued.request_id !== "string" || !/^[A-Za-z0-9_-]{1,100}$/.test(queued.request_id)) {
+      throw new VideoSubmissionUnknownError();
+    }
+    return { requestId: queued.request_id };
+  } catch {
+    throw new VideoSubmissionUnknownError();
   }
-  return { requestId: queued.request_id };
 }
 
 export async function getDanceVideoStatus(requestId: string): Promise<{
