@@ -1,5 +1,4 @@
 import { Feather } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -17,7 +16,6 @@ import { useDance } from '@/context/DanceContext';
 import { ColorScope, useColors } from '@/hooks/useColors';
 
 const N = colors.neon;
-const HERO = require('@/assets/images/dance-hero.png');
 
 const MAX_PROMPT = 10000;
 interface SourceVideo { uri: string; seconds: number | null }
@@ -264,7 +262,7 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
             <FavButton id={t.id} size={44} />
           </View>
 
-          <View style={[styles.hero, { minHeight: wide ? 260 : 210 }]}>
+          <View style={styles.hero}>
             <View style={{ flex: 1, gap: 8, zIndex: 2 }}>
               <View style={styles.logo}>
                 <Text style={[styles.logoA, { color: c.foreground }]}>DANCE</Text>
@@ -276,10 +274,6 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
               </View>
               <Text style={[styles.title, { color: c.foreground }]} numberOfLines={2}>{t.title}</Text>
               <Text style={[styles.sub, { color: c.mutedForeground }]} numberOfLines={2}>{t.tagline}</Text>
-            </View>
-            <View style={[styles.dancerWrap, { width: wide ? 230 : 140, height: wide ? 270 : 200 }]}>
-              <View style={[styles.dancerSlash, { backgroundColor: N.pink }]} />
-              <Image source={t.image ?? HERO} style={styles.dancer} contentFit="cover" />
             </View>
           </View>
 
@@ -336,9 +330,6 @@ const styles = StyleSheet.create({
   logo: { transform: [{ rotate: '-6deg' }], alignSelf: 'flex-start', marginBottom: 6 },
   logoA: { fontFamily: F.display, fontSize: 30, lineHeight: 30, letterSpacing: -1 },
   logoB: { fontFamily: F.display, fontSize: 30, lineHeight: 30, letterSpacing: -1, marginLeft: 22 },
-  dancerWrap: { alignItems: 'center', justifyContent: 'flex-end', overflow: 'hidden' },
-  dancerSlash: { position: 'absolute', width: '140%', height: 60, bottom: 50, transform: [{ rotate: '-18deg' }], opacity: 0.8 },
-  dancer: { width: '100%', height: '100%', borderTopLeftRadius: 120, borderTopRightRadius: 120 },
   slab: { position: 'absolute', height: 140, transform: [{ rotate: '-28deg' }] },
   go: { minHeight: 60, borderRadius: 30, overflow: 'hidden', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 20 },
   goText: { fontFamily: F.display, fontSize: 18, flexShrink: 1 },
