@@ -171,7 +171,7 @@ const s = StyleSheet.create({
   modelTitle: { fontFamily: F.display, fontSize: 15 },
   modelSub: { fontFamily: F.bodyBold, fontSize: 12, lineHeight: 16 },
   qRow: { flexDirection: 'row', gap: 6 },
-  q: { flex: 1, borderRadius: 6, borderWidth: 1, paddingVertical: 10, alignItems: 'center' },
+  q: { flex: 1, minHeight: 44, borderRadius: 6, borderWidth: 1, paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
   qText: { fontFamily: F.display, fontSize: 15 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   ref: { width: 74, height: 96, borderRadius: 4, borderWidth: 1, overflow: 'hidden' },

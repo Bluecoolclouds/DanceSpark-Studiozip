@@ -1,11 +1,11 @@
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Linking, Platform, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CostPreview, QualityPicker, RefCounter, RefGrid, SourcePreview, fmtSec, getModel } from '@/components/generation-form';
+import { CostPreview, QualityPicker, RefGrid, SourcePreview, fmtSec, getModel } from '@/components/generation-form';
 import { Bouncy, EmptyState, FavButton } from '@/components/ui';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import colors from '@/constants/colors';
@@ -44,6 +44,7 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
   const [resolution, setResolution] = useState<GenerationResolution>('720p');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [expanded, setExpanded] = useState<'video' | 'images' | 'prompt' | 'quality' | null>(null);
 
   if (!t) {
     return (
@@ -105,6 +106,7 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
 
   const reset = () => {
     setModel('object-swap'); setSource(original); setRefs([]); setPrompt(''); setResolution('720p'); setError(null);
+    setExpanded(null);
   };
 
   const blocker = !source ? 'Добавь видео'
@@ -128,96 +130,99 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
 
   const panel = [styles.panel, { backgroundColor: c.card, borderColor: c.glassEdge }];
 
+  const toggle = (key: 'video' | 'images' | 'prompt' | 'quality') => setExpanded((value) => value === key ? null : key);
+  const compactRow = (key: 'video' | 'images' | 'prompt', icon: React.ComponentProps<typeof Feather>['name'], title: string, subtitle: string) => {
+    const active = expanded === key;
+    return (
+      <Bouncy testID={`input-row-${key}`} accessibilityLabel={`${title}. ${subtitle}${active ? ', свернуть' : ', открыть'}`}
+        onPress={() => toggle(key)} style={[styles.compactRow, key === 'prompt' && styles.promptRow, { backgroundColor: c.muted, borderColor: c.border }]}>
+        <View style={[styles.rowIcon, { backgroundColor: c.card }]}><Feather name={icon} size={18} color={c.foreground} /></View>
+        <View style={styles.rowCopy}>
+          <Text style={[styles.rowTitle, { color: c.foreground }]}>{title}</Text>
+          <Text numberOfLines={1} style={[styles.rowSubtitle, { color: c.mutedForeground }]}>{subtitle}</Text>
+        </View>
+        <Feather name={active ? 'chevron-up' : 'chevron-right'} size={19} color={c.mutedForeground} />
+      </Bouncy>
+    );
+  };
   const input = (
-    <View style={[panel, { gap: 14 }]}>
-      <View style={styles.panelHead}>
-        <Text style={[styles.panelTitle, { color: c.foreground }]}>Ввод</Text>
-        <View style={{ flex: 1 }} />
-        <Bouncy testID="reset-form" onPress={reset} style={[styles.ghost, { borderColor: c.border }]}>
-          <Feather name="rotate-ccw" size={14} color={c.foreground} />
-          <Text style={[styles.ghostText, { color: c.foreground }]}>Сбросить</Text>
-        </Bouncy>
-      </View>
-
+    <View style={{ gap: 10 }}>
       <View accessibilityRole="radiogroup" style={[styles.seg, { backgroundColor: c.muted, borderColor: c.border }]}>
         {GENERATION_MODELS.map((x) => {
           const on = x.id === model;
-          return (
-            <Bouncy key={x.id} testID={`model-${x.id}`} accessibilityLabel={`${x.id === 'object-swap' ? 'Замена объекта' : 'Перенос движения'}${on ? ', выбрано' : ''}`} onPress={() => setModel(x.id)} scaleTo={0.97}
-              style={[styles.segItem, on && { backgroundColor: x.id === 'object-swap' ? N.pink : N.violet, borderColor: 'transparent' }]}>
-              <Text style={[styles.segText, { color: on ? c.primaryForeground : c.foreground }]}>{x.id === 'object-swap' ? 'Замена объекта' : 'Перенос движения'}</Text>
-            </Bouncy>
-          );
+          return <Bouncy key={x.id} testID={`model-${x.id}`} accessibilityLabel={`${x.id === 'object-swap' ? 'Замена объекта' : 'Перенос движения'}${on ? ', выбрано' : ''}`} onPress={() => setModel(x.id)} scaleTo={0.97}
+            style={[styles.segItem, on && { backgroundColor: x.id === 'object-swap' ? N.pink : N.violet, borderColor: 'transparent' }]}>
+            <Text style={[styles.segText, { color: on ? c.primaryForeground : c.foreground }]}>{x.id === 'object-swap' ? 'Замена объекта' : 'Перенос движения'}</Text>
+          </Bouncy>;
         })}
       </View>
-      <Text style={[styles.hint, { color: c.mutedForeground, marginTop: -6 }]}>{m.subtitle}</Text>
-
-      <Field label="Видео-референс" right={<Text style={[styles.count, { color: c.mutedForeground }]}>{source ? 1 : 0} / 1</Text>}>
-        {source ? (
-          <View style={{ gap: 8 }}>
-            <SourcePreview key={source.uri} uri={source.uri} height={wide ? 280 : 240} />
+      <Text style={[styles.hint, { color: c.mutedForeground, marginTop: -5 }]}>{m.subtitle}</Text>
+      <View style={[panel, { padding: 10, gap: 8 }]}>
+        <View style={styles.panelHead}>
+          <Text style={[styles.panelTitle, { color: c.foreground, fontSize: 18 }]}>Ввод</Text>
+          <View style={{ flex: 1 }} />
+          <Feather name="info" size={16} color={c.mutedForeground} />
+          <Bouncy testID="reset-form" accessibilityLabel="Сбросить настройки" onPress={reset} style={styles.resetIcon}>
+            <Feather name="rotate-ccw" size={15} color={c.mutedForeground} />
+          </Bouncy>
+        </View>
+        {compactRow('video', 'video', 'Добавь видео для переноса движений', source ? `${isOriginal ? 'Видео танца' : 'Твоё видео'} · ${source.seconds == null ? 'длительность неизвестна' : fmtSec(source.seconds)}` : 'До 1 видео')}
+        {expanded === 'video' && <View style={[styles.expandedContent, { backgroundColor: c.card, borderColor: c.border }]}>
+          {source ? <View style={{ gap: 8 }}>
+            <SourcePreview key={source.uri} uri={source.uri} height={wide ? 220 : 190} />
             <View style={styles.row}>
-              <Text style={[styles.meta, { color: c.foreground }]} numberOfLines={1}>
-                {isOriginal ? `Танец «${t.title}» · ` : 'Твоё видео · '}
-                {source.seconds == null ? 'длительность неизвестна' : fmtSec(source.seconds)}
-              </Text>
+              <Text style={[styles.meta, { color: c.foreground }]} numberOfLines={2}>{isOriginal ? `Танец «${t.title}» · ` : 'Твоё видео · '}{source.seconds == null ? 'длительность неизвестна' : fmtSec(source.seconds)}</Text>
               {!isOriginal && original && <Sq id="restore-video" icon="corner-up-left" label="Вернуть видео танца" onPress={() => { setSource(original); setError(null); }} />}
               <Sq id="replace-video" icon="refresh-cw" label="Заменить видео" onPress={pickVideo} />
               <Sq id="remove-video" icon="x" label="Убрать видео" onPress={() => setSource(null)} />
             </View>
             {source.seconds == null && <Text style={[styles.warn, { color: c.destructive }]}>Галерея не сообщила длину ролика — выбери другое видео.</Text>}
-          </View>
-        ) : (
-          <View style={{ gap: 8 }}>
-            <Bouncy testID="pick-video" onPress={pickVideo} style={[styles.drop, { borderColor: N.cyan, backgroundColor: c.muted }]}>
-              <View style={[styles.dropIcon, { backgroundColor: c.muted }]}><Feather name="video" size={22} color={N.cyan} /></View>
-              <Text style={[styles.dropTitle, { color: c.foreground }]}>Добавить видео</Text>
-              <Text style={[styles.hint, { color: c.mutedForeground }]}>Только одно, движения возьмём из него</Text>
+          </View> : <View style={{ gap: 8 }}>
+            <Bouncy testID="pick-video" onPress={pickVideo} style={[styles.pick, { minHeight: 48, borderColor: c.border, backgroundColor: c.muted }]}>
+              <Feather name="upload" size={17} color={c.foreground} /><Text style={[styles.pickText, { color: c.foreground }]}>Выбрать видео</Text>
             </Bouncy>
             {original && <Bouncy testID="restore-video" onPress={() => setSource(original)} style={[styles.ghost, { borderColor: c.border, alignSelf: 'flex-start' }]}>
-              <Feather name="corner-up-left" size={14} color={c.foreground} />
-              <Text style={[styles.ghostText, { color: c.foreground }]}>Вернуть видео «{t.title}»</Text>
+              <Feather name="corner-up-left" size={14} color={c.foreground} /><Text style={[styles.ghostText, { color: c.foreground }]}>Вернуть видео «{t.title}»</Text>
             </Bouncy>}
             {!original && <Text style={[styles.hint, { color: c.mutedForeground }]}>У этого танца нет исходного ролика — загрузи своё видео.</Text>}
+          </View>}
+        </View>}
+        {compactRow('images', 'image', 'Добавь персонажей, товары или одежду', `${refs.length ? `${refs.length} из ${MAX_REFERENCE_IMAGES} добавлено` : `До ${MAX_REFERENCE_IMAGES} изображений`}`)}
+        {expanded === 'images' && <View style={[styles.expandedContent, { backgroundColor: c.card, borderColor: c.border }]}>
+          <View style={{ gap: 8 }}>
+            {refs.length > 0 && <RefGrid uris={refs} onRemove={(i) => setRefs((p) => p.filter((_, j) => j !== i))} />}
+            <View style={styles.row}>
+              <Bouncy testID="pick-library" disabled={refs.length >= MAX_REFERENCE_IMAGES} onPress={pickImages} style={[styles.pick, { borderColor: c.border, backgroundColor: c.muted, opacity: refs.length >= MAX_REFERENCE_IMAGES ? 0.5 : 1 }]}>
+                <Feather name="image" size={18} color={c.foreground} /><Text style={[styles.pickText, { color: c.foreground }]}>Галерея</Text>
+              </Bouncy>
+              {Platform.OS !== 'web' && <Bouncy testID="pick-camera" disabled={refs.length >= MAX_REFERENCE_IMAGES} onPress={pickCamera} style={[styles.pick, { borderColor: c.border, backgroundColor: c.muted, opacity: refs.length >= MAX_REFERENCE_IMAGES ? 0.5 : 1 }]}>
+                <Feather name="camera" size={18} color={c.foreground} /><Text style={[styles.pickText, { color: c.foreground }]}>Камера</Text>
+              </Bouncy>}
+            </View>
+            <Text style={[styles.hint, { color: c.mutedForeground }]}>До {MAX_REFERENCE_IMAGES} фото. Первое станет обложкой черновика.</Text>
           </View>
-        )}
-      </Field>
-
-      <Field label={model === 'object-swap' ? 'Персонажи, товары, одежда' : 'Кто будет танцевать'} right={<RefCounter n={refs.length} />}>
-        <View style={{ gap: 8 }}>
-          {refs.length > 0 && <RefGrid uris={refs} onRemove={(i) => setRefs((p) => p.filter((_, j) => j !== i))} />}
-          <View style={styles.row}>
-            <Bouncy testID="pick-library" disabled={refs.length >= MAX_REFERENCE_IMAGES} onPress={pickImages}
-              style={[styles.pick, { borderColor: c.border, backgroundColor: c.muted, opacity: refs.length >= MAX_REFERENCE_IMAGES ? 0.5 : 1 }]}>
-              <Feather name="image" size={18} color={c.foreground} />
-              <Text style={[styles.pickText, { color: c.foreground }]}>Галерея</Text>
-            </Bouncy>
-            {Platform.OS !== 'web' && <Bouncy testID="pick-camera" disabled={refs.length >= MAX_REFERENCE_IMAGES} onPress={pickCamera}
-              style={[styles.pick, { borderColor: c.border, backgroundColor: c.muted, opacity: refs.length >= MAX_REFERENCE_IMAGES ? 0.5 : 1 }]}>
-              <Feather name="camera" size={18} color={c.foreground} />
-              <Text style={[styles.pickText, { color: c.foreground }]}>Камера</Text>
-            </Bouncy>}
-          </View>
-          <Text style={[styles.hint, { color: c.mutedForeground }]}>До {MAX_REFERENCE_IMAGES} фото. Первое станет обложкой черновика.</Text>
+        </View>}
+        {compactRow('prompt', 'star', 'Промпт', prompt.trim() ? prompt.trim() : 'Опиши новую сцену')}
+        {expanded === 'prompt' && <View style={[styles.expandedContent, { backgroundColor: c.card, borderColor: c.border, gap: 6 }]}>
+          <TextInput testID="prompt-input" value={prompt} onChangeText={setPrompt} maxLength={MAX_PROMPT} multiline
+            placeholder={model === 'object-swap' ? 'Опиши новую сцену: «заменить куртку на красную»' : 'Необязательно: «танцует на крыше на закате»'}
+            placeholderTextColor={c.mutedForeground} style={[styles.input, { borderColor: c.border, backgroundColor: c.muted, color: c.foreground }]} />
+          <Text style={[styles.count, { color: c.mutedForeground, textAlign: 'right' }]}>{prompt.length} / {MAX_PROMPT}</Text>
+        </View>}
+        <View style={styles.qualityArea}>
+          <Bouncy testID="quality-toggle" accessibilityLabel={`Качество ${resolution}${expanded === 'quality' ? ', закрыть выбор' : ', изменить'}`} onPress={() => toggle('quality')}
+            style={[styles.qualityPill, { backgroundColor: c.muted, borderColor: c.border }]}>
+            <Ionicons name="diamond-outline" size={15} color={c.foreground} />
+            <Text style={[styles.qualityText, { color: c.foreground }]}>{resolution}</Text>
+            <Feather name={expanded === 'quality' ? 'chevron-up' : 'chevron-down'} size={15} color={c.mutedForeground} />
+          </Bouncy>
+          {expanded === 'quality' && <View style={[styles.qualityPopup, { backgroundColor: c.card, borderColor: c.border }]}>
+            <QualityPicker value={resolution} onChange={(value) => { setResolution(value); setExpanded(null); }} />
+          </View>}
         </View>
-      </Field>
-
-      <Field label="Подсказка" right={<Text style={[styles.count, { color: c.mutedForeground }]}>{prompt.length} / {MAX_PROMPT}</Text>}>
-        <TextInput
-          testID="prompt-input" value={prompt} onChangeText={setPrompt} maxLength={MAX_PROMPT} multiline
-          placeholder={model === 'object-swap' ? 'Опиши новую сцену: «заменить куртку на красную»' : 'Необязательно: «танцует на крыше на закате»'}
-          placeholderTextColor={c.mutedForeground}
-          style={[styles.input, { borderColor: c.border, backgroundColor: c.muted, color: c.foreground }]}
-        />
-      </Field>
-
-      <Field label="Качество">
-        <QualityPicker value={resolution} onChange={setResolution} />
-      </Field>
+      </View>
       <CostPreview resolution={resolution} seconds={source?.seconds} />
-      <Text style={[styles.hint, { color: c.mutedForeground }]}>
-        Модель берёт первые {MAX_OUTPUT_SECONDS} сек исходного видео и оставляет его оригинальный звук.
-      </Text>
+      <Text style={[styles.hint, { color: c.mutedForeground }]}>Модель берёт первые {MAX_OUTPUT_SECONDS} сек исходного видео и оставляет его оригинальный звук.</Text>
     </View>
   );
 
@@ -342,16 +347,28 @@ const styles = StyleSheet.create({
   panel: { borderWidth: 1, borderRadius: 22, padding: 16 },
   panelHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   panelTitle: { fontFamily: F.display, fontSize: 22 },
+  compactRow: { minHeight: 68, borderRadius: 16, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 10, paddingVertical: 8 },
+  promptRow: { minHeight: 50 },
+  rowIcon: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  rowCopy: { flex: 1, minWidth: 0, gap: 2 },
+  rowTitle: { fontFamily: F.bodyHeavy, fontSize: 13, lineHeight: 17, flexShrink: 1 },
+  rowSubtitle: { fontFamily: F.body, fontSize: 11, lineHeight: 14 },
+  expandedContent: { borderWidth: 1, borderRadius: 14, padding: 10, gap: 8 },
+  resetIcon: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22 },
+  qualityArea: { alignSelf: 'flex-start', position: 'relative' },
+  qualityPill: { minHeight: 44, borderRadius: 999, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10 },
+  qualityText: { fontFamily: F.display, fontSize: 13 },
+  qualityPopup: { position: 'absolute', zIndex: 3, top: 44, left: 0, width: 220, borderWidth: 1, borderRadius: 14, padding: 8 },
   label: { fontFamily: F.bodyHeavy, fontSize: 14, flex: 1 },
   count: { fontFamily: F.bodyHeavy, fontSize: 12 },
   ghost: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, minHeight: 36 },
   ghostText: { fontFamily: F.bodyBold, fontSize: 13 },
   seg: { flexDirection: 'row', borderWidth: 1, borderRadius: 999, padding: 3, gap: 3 },
-  segItem: { flex: 1, minHeight: 42, borderRadius: 999, borderWidth: 1, borderColor: 'transparent', alignItems: 'center', justifyContent: 'center' },
+  segItem: { flex: 1, minHeight: 44, borderRadius: 999, borderWidth: 1, borderColor: 'transparent', alignItems: 'center', justifyContent: 'center' },
   segText: { fontFamily: F.display, fontSize: 14 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   meta: { flex: 1, fontFamily: F.bodyHeavy, fontSize: 13 },
-  sq: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  sq: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   drop: { height: 150, borderRadius: 18, borderWidth: 1, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', gap: 4 },
   dropTitle: { fontFamily: F.display, fontSize: 16 },
   pick: { flex: 1, minHeight: 52, borderRadius: 16, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },

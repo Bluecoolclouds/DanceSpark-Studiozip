@@ -53,6 +53,12 @@ For the trend page's visual appearance, the user first supplied a dark neon Just
 
 **How to apply:** Use Danceflow branding and Russian labels, preserve real form behavior, and do not copy the reference's example output as a generated result.
 
+The user wants the input block to match the supplied compact playground reference structurally, not its dark colors: three icon rows for video, images and prompt, then a small quality selector.
+
+**Why:** The user explicitly clarified “точно такой же блок (не цвета) а просто структуру сделай”.
+
+**How to apply:** Keep the light palette and compact collapsed rows rather than returning to an always-expanded video player and a long form.
+
 The user also wants the trend page itself to follow the Object Swap playground, with the same input fields, rather than just information about the dance.
 
 **Why:** They explicitly supplied the Genjutsu Light Object Swap playground as the reference for improving the trend page.
