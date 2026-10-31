@@ -29,6 +29,7 @@ CLOUDFLARE_R2_BUCKET_NAME = "danceflow-media"
 [userenv.development]
 LOGTO_ENDPOINT = "https://hkbe8z.logto.app/"
 LOGTO_WEB_APP_ID = "fht56le86bfpe7iglau3d"
+LOGTO_ADMIN_APP_ID = "fht56le86bfpe7iglau3d"
 
 [nix]
 channel = "stable-25_05"
