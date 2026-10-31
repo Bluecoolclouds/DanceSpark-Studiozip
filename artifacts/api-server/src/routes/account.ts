@@ -7,7 +7,7 @@ import { accountSubscription } from "../lib/account-subscription";
 
 const router: IRouter = Router();
 
-// Identity is derived only from Clerk by requireAccount. No client owner/plan input.
+// requireAccount resolves a verified identity to the stable Danceflow account.
 router.get("/account/subscription", requireAccount, async (req, res): Promise<void> => {
   try {
     const identity = res.locals.account as ServerAccount;

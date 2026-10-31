@@ -1,3 +1,6 @@
+import { useLocalSearchParams } from 'expo-router';
+import { useDanceAuth } from '@/lib/dance-auth';
+import { LogtoEntry } from '@/components/LogtoEntry';
 import { useAuth, useSignIn } from '@clerk/expo';
 import { Redirect, router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
@@ -9,6 +12,13 @@ type Step = 'email' | 'code' | 'password' | 'mfa' | 'complete';
 type Factor = 'email_code' | 'totp' | 'backup_code';
 
 export default function ForgotPasswordScreen() {
+  const auth = useDanceAuth();
+  const { legacy } = useLocalSearchParams<{ legacy?: string }>();
+  if (auth.logtoEnabled && legacy !== '1') return <LogtoEntry mode="reset" />;
+  return <LegacyForgotPasswordScreen />;
+}
+
+function LegacyForgotPasswordScreen() {
   const { signIn, fetchStatus } = useSignIn();
   const { isSignedIn } = useAuth();
   const [step, setStep] = useState<Step>('email');

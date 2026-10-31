@@ -22,7 +22,7 @@ import {
   type VideoGenerationInput,
 } from '@workspace/api-client-react';
 
-import { useAuth } from '@clerk/expo';
+import { useDanceAuth } from '@/lib/dance-auth';
 
 export default function DraftScreen() {
   const c = useColors();
@@ -31,7 +31,7 @@ export default function DraftScreen() {
   const { drafts, removeDraft, updateDraft, ready } = useDance();
   const [busy, setBusy] = useState<'save' | 'share' | 'delete' | 'generate' | null>(null);
   const createGeneration = useCreateVideoGeneration();
-  const { isSignedIn } = useAuth();
+  const { isSignedIn } = useDanceAuth();
   const d = drafts.find((x) => x.id === id);
   const t = d ? d.templateSnapshot ?? resolveDraftTemplate(d.templateId) : undefined;
   const m = getModel(d?.model);

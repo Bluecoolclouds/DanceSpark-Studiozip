@@ -31,6 +31,9 @@ LOGTO_ENDPOINT = "https://hkbe8z.logto.app/"
 LOGTO_WEB_APP_ID = "fht56le86bfpe7iglau3d"
 LOGTO_ADMIN_APP_ID = "fht56le86bfpe7iglau3d"
 LOGTO_NATIVE_APP_ID = "fht56le86bfpe7iglau3d"
+DANCEFLOW_WEB_ORIGINS = "https://57ad9b19-0ad7-4d3d-b676-74703a2bbc98-00-1vsk9sv08y9eu.expo.pike.replit.dev,https://57ad9b19-0ad7-4d3d-b676-74703a2bbc98-00-1vsk9sv08y9eu.pike.replit.dev"
+LOGTO_API_RESOURCE = "urn:danceflow:api"
+LOGTO_AUTH_ENABLED = "false"
 
 [nix]
 channel = "stable-25_05"

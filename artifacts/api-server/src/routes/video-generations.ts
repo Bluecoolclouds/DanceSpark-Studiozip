@@ -1,5 +1,4 @@
 import express, { Router, type IRouter } from "express";
-import { getAuth } from "@clerk/express";
 import { randomUUID } from "node:crypto";
 import {
   CreateVideoGenerationBody,
@@ -12,7 +11,7 @@ import {
 import { VideoProviderError, VideoProviderNotConfiguredError } from "../lib/video-generation";
 import { createOwnedGeneration, getOwnedGeneration, findOwnedLightSwapperGeneration, VideoNotFoundError } from "../lib/generation-access";
 import { GenerationPolicyError } from "../lib/generation-governance";
-import { requireAccount } from "../middlewares/admin-auth";
+import { requireAccount, getAccountId } from "../middlewares/admin-auth";
 import { protectAdminMutation } from "../middlewares/admin-auth";
 import { createOwnedLightSwapper } from "../lib/light-swapper";
 import { createOwnedCustomVideoLightSwapper } from "../lib/light-swapper";
@@ -27,7 +26,7 @@ let customVideoUploading: symbol | undefined;
 
 router.get("/light-swapper/generations/by-client/:clientRequestId", requireAccount, async (req, res): Promise<void> => {
   res.setHeader("Cache-Control", "no-store");
-  const ownerId = getAuth(req).userId;
+  const ownerId = getAccountId(res);
   if (!ownerId) { res.status(401).json({ error: "Войди в аккаунт." }); return; }
   const clientId = req.params.clientRequestId;
   if (typeof clientId !== "string" || !/^[A-Za-z0-9_-]{8,150}$/.test(clientId)) {
@@ -43,7 +42,7 @@ router.get("/light-swapper/generations/by-client/:clientRequestId", requireAccou
 });
 
 router.post("/light-swapper/generations", requireAccount, protectAdminMutation, async (req, res): Promise<void> => {
-  const ownerId = getAuth(req).userId;
+  const ownerId = getAccountId(res);
   if (!ownerId) { res.status(401).json({ error: "Войди в аккаунт." }); return; }
   const parsed = CreateLightSwapperGenerationBody.strict().safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Проверь модель, оригинал видео, фотографии и настройки." }); return; }
@@ -97,7 +96,7 @@ router.post("/light-swapper/source-videos", requireAccount, protectAdminMutation
     }
     const durationSeconds = await inspectCustomVideo(req.body);
     const sourceVideoId = randomUUID();
-    await saveOwnedCustomVideo(getAuth(req).userId!, sourceVideoId, req.body);
+    await saveOwnedCustomVideo(getAccountId(res), sourceVideoId, req.body);
     res.status(201).json(UploadLightSwapperSourceVideoResponse.parse({
       sourceVideoId, durationSeconds, sizeBytes: req.body.length,
     }));
@@ -120,7 +119,7 @@ router.post("/light-swapper/source-videos", requireAccount, protectAdminMutation
 });
 
 router.post("/light-swapper/custom-video-generations", requireAccount, protectAdminMutation, async (req, res): Promise<void> => {
-  const ownerId = getAuth(req).userId;
+  const ownerId = getAccountId(res);
   if (!ownerId) { res.status(401).json({ error: "Войди в аккаунт." }); return; }
   const parsed = CreateCustomVideoLightSwapperGenerationBody.strict().safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Проверь видео, фотографии и настройки." }); return; }
@@ -158,7 +157,7 @@ router.post("/light-swapper/custom-video-generations", requireAccount, protectAd
 });
 
 router.post("/video-generations", requireAccount, async (req, res): Promise<void> => {
-  const ownerId = getAuth(req).userId;
+  const ownerId = getAccountId(res);
   if (!ownerId) {
     res.status(401).json({ error: "Войди в аккаунт, чтобы создавать видео." });
     return;
@@ -209,7 +208,7 @@ router.post("/video-generations", requireAccount, async (req, res): Promise<void
 
 router.get("/video-generations/:requestId", async (req, res): Promise<void> => {
   res.setHeader("Cache-Control", "no-store");
-  const ownerId = getAuth(req).userId;
+  const ownerId = getAccountId(res);
   if (!ownerId) {
     res.status(401).json({ error: "Войди в аккаунт, чтобы смотреть своё видео." });
     return;

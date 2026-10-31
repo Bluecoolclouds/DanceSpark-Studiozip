@@ -6,10 +6,12 @@ import accountRouter from "./account";
 import danceTemplateMediaRouter from "./dance-template-media";
 import adminTemplateMediaRouter from "./admin-template-media";
 import catalogueRouter from "./catalogue";
+import authRouter from "./auth";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(authRouter);
 router.use(catalogueRouter);
 router.use(danceTemplateMediaRouter);
 router.use(adminTemplateMediaRouter);

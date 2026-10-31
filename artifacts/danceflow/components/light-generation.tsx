@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { useAuth } from '@clerk/expo';
+import { useDanceAuth } from '@/lib/dance-auth';
 import {
   useCreateCustomVideoLightSwapperGeneration, useCreateLightSwapperGeneration,
   useFindLightSwapperGeneration, useUploadLightSwapperSourceVideo,
@@ -19,7 +19,7 @@ import { photoToDataUrl, readableVideoError } from '@/lib/video-generation';
 /** Mounted only for Light drafts. PixVerse keeps its own submission path. */
 export function LightGeneration({ draft: d }: { draft: Draft }) {
   const c = useColors();
-  const { isSignedIn } = useAuth();
+  const { isSignedIn } = useDanceAuth();
   const { ownerId, persistDraft, updateDraft, draftStorageIssue } = useDance();
   const active = useRef(true);
   const [confirm, setConfirm] = useState(false);

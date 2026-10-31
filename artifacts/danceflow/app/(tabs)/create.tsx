@@ -15,7 +15,7 @@ import { useDance } from '@/context/DanceContext';
 import { useColors } from '@/hooks/useColors';
 import { useCreateVideoGeneration, VideoGenerationInputStyleId, type VideoGenerationInput } from '@workspace/api-client-react';
 import { photoToDataUrl, readableVideoError } from '@/lib/video-generation';
-import { useAuth } from '@clerk/expo';
+import { useDanceAuth } from '@/lib/dance-auth';
 
 /** PixVerse styles are the API's own style ids, resolved via the public getTemplate. */
 const PIXVERSE_STYLES = (Object.values(VideoGenerationInputStyleId) as VideoGenerationInput['styleId'][])
@@ -72,7 +72,7 @@ function PhotoDance() {
   const c = useColors();
   const { addDraft, updateDraft, draftStorageIssue } = useDance();
   const createGeneration = useCreateVideoGeneration();
-  const { isSignedIn } = useAuth();
+  const { isSignedIn } = useDanceAuth();
   const [photo, setPhoto] = useState<string | null>(null);
   const [styleId, setStyleId] = useState<VideoGenerationInput['styleId'] | null>(null);
   const [duration, setDuration] = useState<number | null>(null);

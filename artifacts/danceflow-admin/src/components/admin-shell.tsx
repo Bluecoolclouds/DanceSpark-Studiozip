@@ -1,8 +1,8 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link, Redirect, useLocation } from 'wouter';
-import { useAuth, useClerk } from '@clerk/react';
+import { useDanceAuth } from '@workspace/auth-web';
 import { useQueryClient } from '@tanstack/react-query';
-import { Activity, Gauge, Users, Clapperboard, SlidersHorizontal, ScrollText, Film, LogOut, ShieldX, RotateCw } from 'lucide-react';
+import { Activity, Gauge, Users, Clapperboard, SlidersHorizontal, ScrollText, Film, LogOut, ShieldX, RotateCw, KeyRound } from 'lucide-react';
 import {
   useGetAdminSession,
   getGetAdminSessionQueryKey,
@@ -12,6 +12,7 @@ import {
 } from '@workspace/api-client-react';
 import { apiStatus, apiMessage, POLL } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 
@@ -39,12 +40,36 @@ function Logo({ dark }: { dark?: boolean }) {
 export { Logo };
 
 function useSignOut() {
-  const { signOut } = useClerk();
+  const { signOut } = useDanceAuth();
+  const { toast } = useToast();
   const qc = useQueryClient();
+  const [, setLocation] = useLocation();
   return () => {
     qc.clear();
-    void signOut({ redirectUrl: basePath || '/' });
+    // Clears both the legacy and the Logto session; Logto redirects to the admin root.
+    void signOut().then(() => setLocation('/'), () => {
+      toast({ variant: 'destructive', title: 'Не удалось выйти', description: 'Сессия не закрыта. Повторите выход.' });
+    });
   };
+}
+
+function ConnectLogto() {
+  const auth = useDanceAuth();
+  const { toast } = useToast();
+  const [busy, setBusy] = useState(false);
+  if (!auth.logtoEnabled || auth.source !== 'clerk') return null;
+  const connect = async () => {
+    setBusy(true);
+    try { await auth.signInWithLogto(); }
+    catch {
+      setBusy(false);
+      toast({ variant: 'destructive', title: 'Не удалось открыть вход', description: 'Проверьте подключение и повторите.' });
+    }
+  };
+  return <button type="button" disabled={busy} onClick={() => void connect()} data-testid="button-connect-logto"
+    className="inline-flex items-center gap-2 rounded-lg border border-primary px-3 py-2 text-sm font-semibold text-primary disabled:opacity-60">
+    <KeyRound className="h-4 w-4" /> {busy ? 'Открываем вход…' : 'Подключить вход Logto'}
+  </button>;
 }
 
 function FullScreenLoader({ label }: { label: string }) {
@@ -73,6 +98,7 @@ function Denied({ title, text, email, onRetry }: { title: string; text: string; 
         <p className="mt-2 text-muted-foreground">{text}</p>
         {email && <p className="mt-4 rounded-md bg-secondary px-3 py-2 font-mono text-sm" data-testid="text-denied-email">{email}</p>}
         <div className="mt-6 flex flex-wrap gap-2">
+          <ConnectLogto />
           <button type="button" onClick={signOut} data-testid="button-signout-denied"
             className="inline-flex items-center gap-2 rounded-md bg-foreground px-4 py-2 text-sm font-semibold text-background transition-transform active:scale-95">
             <LogOut className="h-4 w-4" /> Выйти и сменить аккаунт
@@ -126,6 +152,7 @@ function Shell({ session, children }: { session: AdminSession; children: ReactNo
             );
           })}
         </nav>
+        <div className="px-5 pb-4"><ConnectLogto /></div>
         <div className="mt-auto hidden space-y-4 border-t border-sidebar-border px-5 py-5 md:block">
           <HealthDot />
           <div>
@@ -152,7 +179,7 @@ function Shell({ session, children }: { session: AdminSession; children: ReactNo
 }
 
 export function AdminGate({ children }: { children: ReactNode }) {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn } = useDanceAuth();
   const ready = isLoaded && !!isSignedIn;
   const session = useGetAdminSession({
     query: { queryKey: getGetAdminSessionQueryKey(), enabled: ready, retry: false, refetchInterval: POLL },

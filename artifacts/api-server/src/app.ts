@@ -6,6 +6,8 @@ import { logger } from "./lib/logger";
 import { clerkMiddleware } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
 import { CLERK_PROXY_PATH, clerkProxyMiddleware, getClerkProxyHost } from "./middlewares/clerkProxyMiddleware";
+import { withLogtoAuthentication } from "./middlewares/auth-provider";
+import { allowedWebOrigin } from "./lib/web-origins";
 
 const app: Express = express();
 
@@ -35,30 +37,16 @@ app.use(cors((req, callback) => {
     callback(null, { origin: false });
     return;
   }
-  const allowedHosts = [
-    getClerkProxyHost(req),
-    process.env.REPLIT_DEV_DOMAIN,
-    process.env.REPLIT_EXPO_DEV_DOMAIN,
-    process.env.REPLIT_INTERNAL_APP_DOMAIN,
-  ].filter(Boolean);
-  try {
-    const parsed = new URL(origin);
-    callback(null, {
-      origin: parsed.protocol === "https:" && allowedHosts.includes(parsed.host) ? origin : false,
-      credentials: true,
-    });
-  } catch {
-    callback(null, { origin: false });
-  }
+  callback(null, { origin: allowedWebOrigin(req, origin) ? origin : false, credentials: true });
 }));
 app.use(express.json({ limit: "18mb" }));
 app.use(express.urlencoded({ extended: true }));
-app.use(clerkMiddleware((req) => ({
+app.use(withLogtoAuthentication(clerkMiddleware((req) => ({
   publishableKey: publishableKeyFromHost(
     getClerkProxyHost(req) ?? "",
     process.env.CLERK_PUBLISHABLE_KEY,
   ),
-})));
+}))));
 
 app.use("/api", router);
 

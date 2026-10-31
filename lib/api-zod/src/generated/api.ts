@@ -8,6 +8,64 @@
 import * as zod from 'zod';
 
 
+export const GetAuthConfigResponse = zod.object({
+  "enabled": zod.boolean(),
+  "endpoint": zod.string(),
+  "webAppId": zod.string(),
+  "adminAppId": zod.string(),
+  "resource": zod.string()
+})
+
+
+export const GetAuthSessionResponse = zod.object({
+  "accountId": zod.string(),
+  "email": zod.string(),
+  "role": zod.enum(['user', 'admin'])
+})
+
+
+/**
+ * Requires a verified Clerk session and Logto proof; never links by email alone.
+ */
+export const linkLogtoAccountBodyAccessTokenMin = 20;
+export const linkLogtoAccountBodyAccessTokenMax = 20000;
+
+export const linkLogtoAccountBodyIdTokenMin = 20;
+export const linkLogtoAccountBodyIdTokenMax = 20000;
+
+
+
+export const LinkLogtoAccountBody = zod.object({
+  "accessToken": zod.string().min(linkLogtoAccountBodyAccessTokenMin).max(linkLogtoAccountBodyAccessTokenMax),
+  "idToken": zod.string().min(linkLogtoAccountBodyIdTokenMin).max(linkLogtoAccountBodyIdTokenMax)
+})
+
+export const LinkLogtoAccountResponse = zod.object({
+  "accountId": zod.string(),
+  "email": zod.string(),
+  "role": zod.enum(['user', 'admin'])
+})
+
+
+/**
+ * Explicit new registration. Existing accounts require proof of ownership.
+ */
+export const registerLogtoAccountBodyIdTokenMin = 20;
+export const registerLogtoAccountBodyIdTokenMax = 20000;
+
+
+
+export const RegisterLogtoAccountBody = zod.object({
+  "idToken": zod.string().min(registerLogtoAccountBodyIdTokenMin).max(registerLogtoAccountBodyIdTokenMax)
+})
+
+export const RegisterLogtoAccountResponse = zod.object({
+  "accountId": zod.string(),
+  "email": zod.string(),
+  "role": zod.enum(['user', 'admin'])
+})
+
+
 export const listCatalogueQueryCursorMax = 1024;
 
 export const listCatalogueQueryLimitDefault = 12;

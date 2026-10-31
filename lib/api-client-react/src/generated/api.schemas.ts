@@ -5,6 +5,49 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface WebAuthConfig {
+  enabled: boolean;
+  endpoint: string;
+  webAppId: string;
+  adminAppId: string;
+  resource: string;
+}
+
+export type DanceAuthSessionRole = typeof DanceAuthSessionRole[keyof typeof DanceAuthSessionRole];
+
+
+export const DanceAuthSessionRole = {
+  user: 'user',
+  admin: 'admin',
+} as const;
+
+export interface DanceAuthSession {
+  accountId: string;
+  email: string;
+  role: DanceAuthSessionRole;
+}
+
+export interface LogtoIdentityProof {
+  /**
+     * @minLength 20
+     * @maxLength 20000
+     */
+  accessToken: string;
+  /**
+     * @minLength 20
+     * @maxLength 20000
+     */
+  idToken: string;
+}
+
+export interface LogtoRegistration {
+  /**
+     * @minLength 20
+     * @maxLength 20000
+     */
+  idToken: string;
+}
+
 export type LightSwapperInputModel = typeof LightSwapperInputModel[keyof typeof LightSwapperInputModel];
 
 

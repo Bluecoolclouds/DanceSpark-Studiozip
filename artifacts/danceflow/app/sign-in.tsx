@@ -1,3 +1,6 @@
+import { useLocalSearchParams } from 'expo-router';
+import { useDanceAuth } from '@/lib/dance-auth';
+import { LogtoEntry, legacyParams } from '@/components/LogtoEntry';
 import { useSignIn, useAuth } from '@clerk/expo';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
@@ -5,6 +8,14 @@ import { View } from 'react-native';
 import { AuthAction, AuthError, AuthFrame, AuthInput, BigButton } from '@/components/AuthFrame';
 
 export default function SignInScreen() {
+  const auth = useDanceAuth();
+  const { legacy } = useLocalSearchParams<{ legacy?: string }>();
+  if (auth.logtoEnabled && legacy !== '1') return <LogtoEntry mode="sign-in" />;
+  return <LegacySignInScreen />;
+}
+
+function LegacySignInScreen() {
+  const auth = useDanceAuth();
   const { signIn, errors, fetchStatus } = useSignIn();
   const { isSignedIn } = useAuth();
   const [emailAddress, setEmailAddress] = useState('');
@@ -67,7 +78,7 @@ export default function SignInScreen() {
           <AuthInput label="Пароль" value={password} onChangeText={setPassword} secureTextEntry autoComplete="password" />
           <AuthError message={errors.fields.identifier?.message || errors.fields.password?.message || message} />
           <BigButton label={working ? 'Входим...' : 'Войти'} onPress={login} disabled={working || !emailAddress || !password || !!isSignedIn} />
-          <AuthAction label="Забыли пароль?" testID="forgot-password" disabled={working || !!isSignedIn} onPress={() => router.push('/forgot-password')} />
+          <AuthAction label="Забыли пароль?" testID="forgot-password" disabled={working || !!isSignedIn} onPress={() => router.push({ pathname: '/forgot-password', params: legacyParams(auth.logtoEnabled) })} />
         </View>
       )}
     </AuthFrame>

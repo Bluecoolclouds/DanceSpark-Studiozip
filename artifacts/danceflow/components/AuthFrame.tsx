@@ -10,6 +10,7 @@ import { useSSO } from '@clerk/expo';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
 import { router } from 'expo-router';
+import { useDanceAuth } from '@/lib/dance-auth';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -51,6 +52,7 @@ export function AuthFrame({ title, subtitle, children, other, href, recovery = f
 }) {
   const c = useColors();
   const insets = useSafeAreaInsets();
+  const { logtoEnabled } = useDanceAuth();
   return (
     <KeyboardAwareScrollViewCompat bottomOffset={20} style={{ flex: 1, backgroundColor: c.background }} contentContainerStyle={{ paddingHorizontal: 24, paddingTop: (Platform.OS === 'web' ? 67 : insets.top) + 24, paddingBottom: (Platform.OS === 'web' ? 34 : insets.bottom) + 24, gap: 18 }}>
       <DemoBadge label="DANCEFLOW · АККАУНТ" />
@@ -58,7 +60,7 @@ export function AuthFrame({ title, subtitle, children, other, href, recovery = f
       <Text style={{ fontFamily: F.body, color: c.mutedForeground, fontSize: 15 }}>{subtitle}</Text>
       {children}
       {!recovery && <GoogleSignIn />}
-      <Link href={href} asChild>
+      <Link href={logtoEnabled ? { pathname: href, params: { legacy: '1' } } : href} asChild>
         <Text accessibilityRole="link" style={{ fontFamily: F.body, color: c.primary, fontSize: 15, textAlign: 'center', paddingVertical: 15 }}>{other}</Text>
       </Link>
     </KeyboardAwareScrollViewCompat>

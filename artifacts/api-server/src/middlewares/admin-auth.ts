@@ -2,13 +2,22 @@ import { clerkClient, getAuth } from "@clerk/express";
 import type { Request, Response, NextFunction } from "express";
 import { pool } from "@workspace/db";
 import { audit, ensureControls } from "../lib/admin-data";
-import { getClerkProxyHost } from "./clerkProxyMiddleware";
+import { getLogtoPrincipal } from "./auth-provider";
+import { findLogtoAccount } from "../lib/auth-identities";
+import { allowedWebOrigin } from "../lib/web-origins";
 
 export interface ServerAccount {
   id: string;
   email: string;
   role: "user" | "admin";
   blocked: boolean;
+}
+
+/** Ownership always uses the verified internal account, not an external subject. */
+export function getAccountId(res: Response): string {
+  const account = res.locals.account as ServerAccount | undefined;
+  if (!account?.id) throw new Error("Verified Danceflow account required");
+  return account.id;
 }
 
 /** Grant the configured, verified owner exactly once in each environment. */
@@ -38,6 +47,22 @@ export async function seedVerifiedOwner(
 
 export async function requireAccount(req: Request, res: Response, next: NextFunction): Promise<void> {
   res.setHeader("Cache-Control", "no-store");
+  const logto = getLogtoPrincipal(req);
+  if (logto) {
+    const id = await findLogtoAccount(logto);
+    if (!id) {
+      res.status(409).json({ error: "Свяжи существующий аккаунт или явно создай новый.", code: "account_link_required" });
+      return;
+    }
+    const { rows } = await pool.query<ServerAccount>("SELECT id,email,role,blocked FROM df_accounts WHERE id=$1", [id]);
+    if (!rows[0] || rows[0].blocked) {
+      res.status(403).json({ error: "Доступ аккаунта приостановлен", code: "account_unavailable" });
+      return;
+    }
+    res.locals.account = rows[0];
+    next();
+    return;
+  }
   const { userId } = getAuth(req);
   if (!userId) {
     res.status(401).json({ error: "Войдите в аккаунт" });
@@ -75,7 +100,7 @@ export function protectAdminMutation(req: Request, res: Response, next: NextFunc
   if (["GET", "HEAD", "OPTIONS"].includes(req.method)) { next(); return; }
   const origin = req.get("origin");
   try {
-    if (origin && new URL(origin).host === getClerkProxyHost(req)) { next(); return; }
+    if (origin && allowedWebOrigin(req, origin)) { next(); return; }
   } catch { /* Invalid Origin is rejected below. */ }
   // Native clients may authenticate with a verified bearer token instead of cookies.
   if (!origin && req.get("authorization")?.startsWith("Bearer ")) { next(); return; }

@@ -1,8 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { View } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { setBaseUrl } from '@workspace/api-client-react';
 import { setAuthTokenGetter } from '@workspace/api-client-react';
-import { ClerkLoaded, ClerkProvider, useAuth } from '@clerk/expo';
+import { ClerkLoaded, ClerkProvider } from '@clerk/expo';
+import { DanceAuthBoundary, useDanceAuth } from '@/lib/dance-auth';
+import { AuthStatusGate } from '@/components/AuthStatusGate';
 import { tokenCache } from '@clerk/expo/token-cache';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -25,12 +28,13 @@ if (!clerkKey) throw new Error('CLERK_PUBLISHABLE_KEY is required for account au
 SplashScreen.preventAutoHideAsync();
 
 function AuthBridge({ children }: { children: React.ReactNode }) {
-  const { getToken, userId } = useAuth();
+  const { getToken, userId, isLoaded } = useDanceAuth();
   const [transportOwner, setTransportOwner] = useState<string | null | undefined>(undefined);
   // A separate cache per identity prevents late requests from an old session
   // from filling the next account's cache, including during sign-out.
   const queryClient = useMemo(() => new QueryClient(), [userId]);
   useEffect(() => {
+    // getToken is scoped to the canonical identity (Logto resource token or legacy Clerk token).
     setAuthTokenGetter(() => getToken());
     setTransportOwner(userId);
     return () => setAuthTokenGetter(null);
@@ -43,9 +47,13 @@ function AuthBridge({ children }: { children: React.ReactNode }) {
   }, [queryClient]);
   // Register the authenticated transport before mounting any account queries.
   if (transportOwner !== userId) return null;
+  // Do not start Expo's lazy navigator inside a temporary auth provider that
+  // is about to be replaced when config/SDK initialization finishes.
+  if (!isLoaded) return <View style={{ flex: 1 }}><AuthStatusGate /></View>;
   return (
     <QueryClientProvider client={queryClient}>
       <DanceProvider key={userId ?? 'guest'} ownerId={userId ?? 'guest'}>{children}</DanceProvider>
+      <AuthStatusGate />
     </QueryClientProvider>
   );
 }
@@ -63,6 +71,7 @@ function RootLayoutNav() {
         <Stack.Screen name="sign-in" />
         <Stack.Screen name="sign-up" />
         <Stack.Screen name="forgot-password" />
+        <Stack.Screen name="auth/callback" />
       </Stack>
     </>
   );
@@ -96,9 +105,11 @@ export default function RootLayout() {
           <ErrorBoundary>
               <GestureHandlerRootView>
                 <KeyboardProvider>
-                  <AuthBridge>
-                    <RootLayoutNav />
-                  </AuthBridge>
+                  <DanceAuthBoundary>
+                    <AuthBridge>
+                      <RootLayoutNav />
+                    </AuthBridge>
+                  </DanceAuthBoundary>
                 </KeyboardProvider>
               </GestureHandlerRootView>
           </ErrorBoundary>

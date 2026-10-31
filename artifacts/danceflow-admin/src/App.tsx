@@ -1,9 +1,12 @@
-import { useEffect, useMemo, type ComponentType, type ReactNode } from 'react';
-import { ClerkProvider, SignIn, SignUp, Show, useAuth } from '@clerk/react';
+import { useCallback, useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useUser } from '@clerk/react';
+import { DanceAuthProvider, useDanceAuth, type LegacyAuthSession } from '@workspace/auth-web';
+import { setAuthTokenGetter } from '@workspace/api-client-react';
+import { AuthFrame, AuthLoader, AuthPhaseGate, AuthCallbackPage, LogtoEntry } from '@/components/auth-status';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Redirect, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
+import { Redirect, Route, Switch, useLocation, useSearch, Router as WouterRouter } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -85,20 +88,16 @@ const clerkAppearance = {
   },
 };
 
-function AuthFrame({ children }: { children: ReactNode }) {
-  return (
-    <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-sidebar px-4 py-10">
-      <div className="pointer-events-none absolute -left-24 top-10 h-72 w-72 rounded-full bg-primary/30 blur-3xl" />
-      <div className="pointer-events-none absolute -right-20 bottom-0 h-64 w-64 rounded-full bg-accent/20 blur-3xl" />
-      <div className="relative z-10 flex w-full flex-col items-center gap-6">
-        <div className="font-mono text-[11px] uppercase tracking-[0.25em] text-sidebar-primary">danceflow · пульт владельца</div>
-        {children}
-      </div>
-    </div>
-  );
+function useLegacyForm(root: string) {
+  const { logtoEnabled } = useDanceAuth();
+  const [location] = useLocation();
+  const legacy = new URLSearchParams(useSearch()).get('legacy') === '1';
+  // Clerk sub-steps (factor-one, verify...) drop the query, so keep them on Clerk.
+  return !logtoEnabled || legacy || location !== root;
 }
 
 function SignInPage() {
+  if (!useLegacyForm('/sign-in')) return <LogtoEntry mode="sign-in" />;
   return (
     <AuthFrame>
       <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
@@ -107,6 +106,7 @@ function SignInPage() {
 }
 
 function SignUpPage() {
+  if (!useLegacyForm('/sign-up')) return <LogtoEntry mode="sign-up" />;
   return (
     <AuthFrame>
       <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
@@ -115,16 +115,8 @@ function SignUpPage() {
 }
 
 function HomeRedirect() {
-  return (
-    <>
-      <Show when="signed-in">
-        <Redirect to="/overview" />
-      </Show>
-      <Show when="signed-out">
-        <Landing />
-      </Show>
-    </>
-  );
+  const { isSignedIn } = useDanceAuth();
+  return isSignedIn ? <Redirect to="/overview" /> : <Landing />;
 }
 
 function protect(Page: ComponentType) {
@@ -145,7 +137,8 @@ const AuditRoute = protect(Audit);
 const CatalogueRoute = protect(CataloguePage);
 
 function AccountQueryProvider({ children }: { children: ReactNode }) {
-  const { userId, isLoaded } = useAuth();
+  const { userId, getToken } = useDanceAuth();
+  const [transportOwner, setTransportOwner] = useState<string | null | undefined>(undefined);
   // Never render the next identity with the previous account's cached session.
   // Late responses and mutations remain attached to the discarded client.
   const qc = useMemo(() => new QueryClient({
@@ -157,7 +150,13 @@ function AccountQueryProvider({ children }: { children: ReactNode }) {
       qc.clear();
     };
   }, [qc]);
-  if (!isLoaded) return null;
+  useEffect(() => {
+    // Every API call (including the admin session) carries the canonical identity's token.
+    setAuthTokenGetter(() => getToken());
+    setTransportOwner(userId);
+    return () => setAuthTokenGetter(null);
+  }, [getToken, userId]);
+  if (transportOwner !== userId) return <AuthLoader label="подключаем авторизацию" />;
   return (
     <QueryClientProvider client={qc} key={userId ?? 'guest'}>
       {children}
@@ -168,6 +167,24 @@ function AccountQueryProvider({ children }: { children: ReactNode }) {
 function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
+}
+
+function SharedAuth({ children }: { children: ReactNode }) {
+  const { isLoaded, isSignedIn, userId, getToken } = useAuth();
+  const { user } = useUser();
+  const clerk = useClerk();
+  const [, setLocation] = useLocation();
+  const email = user?.id === userId ? user?.primaryEmailAddress?.emailAddress ?? null : null;
+  const legacy = useMemo<LegacyAuthSession>(() => ({
+    loaded: !!isLoaded,
+    signedIn: !!isSignedIn,
+    userId: userId ?? null,
+    email,
+    getToken: () => getToken(),
+    signOut: () => clerk.signOut(),
+  }), [isLoaded, isSignedIn, userId, email, getToken, clerk]);
+  const onMigrated = useCallback(() => setLocation('/overview', { replace: true }), [setLocation]);
+  return <DanceAuthProvider app="admin" basePath={basePath} legacy={legacy} onMigrated={onMigrated}>{children}</DanceAuthProvider>;
 }
 
 function ClerkProviderWithRoutes() {
@@ -199,10 +216,13 @@ function ClerkProviderWithRoutes() {
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >
+      <SharedAuth>
       <AccountQueryProvider>
         <TooltipProvider>
           <RoutedErrorBoundary>
+            <AuthPhaseGate>
             <Switch>
+              <Route path="/auth/callback" component={AuthCallbackPage} />
               <Route path="/" component={HomeRedirect} />
               <Route path="/sign-in/*?" component={SignInPage} />
               <Route path="/sign-up/*?" component={SignUpPage} />
@@ -214,10 +234,12 @@ function ClerkProviderWithRoutes() {
               <Route path="/catalogue" component={CatalogueRoute} />
               <Route component={NotFound} />
             </Switch>
+            </AuthPhaseGate>
           </RoutedErrorBoundary>
           <Toaster />
         </TooltipProvider>
       </AccountQueryProvider>
+      </SharedAuth>
     </ClerkProvider>
   );
 }
