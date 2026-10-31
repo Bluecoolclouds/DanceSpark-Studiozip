@@ -21,11 +21,11 @@ When migrating authentication providers, preserve Danceflow's existing internal 
 
 **How to apply:** Resolve authenticated provider identities to a stable internal account before loading account-scoped data. Keep the existing login working until the replacement and account linkage have been verified.
 
-The user chose web and admin first for Logto. Native Android/iOS authentication stays on Clerk until a separately approved migration; a shared public SPA registration for web/admin does not constitute a native registration.
+Текущее решение пользователя: «пока на клерке будем … так быстрее». Переход на Logto приостановлен; используем Clerk.
 
-**Why:** The user explicitly selected the staged web/admin scope, and the configured application was a SPA rather than a native application.
+**Why:** Пользователь решил пока остаться на Clerk, чтобы быстрее подготовить запуск.
 
-**How to apply:** Do not treat a populated native-app environment variable as proof that native OAuth is configured. Preserve the existing native login and request explicit scope before migrating it.
+**How to apply:** Не считать переход на Logto условием готовности к production и не включать его в рамках подготовки запуска. Если пользователь возобновит переход, ранее согласованный объём — сначала веб и админка, не Android/iOS. Заполненная переменная native-app со значением SPA не подтверждает настройку нативного OAuth.
 
 Credential retrieval is part of in-flight work: a pending request must not borrow the next session's token, and a pending account-link action must not use a newly selected legacy account.
 
