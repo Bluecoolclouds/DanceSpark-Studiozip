@@ -85,3 +85,9 @@ The Create page and a selected trend use the same compact input workflow, but Cr
 **Why:** The user approved simplifying Create to distinguish starting with one's own video from remixing a chosen trend, rather than automatically attaching the first catalogue item.
 
 **How to apply:** Keep explicit source selection on Create, one trend chooser, and an editable prefilled workspace on trend pages. Preserve the separate PixVerse photo-to-video option and the distinction between saving a local draft and launching paid generation.
+
+Приоритет пользователя — выпустить Android-приложение Danceflow в RuStore.
+
+**Why:** Пользователь обозначил цель: «хотя бы приложение на ру стор выпустить».
+
+**How to apply:** Оценивать готовность к запуску по подписанному Android-релизу и требованиям RuStore, а не только по работающему веб-предпросмотру. Не считать Expo Go готовым магазинным релизом.

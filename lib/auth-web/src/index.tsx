@@ -25,6 +25,7 @@ import {
   type WebAuthConfig,
 } from '@workspace/api-client-react';
 import { guardedToken } from './session-guards';
+import { loadAuthConfigWithRetry } from './config-retry';
 
 export type LegacyAuthSession = {
   loaded: boolean;
@@ -135,12 +136,16 @@ export function DanceAuthProvider({ app, basePath = '', legacy, onMigrated, chil
   const [nonce, setNonce] = useState(0);
   useEffect(() => {
     let live = true;
+    const controller = new AbortController();
     setCfg({ status: 'loading' });
-    // Empty Authorization keeps any stale transport getter out of a public request.
-    getAuthConfig({ headers: { Authorization: '' } })
+    // No Authorization header: avoid an unnecessary cross-origin preflight.
+    loadAuthConfigWithRetry(
+      (signal) => getAuthConfig({ skipAuth: true, cache: 'no-store', signal }),
+      controller.signal,
+    )
       .then((config) => { if (live) setCfg({ status: 'ok', config }); })
       .catch(() => { if (live) setCfg({ status: 'error' }); });
-    return () => { live = false; };
+    return () => { live = false; controller.abort(); };
   }, [nonce]);
   const retryConfig = useCallback(() => setNonce((n) => n + 1), []);
 
