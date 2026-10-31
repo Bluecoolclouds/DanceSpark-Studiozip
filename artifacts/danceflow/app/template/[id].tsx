@@ -276,20 +276,18 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
             <Bouncy testID="back" accessibilityLabel="Назад" onPress={() => router.back()} style={[styles.round, { backgroundColor: c.glass, borderColor: c.glassEdge }]}>
               <Feather name="arrow-left" size={20} color={c.foreground} />
             </Bouncy>
+            <View pointerEvents="none" accessibilityLabel="Danceflow" style={styles.centerBrand}>
+              <Text style={[styles.brand, { color: c.foreground }]}>Dance<Text style={{ color: N.pink }}>flow</Text></Text>
+            </View>
             <FavButton id={t.id} size={44} />
           </View>
 
           <View style={styles.hero}>
             <View style={{ flex: 1, gap: 8, zIndex: 2 }}>
-              <View style={styles.logo}>
-                <Text style={[styles.logoA, { color: c.foreground }]}>DANCE</Text>
-                <Text style={[styles.logoB, { color: c.foreground }]}>FLOW</Text>
-              </View>
               <View style={styles.row}>
                 <View style={[styles.tag, { backgroundColor: N.pink }]}><Text style={styles.tagText}>Light Swapper</Text></View>
                 <View style={[styles.tag, { backgroundColor: N.yellow }]}><Text style={[styles.tagText, { color: N.deep }]}>{categoryLabel(t.category)}</Text></View>
               </View>
-              <Text style={[styles.title, { color: c.foreground }]} numberOfLines={2}>{t.title}</Text>
               <Text style={[styles.sub, { color: c.mutedForeground }]} numberOfLines={2}>{t.tagline}</Text>
             </View>
           </View>
@@ -341,19 +339,17 @@ function Sq({ id, icon, label, onPress }: { id: string; icon: React.ComponentPro
 
 const styles = StyleSheet.create({
   wrap: { width: '100%', alignSelf: 'center', paddingHorizontal: 16, gap: 14 },
-  topBar: { flexDirection: 'row', justifyContent: 'space-between' },
+  topBar: { position: 'relative', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 44 },
+  centerBrand: { position: 'absolute', left: 44, right: 44, alignItems: 'center' },
+  brand: { fontFamily: F.display, fontSize: 24, letterSpacing: -0.6 },
   round: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   hero: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 4 },
-  logo: { transform: [{ rotate: '-6deg' }], alignSelf: 'flex-start', marginBottom: 6 },
-  logoA: { fontFamily: F.display, fontSize: 30, lineHeight: 30, letterSpacing: -1 },
-  logoB: { fontFamily: F.display, fontSize: 30, lineHeight: 30, letterSpacing: -1, marginLeft: 22 },
   slab: { position: 'absolute', height: 140, transform: [{ rotate: '-28deg' }] },
   go: { minHeight: 60, borderRadius: 30, overflow: 'hidden', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 20 },
   goText: { fontFamily: F.display, fontSize: 18, flexShrink: 1 },
   dropIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   tag: { borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
   tagText: { fontFamily: F.bodyHeavy, fontSize: 11, color: '#FFFCFF' },
-  title: { fontFamily: F.display, fontSize: 28, letterSpacing: -0.8, lineHeight: 32 },
   sub: { fontFamily: F.body, fontSize: 14, lineHeight: 19 },
   cols: { flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
   panel: { borderWidth: 1, borderRadius: 22, padding: 16 },
