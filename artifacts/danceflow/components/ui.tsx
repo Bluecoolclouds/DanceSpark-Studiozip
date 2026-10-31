@@ -121,8 +121,8 @@ export function TemplateCard({ t, onPress, width, height = 280, previewPlayer }:
           <FavButton id={t.id} size={36} />
         </View>
         <View pointerEvents="none" style={s.cardBottom}>
-          {!t.videoUri && t.isNew && <View style={[s.newChip, { backgroundColor: c.accent }]}><Text style={[s.newText, { color: c.foreground }]}>Новинка</Text></View>}
-          {!t.videoUri && <Text style={[s.cardTitle, { color: c.stageForeground }]} numberOfLines={1}>{t.title}</Text>}
+          {t.isNew && <View style={[s.newChip, { backgroundColor: c.accent }]}><Text style={[s.newText, { color: c.foreground }]}>Новинка</Text></View>}
+          <Text style={[s.cardTitle, { color: c.stageForeground }]} numberOfLines={1}>{t.title}</Text>
           <View style={s.row}>
             {t.videoUri
               ? <Feather name="play-circle" size={22} color={c.stageForeground} />

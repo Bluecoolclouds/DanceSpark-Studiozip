@@ -53,6 +53,7 @@ export default function Discover() {
   const featuredCardWidth = Math.min(width * 0.72, 300);
   const [activeFeaturedIndex, setActiveFeaturedIndex] = useState(0);
   const [featuredInView, setFeaturedInView] = useState(false);
+  const [featuredPreviewReady, setFeaturedPreviewReady] = useState(false);
   const featuredFrame = useRef({ y: 0, height: 0 });
   const pageScrollY = useRef(0);
 
@@ -86,6 +87,7 @@ export default function Discover() {
     activeIdRef.current = activeFeatured.id;
     shouldPreviewRef.current = featuredInView && !reduced;
     if (!shouldPreviewRef.current) {
+      setFeaturedPreviewReady(false);
       videoPlayer.pause();
       void videoPlayer.replaceAsync(null).catch(() => {});
       return;
@@ -95,6 +97,7 @@ export default function Discover() {
       return;
     }
     let cancelled = false;
+    setFeaturedPreviewReady(false);
     videoPlayer.pause();
     void videoPlayer.replaceAsync(previewUri).then(() => {
       if (!cancelled && shouldPreviewRef.current) videoPlayer.play();
@@ -104,7 +107,12 @@ export default function Discover() {
 
   useEffect(() => {
     const subscription = videoPlayer.addListener('statusChange', ({ status }) => {
-      if (status === 'readyToPlay' && shouldPreviewRef.current) videoPlayer.play();
+      if (status === 'readyToPlay' && shouldPreviewRef.current) {
+        setFeaturedPreviewReady(true);
+        videoPlayer.play();
+      } else if (status === 'loading' || status === 'idle' || status === 'error') {
+        setFeaturedPreviewReady(false);
+      }
     });
     return () => subscription.remove();
   }, [videoPlayer]);
@@ -180,7 +188,7 @@ export default function Discover() {
               t={t}
               width={featuredCardWidth}
               height={340}
-              previewPlayer={index === activeFeaturedIndex && featuredInView ? videoPlayer : undefined}
+              previewPlayer={index === activeFeaturedIndex && featuredInView && featuredPreviewReady ? videoPlayer : undefined}
               onPress={() => router.push(`/template/${t.id}`)}
             />
         ))}
