@@ -192,7 +192,7 @@ export default function Create() {
         <Text style={[styles.title, { color: c.foreground }]}>Собери свой{'\n'}<Text style={{ color: c.primary }}>танец</Text></Text>
         <Text style={[styles.sub, { color: c.mutedForeground }]}>{mode === 'photo'
           ? 'Выбери фото, танец и длительность — затем создай настоящее видео. Этот режим использует PixVerse, без переноса движений из исходного ролика.'
-          : 'Выбери танец и добавь фото персонажа. Сохраним черновик Genjutsu Light: перенос движений пока не запускается.'}</Text>
+          : 'Выбери танец и добавь фото персонажа. Сохраним черновик Swapper: перенос движений пока не запускается.'}</Text>
         {!isSignedIn && (
           <Bouncy onPress={() => router.push('/sign-in')} style={{ paddingVertical: 8 }}>
             <Text style={{ color: c.primary, fontFamily: F.body, fontSize: 15 }}>Войти для создания видео →</Text>
@@ -326,7 +326,7 @@ export default function Create() {
         )}
         {mode === 'video' && <>
           <BigButton testID="save-draft" label={blocker ?? 'Сохранить черновик'} icon="bookmark" disabled={!!blocker} onPress={save} />
-          <Text style={[styles.hint, { color: c.mutedForeground, textAlign: 'center' }]}>Черновик хранится только на этом устройстве. Генерация Genjutsu Light не запускается.</Text>
+          <Text style={[styles.hint, { color: c.mutedForeground, textAlign: 'center' }]}>Черновик хранится только на этом устройстве. Генерация Swapper не запускается.</Text>
         </>}
       </View>
       {mode === 'photo' && <>

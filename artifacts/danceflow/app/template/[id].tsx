@@ -235,7 +235,7 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
         </View>
         <Text style={[styles.emptyTitle, { color: c.foreground }]}>Здесь пока пусто</Text>
         <Text style={[styles.hint, { color: c.mutedForeground, textAlign: 'center', maxWidth: 280 }]}>
-          Обработка Genjutsu Light ещё не подключена. Настройки сохранятся как черновик на этом устройстве — без запуска и списаний.
+          Обработка Light Swapper ещё не подключена. Настройки сохранятся как черновик на этом устройстве — без запуска и списаний.
         </Text>
       </View>
       {draftStorageIssue && <Text style={[styles.warn, { color: c.destructive }]}>Хранилище черновиков сейчас недоступно — черновик может не сохраниться после перезапуска.</Text>}
@@ -274,7 +274,7 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
                 <Text style={[styles.logoB, { color: c.foreground }]}>FLOW</Text>
               </View>
               <View style={styles.row}>
-                <View style={[styles.tag, { backgroundColor: N.pink }]}><Text style={styles.tagText}>Genjutsu Light</Text></View>
+                <View style={[styles.tag, { backgroundColor: N.pink }]}><Text style={styles.tagText}>Light Swapper</Text></View>
                 <View style={[styles.tag, { backgroundColor: N.yellow }]}><Text style={[styles.tagText, { color: N.deep }]}>{categoryLabel(t.category)}</Text></View>
               </View>
               <Text style={[styles.title, { color: c.foreground }]} numberOfLines={2}>{t.title}</Text>

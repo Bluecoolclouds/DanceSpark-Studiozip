@@ -269,7 +269,7 @@ export default function DraftScreen() {
       {!d.videoUri && m && (
         <View style={[styles.note, { backgroundColor: c.secondary, borderColor: c.border }]}>
           <Feather name="info" size={18} color={c.foreground} />
-          <Text style={[styles.noteText, { color: c.foreground }]}>Сохранены настройки Genjutsu Light. Перенос движений и замена в видео пока не подключены; генерация PixVerse не подменяет выбранную модель.</Text>
+          <Text style={[styles.noteText, { color: c.foreground }]}>Сохранены настройки Light Swapper. Перенос движений и замена в видео пока не подключены; генерация PixVerse не подменяет выбранную модель.</Text>
         </View>
       )}
       {!d.videoUri && !m && (
