@@ -1,4 +1,4 @@
-modules = ["web", "nodejs-24", "python-base-3.13", "postgresql-16"]
+modules = ["nodejs-20", "web", "vue-node-20"]
 
 [deployment]
 router = "application"
