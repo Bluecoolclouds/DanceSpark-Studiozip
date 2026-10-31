@@ -1,4 +1,5 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -131,12 +132,12 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
   const panel = [styles.panel, { backgroundColor: c.card, borderColor: c.glassEdge }];
 
   const toggle = (key: 'video' | 'images' | 'prompt' | 'quality') => setExpanded((value) => value === key ? null : key);
-  const compactRow = (key: 'video' | 'images' | 'prompt', icon: React.ComponentProps<typeof Feather>['name'], title: string, subtitle: string) => {
+  const compactRow = (key: 'video' | 'images' | 'prompt', icon: React.ComponentProps<typeof Feather>['name'], title: string, subtitle: string, media?: React.ReactNode) => {
     const active = expanded === key;
     return (
       <Bouncy testID={`input-row-${key}`} accessibilityLabel={`${title}. ${subtitle}${active ? ', свернуть' : ', открыть'}`}
         onPress={() => toggle(key)} style={[styles.compactRow, key === 'prompt' && styles.promptRow, { backgroundColor: c.muted, borderColor: c.border }]}>
-        <View style={[styles.rowIcon, { backgroundColor: c.card }]}><Feather name={icon} size={18} color={c.foreground} /></View>
+        {media ?? <View style={[styles.rowIcon, { backgroundColor: c.card }]}><Feather name={icon} size={18} color={c.foreground} /></View>}
         <View style={styles.rowCopy}>
           <Text style={[styles.rowTitle, { color: c.foreground }]}>{title}</Text>
           <Text numberOfLines={1} style={[styles.rowSubtitle, { color: c.mutedForeground }]}>{subtitle}</Text>
@@ -166,7 +167,16 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
             <Feather name="rotate-ccw" size={15} color={c.mutedForeground} />
           </Bouncy>
         </View>
-        {compactRow('video', 'video', 'Добавь видео для переноса движений', source ? `${isOriginal ? `Шаблон «${t.title}»` : 'Твоё видео'} · ${source.seconds == null ? 'длительность неизвестна' : fmtSec(source.seconds)}` : 'До 1 видео')}
+        {compactRow('video', 'video', 'Добавь видео для переноса движений', source
+          ? (source.seconds == null ? 'Видео выбрано' : fmtSec(source.seconds))
+          : 'До 1 видео', source && isOriginal ? (
+            <View style={styles.mediaThumb}>
+              <Image source={t.image} style={StyleSheet.absoluteFill} contentFit="cover" />
+              <View style={[styles.mediaPlay, { backgroundColor: c.scrim }]}>
+                <Feather name="play" size={13} color={c.primaryForeground} />
+              </View>
+            </View>
+          ) : undefined)}
         {expanded === 'video' && <View style={[styles.expandedContent, { backgroundColor: c.card, borderColor: c.border }]}>
           {source ? <View style={{ gap: 8 }}>
             <SourcePreview key={source.uri} uri={source.uri} height={wide ? 220 : 190} />
@@ -350,6 +360,8 @@ const styles = StyleSheet.create({
   compactRow: { minHeight: 68, borderRadius: 16, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 10, paddingVertical: 8 },
   promptRow: { minHeight: 50 },
   rowIcon: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  mediaThumb: { width: 48, height: 48, borderRadius: 10, overflow: 'hidden', flexShrink: 0, alignItems: 'center', justifyContent: 'center' },
+  mediaPlay: { width: 25, height: 25, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   rowCopy: { flex: 1, minWidth: 0, gap: 2 },
   rowTitle: { fontFamily: F.bodyHeavy, fontSize: 13, lineHeight: 17, flexShrink: 1 },
   rowSubtitle: { fontFamily: F.body, fontSize: 11, lineHeight: 14 },
