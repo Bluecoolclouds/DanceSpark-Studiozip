@@ -100,6 +100,10 @@ const LEGACY_TEMPLATES: DanceTemplate[] = [
   },
 ];
 
+// Kept separate from server-managed original videos: these are illustrated
+// styles supported by the existing photo-generation endpoint.
+export const PHOTO_TEMPLATES = LEGACY_TEMPLATES;
+
 const mediaUrl = (id: string, asset: string) =>
   `https://${process.env.EXPO_PUBLIC_DOMAIN}/api/dance-templates/${id}/${asset}`;
 
@@ -121,7 +125,7 @@ const uploaded = [
   },
 ];
 
-export const TEMPLATES: DanceTemplate[] = uploaded.map((item, index) => ({
+const COMPATIBILITY_TEMPLATES: DanceTemplate[] = uploaded.map((item, index) => ({
   id: item.id,
   title: `Тренд ${String(index + 1).padStart(2, '0')}`,
   dancer: '',
@@ -143,12 +147,12 @@ export const TEMPLATES: DanceTemplate[] = uploaded.map((item, index) => ({
   isNew: true,
 }));
 
-// Editorial recommendations are intentionally fixed and independent of user data.
-export const RECOMMENDED_TEMPLATE_IDS = ['trend-06', 'trend-03', 'trend-01'] as const;
-export const RECOMMENDED_TEMPLATES = RECOMMENDED_TEMPLATE_IDS
-  .map((id) => TEMPLATES.find((template) => template.id === id))
-  .filter((template): template is DanceTemplate => template != null);
-
+// Compatibility metadata is only for saved drafts, never a live catalogue fallback.
+const knownTemplates = new Map<string, DanceTemplate>();
+export const rememberTemplates = (templates: DanceTemplate[]) => {
+  templates.forEach(template => knownTemplates.set(template.id, template));
+};
 export const getTemplate = (id?: string) =>
-  TEMPLATES.find((t) => t.id === id) ?? LEGACY_TEMPLATES.find((t) => t.id === id);
+  (id ? knownTemplates.get(id) : undefined) ??
+  COMPATIBILITY_TEMPLATES.find((t) => t.id === id) ?? LEGACY_TEMPLATES.find((t) => t.id === id);
 export const categoryLabel = (c: Category) => CATEGORIES.find((x) => x.key === c)?.label ?? c;

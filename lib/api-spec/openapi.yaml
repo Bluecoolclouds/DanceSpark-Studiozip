@@ -13,6 +13,74 @@ tags:
   - name: video-generations
     description: Generate dance videos from user photos
 paths:
+  /catalogue:
+    get:
+      operationId: listCatalogue
+      parameters:
+        - { name: cursor, in: query, schema: { type: string, maxLength: 1024 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 12 } }
+        - { name: search, in: query, schema: { type: string, maxLength: 200 } }
+        - { name: category, in: query, schema: { type: string, enum: [all, kpop, street, disco, trend] } }
+        - { name: speed, in: query, schema: { type: string, enum: [any, chill, hype] } }
+        - { name: section, in: query, schema: { type: string, enum: [all, featured, recommended] } }
+      responses:
+        "200":
+          description: Published catalogue in stable editorial order
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CataloguePage" }
+  /catalogue/{id}:
+    get:
+      operationId: getCatalogueTemplate
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Published template
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CatalogueTemplate" }
+        "404": { description: Not published }
+  /admin/catalogue:
+    get:
+      operationId: listAdminCatalogue
+      responses:
+        "200":
+          description: All templates including drafts
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CatalogueTemplate" }
+    post:
+      operationId: createCatalogueTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CatalogueInput" }
+      responses:
+        "201":
+          description: Created unpublished template
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CatalogueTemplate" }
+  /admin/catalogue/{id}:
+    put:
+      operationId: updateCatalogueTemplate
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CatalogueInput" }
+      responses:
+        "200":
+          description: Updated template; publication requires uploaded poster and original
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CatalogueTemplate" }
   /admin/dance-templates/{id}/{asset}:
     put:
       operationId: putCatalogueMedia
@@ -24,7 +92,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [trend-01, trend-02, trend-03, trend-04, trend-05, trend-06]
+            pattern: "^[a-z0-9][a-z0-9-]{0,79}$"
         - name: asset
           in: path
           required: true
@@ -79,7 +147,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [trend-01, trend-02, trend-03, trend-04, trend-05, trend-06]
+            pattern: "^[a-z0-9][a-z0-9-]{0,79}$"
         - name: asset
           in: path
           required: true
@@ -348,6 +416,48 @@ paths:
                 $ref: "#/components/schemas/ApiError"
 components:
   schemas:
+    CatalogueInput:
+      type: object
+      required: [title, dancer, category, tagline, description, bpm, energy, durations, moves, color, isNew, sourceDurationSeconds, published, sortOrder, referenceCount, hasVideoPoster, hasExample, prompt]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        dancer: { type: string, maxLength: 200 }
+        category: { type: string, enum: [kpop, street, disco, trend] }
+        tagline: { type: string, maxLength: 500 }
+        description: { type: string, maxLength: 5000 }
+        bpm: { type: [integer, "null"], minimum: 1, maximum: 400 }
+        energy: { type: [integer, "null"], minimum: 1, maximum: 5 }
+        durations: { type: array, minItems: 1, maxItems: 20, items: { type: integer, minimum: 1, maximum: 300 } }
+        moves: { type: array, maxItems: 50, items: { type: string, maxLength: 500 } }
+        color: { type: string, enum: [primary, secondary, accent, violet, sun] }
+        isNew: { type: boolean }
+        sourceDurationSeconds: { type: [number, "null"], minimum: 0.1, maximum: 300 }
+        published: { type: boolean }
+        sortOrder: { type: integer, minimum: 0, maximum: 1000000 }
+        referenceCount: { type: integer, minimum: 0, maximum: 2 }
+        hasVideoPoster: { type: boolean }
+        hasExample: { type: boolean }
+        prompt: { type: string, maxLength: 10000 }
+    CatalogueTemplate:
+      allOf:
+        - { $ref: "#/components/schemas/CatalogueInput" }
+        - type: object
+          required: [id, imageUri, videoUri, referenceImageUris]
+          properties:
+            id: { type: string }
+            imageUri: { type: string }
+            videoUri: { type: string }
+            videoPosterUri: { type: string }
+            exampleResultUri: { type: string }
+            referenceImageUris: { type: array, items: { type: string } }
+    CataloguePage:
+      type: object
+      required: [items, nextCursor, hasNextPage, total]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/CatalogueTemplate" } }
+        nextCursor: { type: [string, "null"] }
+        hasNextPage: { type: boolean }
+        total: { type: integer }
     CatalogueMediaInput:
       type: string
       format: binary

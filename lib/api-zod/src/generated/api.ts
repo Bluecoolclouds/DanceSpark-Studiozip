@@ -8,12 +8,465 @@
 import * as zod from 'zod';
 
 
+export const listCatalogueQueryCursorMax = 1024;
+
+export const listCatalogueQueryLimitDefault = 12;
+export const listCatalogueQueryLimitMax = 50;
+
+export const listCatalogueQuerySearchMax = 200;
+
+
+
+export const ListCatalogueQueryParams = zod.object({
+  "cursor": zod.coerce.string().max(listCatalogueQueryCursorMax).optional(),
+  "limit": zod.coerce.number().int().min(1).max(listCatalogueQueryLimitMax).default(listCatalogueQueryLimitDefault),
+  "search": zod.coerce.string().max(listCatalogueQuerySearchMax).optional(),
+  "category": zod.enum(['all', 'kpop', 'street', 'disco', 'trend']).optional(),
+  "speed": zod.enum(['any', 'chill', 'hype']).optional(),
+  "section": zod.enum(['all', 'featured', 'recommended']).optional()
+})
+
+export const listCatalogueResponseItemsItemOneTitleMax = 200;
+
+export const listCatalogueResponseItemsItemOneDancerMax = 200;
+
+export const listCatalogueResponseItemsItemOneTaglineMax = 500;
+
+export const listCatalogueResponseItemsItemOneDescriptionMax = 5000;
+
+export const listCatalogueResponseItemsItemOneBpmMax = 400;
+
+export const listCatalogueResponseItemsItemOneEnergyMax = 5;
+
+export const listCatalogueResponseItemsItemOneDurationsItemMax = 300;
+
+export const listCatalogueResponseItemsItemOneDurationsMax = 20;
+
+export const listCatalogueResponseItemsItemOneMovesItemMax = 500;
+
+export const listCatalogueResponseItemsItemOneMovesMax = 50;
+
+export const listCatalogueResponseItemsItemOneSourceDurationSecondsMin = 0.1;
+export const listCatalogueResponseItemsItemOneSourceDurationSecondsMax = 300;
+
+export const listCatalogueResponseItemsItemOneSortOrderMin = 0;
+export const listCatalogueResponseItemsItemOneSortOrderMax = 1000000;
+
+export const listCatalogueResponseItemsItemOneReferenceCountMin = 0;
+export const listCatalogueResponseItemsItemOneReferenceCountMax = 2;
+
+export const listCatalogueResponseItemsItemOnePromptMax = 10000;
+
+
+
+export const ListCatalogueResponse = zod.object({
+  "items": zod.array(zod.object({
+  "title": zod.string().min(1).max(listCatalogueResponseItemsItemOneTitleMax),
+  "dancer": zod.string().max(listCatalogueResponseItemsItemOneDancerMax),
+  "category": zod.enum(['kpop', 'street', 'disco', 'trend']),
+  "tagline": zod.string().max(listCatalogueResponseItemsItemOneTaglineMax),
+  "description": zod.string().max(listCatalogueResponseItemsItemOneDescriptionMax),
+  "bpm": zod.number().int().min(1).max(listCatalogueResponseItemsItemOneBpmMax).nullable(),
+  "energy": zod.number().int().min(1).max(listCatalogueResponseItemsItemOneEnergyMax).nullable(),
+  "durations": zod.array(zod.number().int().min(1).max(listCatalogueResponseItemsItemOneDurationsItemMax)).min(1).max(listCatalogueResponseItemsItemOneDurationsMax),
+  "moves": zod.array(zod.string().max(listCatalogueResponseItemsItemOneMovesItemMax)).max(listCatalogueResponseItemsItemOneMovesMax),
+  "color": zod.enum(['primary', 'secondary', 'accent', 'violet', 'sun']),
+  "isNew": zod.boolean(),
+  "sourceDurationSeconds": zod.number().min(listCatalogueResponseItemsItemOneSourceDurationSecondsMin).max(listCatalogueResponseItemsItemOneSourceDurationSecondsMax).nullable(),
+  "published": zod.boolean(),
+  "sortOrder": zod.number().int().min(listCatalogueResponseItemsItemOneSortOrderMin).max(listCatalogueResponseItemsItemOneSortOrderMax),
+  "referenceCount": zod.number().int().min(listCatalogueResponseItemsItemOneReferenceCountMin).max(listCatalogueResponseItemsItemOneReferenceCountMax),
+  "hasVideoPoster": zod.boolean(),
+  "hasExample": zod.boolean(),
+  "prompt": zod.string().max(listCatalogueResponseItemsItemOnePromptMax)
+}).and(zod.object({
+  "id": zod.string(),
+  "imageUri": zod.string(),
+  "videoUri": zod.string(),
+  "videoPosterUri": zod.string().optional(),
+  "exampleResultUri": zod.string().optional(),
+  "referenceImageUris": zod.array(zod.string())
+}))),
+  "nextCursor": zod.string().nullable(),
+  "hasNextPage": zod.boolean(),
+  "total": zod.number().int()
+})
+
+
+export const GetCatalogueTemplateParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const getCatalogueTemplateResponseOneTitleMax = 200;
+
+export const getCatalogueTemplateResponseOneDancerMax = 200;
+
+export const getCatalogueTemplateResponseOneTaglineMax = 500;
+
+export const getCatalogueTemplateResponseOneDescriptionMax = 5000;
+
+export const getCatalogueTemplateResponseOneBpmMax = 400;
+
+export const getCatalogueTemplateResponseOneEnergyMax = 5;
+
+export const getCatalogueTemplateResponseOneDurationsItemMax = 300;
+
+export const getCatalogueTemplateResponseOneDurationsMax = 20;
+
+export const getCatalogueTemplateResponseOneMovesItemMax = 500;
+
+export const getCatalogueTemplateResponseOneMovesMax = 50;
+
+export const getCatalogueTemplateResponseOneSourceDurationSecondsMin = 0.1;
+export const getCatalogueTemplateResponseOneSourceDurationSecondsMax = 300;
+
+export const getCatalogueTemplateResponseOneSortOrderMin = 0;
+export const getCatalogueTemplateResponseOneSortOrderMax = 1000000;
+
+export const getCatalogueTemplateResponseOneReferenceCountMin = 0;
+export const getCatalogueTemplateResponseOneReferenceCountMax = 2;
+
+export const getCatalogueTemplateResponseOnePromptMax = 10000;
+
+
+
+export const GetCatalogueTemplateResponse = zod.object({
+  "title": zod.string().min(1).max(getCatalogueTemplateResponseOneTitleMax),
+  "dancer": zod.string().max(getCatalogueTemplateResponseOneDancerMax),
+  "category": zod.enum(['kpop', 'street', 'disco', 'trend']),
+  "tagline": zod.string().max(getCatalogueTemplateResponseOneTaglineMax),
+  "description": zod.string().max(getCatalogueTemplateResponseOneDescriptionMax),
+  "bpm": zod.number().int().min(1).max(getCatalogueTemplateResponseOneBpmMax).nullable(),
+  "energy": zod.number().int().min(1).max(getCatalogueTemplateResponseOneEnergyMax).nullable(),
+  "durations": zod.array(zod.number().int().min(1).max(getCatalogueTemplateResponseOneDurationsItemMax)).min(1).max(getCatalogueTemplateResponseOneDurationsMax),
+  "moves": zod.array(zod.string().max(getCatalogueTemplateResponseOneMovesItemMax)).max(getCatalogueTemplateResponseOneMovesMax),
+  "color": zod.enum(['primary', 'secondary', 'accent', 'violet', 'sun']),
+  "isNew": zod.boolean(),
+  "sourceDurationSeconds": zod.number().min(getCatalogueTemplateResponseOneSourceDurationSecondsMin).max(getCatalogueTemplateResponseOneSourceDurationSecondsMax).nullable(),
+  "published": zod.boolean(),
+  "sortOrder": zod.number().int().min(getCatalogueTemplateResponseOneSortOrderMin).max(getCatalogueTemplateResponseOneSortOrderMax),
+  "referenceCount": zod.number().int().min(getCatalogueTemplateResponseOneReferenceCountMin).max(getCatalogueTemplateResponseOneReferenceCountMax),
+  "hasVideoPoster": zod.boolean(),
+  "hasExample": zod.boolean(),
+  "prompt": zod.string().max(getCatalogueTemplateResponseOnePromptMax)
+}).and(zod.object({
+  "id": zod.string(),
+  "imageUri": zod.string(),
+  "videoUri": zod.string(),
+  "videoPosterUri": zod.string().optional(),
+  "exampleResultUri": zod.string().optional(),
+  "referenceImageUris": zod.array(zod.string())
+}))
+
+
+export const listAdminCatalogueResponseOneTitleMax = 200;
+
+export const listAdminCatalogueResponseOneDancerMax = 200;
+
+export const listAdminCatalogueResponseOneTaglineMax = 500;
+
+export const listAdminCatalogueResponseOneDescriptionMax = 5000;
+
+export const listAdminCatalogueResponseOneBpmMax = 400;
+
+export const listAdminCatalogueResponseOneEnergyMax = 5;
+
+export const listAdminCatalogueResponseOneDurationsItemMax = 300;
+
+export const listAdminCatalogueResponseOneDurationsMax = 20;
+
+export const listAdminCatalogueResponseOneMovesItemMax = 500;
+
+export const listAdminCatalogueResponseOneMovesMax = 50;
+
+export const listAdminCatalogueResponseOneSourceDurationSecondsMin = 0.1;
+export const listAdminCatalogueResponseOneSourceDurationSecondsMax = 300;
+
+export const listAdminCatalogueResponseOneSortOrderMin = 0;
+export const listAdminCatalogueResponseOneSortOrderMax = 1000000;
+
+export const listAdminCatalogueResponseOneReferenceCountMin = 0;
+export const listAdminCatalogueResponseOneReferenceCountMax = 2;
+
+export const listAdminCatalogueResponseOnePromptMax = 10000;
+
+
+
+export const ListAdminCatalogueResponseItem = zod.object({
+  "title": zod.string().min(1).max(listAdminCatalogueResponseOneTitleMax),
+  "dancer": zod.string().max(listAdminCatalogueResponseOneDancerMax),
+  "category": zod.enum(['kpop', 'street', 'disco', 'trend']),
+  "tagline": zod.string().max(listAdminCatalogueResponseOneTaglineMax),
+  "description": zod.string().max(listAdminCatalogueResponseOneDescriptionMax),
+  "bpm": zod.number().int().min(1).max(listAdminCatalogueResponseOneBpmMax).nullable(),
+  "energy": zod.number().int().min(1).max(listAdminCatalogueResponseOneEnergyMax).nullable(),
+  "durations": zod.array(zod.number().int().min(1).max(listAdminCatalogueResponseOneDurationsItemMax)).min(1).max(listAdminCatalogueResponseOneDurationsMax),
+  "moves": zod.array(zod.string().max(listAdminCatalogueResponseOneMovesItemMax)).max(listAdminCatalogueResponseOneMovesMax),
+  "color": zod.enum(['primary', 'secondary', 'accent', 'violet', 'sun']),
+  "isNew": zod.boolean(),
+  "sourceDurationSeconds": zod.number().min(listAdminCatalogueResponseOneSourceDurationSecondsMin).max(listAdminCatalogueResponseOneSourceDurationSecondsMax).nullable(),
+  "published": zod.boolean(),
+  "sortOrder": zod.number().int().min(listAdminCatalogueResponseOneSortOrderMin).max(listAdminCatalogueResponseOneSortOrderMax),
+  "referenceCount": zod.number().int().min(listAdminCatalogueResponseOneReferenceCountMin).max(listAdminCatalogueResponseOneReferenceCountMax),
+  "hasVideoPoster": zod.boolean(),
+  "hasExample": zod.boolean(),
+  "prompt": zod.string().max(listAdminCatalogueResponseOnePromptMax)
+}).and(zod.object({
+  "id": zod.string(),
+  "imageUri": zod.string(),
+  "videoUri": zod.string(),
+  "videoPosterUri": zod.string().optional(),
+  "exampleResultUri": zod.string().optional(),
+  "referenceImageUris": zod.array(zod.string())
+}))
+export const ListAdminCatalogueResponse = zod.array(ListAdminCatalogueResponseItem)
+
+
+export const createCatalogueTemplateBodyTitleMax = 200;
+
+export const createCatalogueTemplateBodyDancerMax = 200;
+
+export const createCatalogueTemplateBodyTaglineMax = 500;
+
+export const createCatalogueTemplateBodyDescriptionMax = 5000;
+
+export const createCatalogueTemplateBodyBpmMax = 400;
+
+export const createCatalogueTemplateBodyEnergyMax = 5;
+
+export const createCatalogueTemplateBodyDurationsItemMax = 300;
+
+export const createCatalogueTemplateBodyDurationsMax = 20;
+
+export const createCatalogueTemplateBodyMovesItemMax = 500;
+
+export const createCatalogueTemplateBodyMovesMax = 50;
+
+export const createCatalogueTemplateBodySourceDurationSecondsMin = 0.1;
+export const createCatalogueTemplateBodySourceDurationSecondsMax = 300;
+
+export const createCatalogueTemplateBodySortOrderMin = 0;
+export const createCatalogueTemplateBodySortOrderMax = 1000000;
+
+export const createCatalogueTemplateBodyReferenceCountMin = 0;
+export const createCatalogueTemplateBodyReferenceCountMax = 2;
+
+export const createCatalogueTemplateBodyPromptMax = 10000;
+
+
+
+export const CreateCatalogueTemplateBody = zod.object({
+  "title": zod.string().min(1).max(createCatalogueTemplateBodyTitleMax),
+  "dancer": zod.string().max(createCatalogueTemplateBodyDancerMax),
+  "category": zod.enum(['kpop', 'street', 'disco', 'trend']),
+  "tagline": zod.string().max(createCatalogueTemplateBodyTaglineMax),
+  "description": zod.string().max(createCatalogueTemplateBodyDescriptionMax),
+  "bpm": zod.number().int().min(1).max(createCatalogueTemplateBodyBpmMax).nullable(),
+  "energy": zod.number().int().min(1).max(createCatalogueTemplateBodyEnergyMax).nullable(),
+  "durations": zod.array(zod.number().int().min(1).max(createCatalogueTemplateBodyDurationsItemMax)).min(1).max(createCatalogueTemplateBodyDurationsMax),
+  "moves": zod.array(zod.string().max(createCatalogueTemplateBodyMovesItemMax)).max(createCatalogueTemplateBodyMovesMax),
+  "color": zod.enum(['primary', 'secondary', 'accent', 'violet', 'sun']),
+  "isNew": zod.boolean(),
+  "sourceDurationSeconds": zod.number().min(createCatalogueTemplateBodySourceDurationSecondsMin).max(createCatalogueTemplateBodySourceDurationSecondsMax).nullable(),
+  "published": zod.boolean(),
+  "sortOrder": zod.number().int().min(createCatalogueTemplateBodySortOrderMin).max(createCatalogueTemplateBodySortOrderMax),
+  "referenceCount": zod.number().int().min(createCatalogueTemplateBodyReferenceCountMin).max(createCatalogueTemplateBodyReferenceCountMax),
+  "hasVideoPoster": zod.boolean(),
+  "hasExample": zod.boolean(),
+  "prompt": zod.string().max(createCatalogueTemplateBodyPromptMax)
+})
+
+export const createCatalogueTemplateResponseOneTitleMax = 200;
+
+export const createCatalogueTemplateResponseOneDancerMax = 200;
+
+export const createCatalogueTemplateResponseOneTaglineMax = 500;
+
+export const createCatalogueTemplateResponseOneDescriptionMax = 5000;
+
+export const createCatalogueTemplateResponseOneBpmMax = 400;
+
+export const createCatalogueTemplateResponseOneEnergyMax = 5;
+
+export const createCatalogueTemplateResponseOneDurationsItemMax = 300;
+
+export const createCatalogueTemplateResponseOneDurationsMax = 20;
+
+export const createCatalogueTemplateResponseOneMovesItemMax = 500;
+
+export const createCatalogueTemplateResponseOneMovesMax = 50;
+
+export const createCatalogueTemplateResponseOneSourceDurationSecondsMin = 0.1;
+export const createCatalogueTemplateResponseOneSourceDurationSecondsMax = 300;
+
+export const createCatalogueTemplateResponseOneSortOrderMin = 0;
+export const createCatalogueTemplateResponseOneSortOrderMax = 1000000;
+
+export const createCatalogueTemplateResponseOneReferenceCountMin = 0;
+export const createCatalogueTemplateResponseOneReferenceCountMax = 2;
+
+export const createCatalogueTemplateResponseOnePromptMax = 10000;
+
+
+
+export const CreateCatalogueTemplateResponse = zod.object({
+  "title": zod.string().min(1).max(createCatalogueTemplateResponseOneTitleMax),
+  "dancer": zod.string().max(createCatalogueTemplateResponseOneDancerMax),
+  "category": zod.enum(['kpop', 'street', 'disco', 'trend']),
+  "tagline": zod.string().max(createCatalogueTemplateResponseOneTaglineMax),
+  "description": zod.string().max(createCatalogueTemplateResponseOneDescriptionMax),
+  "bpm": zod.number().int().min(1).max(createCatalogueTemplateResponseOneBpmMax).nullable(),
+  "energy": zod.number().int().min(1).max(createCatalogueTemplateResponseOneEnergyMax).nullable(),
+  "durations": zod.array(zod.number().int().min(1).max(createCatalogueTemplateResponseOneDurationsItemMax)).min(1).max(createCatalogueTemplateResponseOneDurationsMax),
+  "moves": zod.array(zod.string().max(createCatalogueTemplateResponseOneMovesItemMax)).max(createCatalogueTemplateResponseOneMovesMax),
+  "color": zod.enum(['primary', 'secondary', 'accent', 'violet', 'sun']),
+  "isNew": zod.boolean(),
+  "sourceDurationSeconds": zod.number().min(createCatalogueTemplateResponseOneSourceDurationSecondsMin).max(createCatalogueTemplateResponseOneSourceDurationSecondsMax).nullable(),
+  "published": zod.boolean(),
+  "sortOrder": zod.number().int().min(createCatalogueTemplateResponseOneSortOrderMin).max(createCatalogueTemplateResponseOneSortOrderMax),
+  "referenceCount": zod.number().int().min(createCatalogueTemplateResponseOneReferenceCountMin).max(createCatalogueTemplateResponseOneReferenceCountMax),
+  "hasVideoPoster": zod.boolean(),
+  "hasExample": zod.boolean(),
+  "prompt": zod.string().max(createCatalogueTemplateResponseOnePromptMax)
+}).and(zod.object({
+  "id": zod.string(),
+  "imageUri": zod.string(),
+  "videoUri": zod.string(),
+  "videoPosterUri": zod.string().optional(),
+  "exampleResultUri": zod.string().optional(),
+  "referenceImageUris": zod.array(zod.string())
+}))
+
+
+export const UpdateCatalogueTemplateParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const updateCatalogueTemplateBodyTitleMax = 200;
+
+export const updateCatalogueTemplateBodyDancerMax = 200;
+
+export const updateCatalogueTemplateBodyTaglineMax = 500;
+
+export const updateCatalogueTemplateBodyDescriptionMax = 5000;
+
+export const updateCatalogueTemplateBodyBpmMax = 400;
+
+export const updateCatalogueTemplateBodyEnergyMax = 5;
+
+export const updateCatalogueTemplateBodyDurationsItemMax = 300;
+
+export const updateCatalogueTemplateBodyDurationsMax = 20;
+
+export const updateCatalogueTemplateBodyMovesItemMax = 500;
+
+export const updateCatalogueTemplateBodyMovesMax = 50;
+
+export const updateCatalogueTemplateBodySourceDurationSecondsMin = 0.1;
+export const updateCatalogueTemplateBodySourceDurationSecondsMax = 300;
+
+export const updateCatalogueTemplateBodySortOrderMin = 0;
+export const updateCatalogueTemplateBodySortOrderMax = 1000000;
+
+export const updateCatalogueTemplateBodyReferenceCountMin = 0;
+export const updateCatalogueTemplateBodyReferenceCountMax = 2;
+
+export const updateCatalogueTemplateBodyPromptMax = 10000;
+
+
+
+export const UpdateCatalogueTemplateBody = zod.object({
+  "title": zod.string().min(1).max(updateCatalogueTemplateBodyTitleMax),
+  "dancer": zod.string().max(updateCatalogueTemplateBodyDancerMax),
+  "category": zod.enum(['kpop', 'street', 'disco', 'trend']),
+  "tagline": zod.string().max(updateCatalogueTemplateBodyTaglineMax),
+  "description": zod.string().max(updateCatalogueTemplateBodyDescriptionMax),
+  "bpm": zod.number().int().min(1).max(updateCatalogueTemplateBodyBpmMax).nullable(),
+  "energy": zod.number().int().min(1).max(updateCatalogueTemplateBodyEnergyMax).nullable(),
+  "durations": zod.array(zod.number().int().min(1).max(updateCatalogueTemplateBodyDurationsItemMax)).min(1).max(updateCatalogueTemplateBodyDurationsMax),
+  "moves": zod.array(zod.string().max(updateCatalogueTemplateBodyMovesItemMax)).max(updateCatalogueTemplateBodyMovesMax),
+  "color": zod.enum(['primary', 'secondary', 'accent', 'violet', 'sun']),
+  "isNew": zod.boolean(),
+  "sourceDurationSeconds": zod.number().min(updateCatalogueTemplateBodySourceDurationSecondsMin).max(updateCatalogueTemplateBodySourceDurationSecondsMax).nullable(),
+  "published": zod.boolean(),
+  "sortOrder": zod.number().int().min(updateCatalogueTemplateBodySortOrderMin).max(updateCatalogueTemplateBodySortOrderMax),
+  "referenceCount": zod.number().int().min(updateCatalogueTemplateBodyReferenceCountMin).max(updateCatalogueTemplateBodyReferenceCountMax),
+  "hasVideoPoster": zod.boolean(),
+  "hasExample": zod.boolean(),
+  "prompt": zod.string().max(updateCatalogueTemplateBodyPromptMax)
+})
+
+export const updateCatalogueTemplateResponseOneTitleMax = 200;
+
+export const updateCatalogueTemplateResponseOneDancerMax = 200;
+
+export const updateCatalogueTemplateResponseOneTaglineMax = 500;
+
+export const updateCatalogueTemplateResponseOneDescriptionMax = 5000;
+
+export const updateCatalogueTemplateResponseOneBpmMax = 400;
+
+export const updateCatalogueTemplateResponseOneEnergyMax = 5;
+
+export const updateCatalogueTemplateResponseOneDurationsItemMax = 300;
+
+export const updateCatalogueTemplateResponseOneDurationsMax = 20;
+
+export const updateCatalogueTemplateResponseOneMovesItemMax = 500;
+
+export const updateCatalogueTemplateResponseOneMovesMax = 50;
+
+export const updateCatalogueTemplateResponseOneSourceDurationSecondsMin = 0.1;
+export const updateCatalogueTemplateResponseOneSourceDurationSecondsMax = 300;
+
+export const updateCatalogueTemplateResponseOneSortOrderMin = 0;
+export const updateCatalogueTemplateResponseOneSortOrderMax = 1000000;
+
+export const updateCatalogueTemplateResponseOneReferenceCountMin = 0;
+export const updateCatalogueTemplateResponseOneReferenceCountMax = 2;
+
+export const updateCatalogueTemplateResponseOnePromptMax = 10000;
+
+
+
+export const UpdateCatalogueTemplateResponse = zod.object({
+  "title": zod.string().min(1).max(updateCatalogueTemplateResponseOneTitleMax),
+  "dancer": zod.string().max(updateCatalogueTemplateResponseOneDancerMax),
+  "category": zod.enum(['kpop', 'street', 'disco', 'trend']),
+  "tagline": zod.string().max(updateCatalogueTemplateResponseOneTaglineMax),
+  "description": zod.string().max(updateCatalogueTemplateResponseOneDescriptionMax),
+  "bpm": zod.number().int().min(1).max(updateCatalogueTemplateResponseOneBpmMax).nullable(),
+  "energy": zod.number().int().min(1).max(updateCatalogueTemplateResponseOneEnergyMax).nullable(),
+  "durations": zod.array(zod.number().int().min(1).max(updateCatalogueTemplateResponseOneDurationsItemMax)).min(1).max(updateCatalogueTemplateResponseOneDurationsMax),
+  "moves": zod.array(zod.string().max(updateCatalogueTemplateResponseOneMovesItemMax)).max(updateCatalogueTemplateResponseOneMovesMax),
+  "color": zod.enum(['primary', 'secondary', 'accent', 'violet', 'sun']),
+  "isNew": zod.boolean(),
+  "sourceDurationSeconds": zod.number().min(updateCatalogueTemplateResponseOneSourceDurationSecondsMin).max(updateCatalogueTemplateResponseOneSourceDurationSecondsMax).nullable(),
+  "published": zod.boolean(),
+  "sortOrder": zod.number().int().min(updateCatalogueTemplateResponseOneSortOrderMin).max(updateCatalogueTemplateResponseOneSortOrderMax),
+  "referenceCount": zod.number().int().min(updateCatalogueTemplateResponseOneReferenceCountMin).max(updateCatalogueTemplateResponseOneReferenceCountMax),
+  "hasVideoPoster": zod.boolean(),
+  "hasExample": zod.boolean(),
+  "prompt": zod.string().max(updateCatalogueTemplateResponseOnePromptMax)
+}).and(zod.object({
+  "id": zod.string(),
+  "imageUri": zod.string(),
+  "videoUri": zod.string(),
+  "videoPosterUri": zod.string().optional(),
+  "exampleResultUri": zod.string().optional(),
+  "referenceImageUris": zod.array(zod.string())
+}))
+
+
 /**
  * Requires a verified administrator and same-origin request or verified native bearer token. Raw binary body; maximum 100 MiB for videos or 10 MiB for JPEG. Does not accept arbitrary bucket keys.
  * @summary Upload or atomically replace an allowlisted catalogue file
  */
+export const putCatalogueMediaPathIdRegExp = new RegExp('^[a-z0-9][a-z0-9-]{0,79}$');
+
+
 export const PutCatalogueMediaParams = zod.object({
-  "id": zod.enum(['trend-01', 'trend-02', 'trend-03', 'trend-04', 'trend-05', 'trend-06']),
+  "id": zod.coerce.string().regex(putCatalogueMediaPathIdRegExp),
   "asset": zod.enum(['video.mp4', 'preview.mp4', 'preview.webm', 'poster.jpg', 'character-01.jpg', 'character-02.jpg', 'reference-poster.jpg', 'result.mp4', 'result-preview.mp4', 'result.webm'])
 })
 
@@ -28,8 +481,11 @@ export const PutCatalogueMediaResponse = zod.object({
 /**
  * @summary Public video or poster for a published dance template
  */
+export const getDanceTemplateMediaPathIdRegExp = new RegExp('^[a-z0-9][a-z0-9-]{0,79}$');
+
+
 export const GetDanceTemplateMediaParams = zod.object({
-  "id": zod.enum(['trend-01', 'trend-02', 'trend-03', 'trend-04', 'trend-05', 'trend-06']),
+  "id": zod.coerce.string().regex(getDanceTemplateMediaPathIdRegExp),
   "asset": zod.enum(['video.mp4', 'preview.mp4', 'preview.webm', 'poster.jpg', 'character-01.jpg', 'character-02.jpg', 'reference-poster.jpg', 'result.mp4', 'result-preview.mp4', 'result.webm'])
 })
 

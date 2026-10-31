@@ -30,6 +30,9 @@ export default defineConfig({
       clean: true,
       prettier: true,
       override: {
+        operations: {
+          listCatalogue: { query: { useInfinite: true, useInfiniteQueryParam: "cursor" } },
+        },
         query: { version: 5 },
         fetch: {
           includeHttpResponseReturnType: false,

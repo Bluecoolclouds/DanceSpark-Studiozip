@@ -3,13 +3,14 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useVideoPlayer } from 'expo-video';
 import { router } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { NativeScrollEvent, NativeSyntheticEvent, Platform, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import Animated, { useReducedMotion, Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BigButton, Bouncy, Pill, SectionTitle, TemplateCard, EmptyState } from '@/components/ui';
 import { F } from '@/constants/fonts';
-import { CATEGORIES, Category, categoryLabel, HERO_IMAGE, RECOMMENDED_TEMPLATES, TEMPLATES } from '@/constants/templates';
+import { CATEGORIES, Category, HERO_IMAGE } from '@/constants/templates';
+import { useCatalogue } from '@/hooks/useCatalogue';
 import { useColors } from '@/hooks/useColors';
 import { templatePreviewCandidates } from '@/lib/template-preview';
 
@@ -28,7 +29,13 @@ export default function Discover() {
   const [cat, setCat] = useState<Category | 'all'>('all');
   const [speed, setSpeed] = useState<'any' | 'chill' | 'hype'>('any');
   const [search, setSearch] = useState('');
-  const [visibleCount, setVisibleCount] = useState(CATALOG_PAGE_SIZE);
+  const catalogue = useCatalogue({ search, category: cat, speed, limit: CATALOG_PAGE_SIZE });
+  const featuredQuery = useCatalogue({ section: 'featured', limit: 12 });
+  const recommendations = useCatalogue({ section: 'recommended', limit: 3 });
+  const loadMore = useCallback(() => {
+    if (catalogue.hasNextPage && !catalogue.isFetching && !catalogue.isError)
+      void catalogue.fetchNextPage({ cancelRefetch: false });
+  }, [catalogue.hasNextPage, catalogue.isFetching, catalogue.isError, catalogue.fetchNextPage]);
   const top = Platform.OS === 'web' ? 67 : insets.top;
 
   const bob = useSharedValue(0);
@@ -39,27 +46,10 @@ export default function Discover() {
   }, [bob, reduced]);
   const bobStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${-6 + bob.value * 6}deg` }, { scale: 1 + bob.value * 0.06 }] }));
 
-  const list = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase();
-    return TEMPLATES.filter((t) => {
-      const matchesQuery = !query || [
-        t.title,
-        t.category,
-        categoryLabel(t.category),
-        t.dancer,
-        t.tagline,
-        t.description,
-        ...t.moves,
-      ].some((field) => field.toLocaleLowerCase().includes(query));
-      return matchesQuery &&
-        (cat === 'all' || t.category === cat) &&
-        (speed === 'any' || (t.bpm != null && (speed === 'chill' ? t.bpm < 110 : t.bpm >= 110)));
-    });
-  }, [cat, search, speed]);
-  const visibleList = list.slice(0, visibleCount);
+  const list = catalogue.items;
 
   const cardW = (Math.min(width, 600) - 12 * 2 - 2) / 2;
-  const featured = TEMPLATES.filter((t) => t.isNew);
+  const featured = featuredQuery.items;
   const featuredCardWidth = Math.min(width * 0.72, 300);
   const [activeFeaturedIndex, setActiveFeaturedIndex] = useState(0);
   const [featuredInView, setFeaturedInView] = useState(false);
@@ -125,9 +115,9 @@ export default function Discover() {
     updateFeaturedVisibility();
     const distanceFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height);
     if (distanceFromBottom < layoutMeasurement.height * 0.7) {
-      setVisibleCount((current) => Math.min(list.length, current + CATALOG_PAGE_SIZE));
+      loadMore();
     }
-  }, [list.length, updateFeaturedVisibility]);
+  }, [loadMore, updateFeaturedVisibility]);
 
   const selectFeaturedAtOffset = useCallback((offsetX: number) => {
     const next = Math.max(0, Math.min(featured.length - 1, Math.round(offsetX / (featuredCardWidth + 2))));
@@ -135,7 +125,9 @@ export default function Discover() {
   }, [featured.length, featuredCardWidth]);
 
   return (
-    <ScrollView onScroll={handlePageScroll} onLayout={updateFeaturedVisibility} scrollEventThrottle={120} style={{ flex: 1, backgroundColor: c.background }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+    <ScrollView onScroll={handlePageScroll} onContentSizeChange={(_w, h) => {
+      if (h - pageScrollY.current - viewportHeight < viewportHeight * 0.7) loadMore();
+    }} onLayout={updateFeaturedVisibility} scrollEventThrottle={120} style={{ flex: 1, backgroundColor: c.background }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
       <View style={[styles.hero, { paddingTop: top + 12, backgroundColor: c.stage }]}>
         <Image source={HERO_IMAGE} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="right" />
         <LinearGradient colors={[c.stage, c.clear]} start={{ x: 0, y: 0 }} end={{ x: 0.85, y: 0 }} style={StyleSheet.absoluteFill} />
@@ -174,6 +166,13 @@ export default function Discover() {
           contentContainerStyle={{ paddingHorizontal: 12, gap: 2, paddingBottom: 8 }}
           onScrollEndDrag={(event) => selectFeaturedAtOffset(event.nativeEvent.contentOffset.x)}
           onMomentumScrollEnd={(event) => selectFeaturedAtOffset(event.nativeEvent.contentOffset.x)}
+          onScroll={(event) => {
+            const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+            if (contentSize.width - contentOffset.x - layoutMeasurement.width < featuredCardWidth &&
+              featuredQuery.hasNextPage && !featuredQuery.isFetching && !featuredQuery.isError)
+              void featuredQuery.fetchNextPage({ cancelRefetch: false });
+          }}
+          scrollEventThrottle={200}
         >
           {featured.map((t, index) => (
             <TemplateCard
@@ -207,24 +206,26 @@ export default function Discover() {
           </Bouncy>
         </>}
       </View>
+      {featuredQuery.isError && <EmptyState icon="alert-circle" title="Хиты не загрузились" text="Попробуй ещё раз." action="Повторить" onAction={() => void featuredQuery.refetch()} />}
 
       <View style={{ height: 28 }} />
       <SectionTitle kicker="ВЫБРАЛИ ДЛЯ ТЕБЯ" title="Рекомендуем" />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 4, paddingBottom: 8 }}>
-        {RECOMMENDED_TEMPLATES.map((t) => (
+        {recommendations.items.map((t) => (
           <TemplateCard key={t.id} t={t} width={Math.min(width * 0.58, 230)} height={250} onPress={() => router.push(`/template/${t.id}`)} />
         ))}
       </ScrollView>
+      {recommendations.isError && <EmptyState icon="alert-circle" title="Рекомендации не загрузились" text="Попробуй ещё раз." action="Повторить" onAction={() => void recommendations.refetch()} />}
 
       <View style={{ height: 24 }} />
-      <SectionTitle kicker="ВЕСЬ КАТАЛОГ" title="Выбери свой стиль" right={<Text style={[styles.count, { color: c.mutedForeground }]}>{list.length}</Text>} />
+      <SectionTitle kicker="ВЕСЬ КАТАЛОГ" title="Выбери свой стиль" right={<Text style={[styles.count, { color: c.mutedForeground }]}>{catalogue.total}</Text>} />
       <View style={[styles.searchBox, { backgroundColor: c.card, borderColor: c.border }]}>
         <Feather name="search" size={19} color={c.mutedForeground} />
         <TextInput
           testID="catalog-search"
           accessibilityLabel="Поиск по каталогу"
           value={search}
-          onChangeText={(value) => { setSearch(value); setVisibleCount(CATALOG_PAGE_SIZE); }}
+          onChangeText={setSearch}
           placeholder="Название, описание, движение…"
           placeholderTextColor={c.mutedForeground}
           returnKeyType="search"
@@ -234,7 +235,7 @@ export default function Discover() {
           <Bouncy
             testID="catalog-search-clear"
             accessibilityLabel="Очистить поиск"
-            onPress={() => { setSearch(''); setVisibleCount(CATALOG_PAGE_SIZE); }}
+            onPress={() => setSearch('')}
             style={styles.searchClear}
           >
             <Feather name="x-circle" size={20} color={c.mutedForeground} />
@@ -242,34 +243,41 @@ export default function Discover() {
         )}
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 5, paddingVertical: 4 }}>
-        {CATEGORIES.filter((k) => k.key === 'all' || TEMPLATES.some((t) => t.category === k.key)).map((k) => <Pill key={k.key} label={k.label} active={cat === k.key} onPress={() => { setCat(k.key); setVisibleCount(CATALOG_PAGE_SIZE); }} />)}
+        {CATEGORIES.map((k) => <Pill key={k.key} label={k.label} active={cat === k.key} onPress={() => setCat(k.key)} />)}
       </ScrollView>
-      {TEMPLATES.some((t) => t.bpm != null) && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 5, paddingVertical: 10 }}>
-        {SPEEDS.map((k) => <Pill key={k.key} color="secondary" label={k.label} active={speed === k.key} onPress={() => { setSpeed(k.key); setVisibleCount(CATALOG_PAGE_SIZE); }} />)}
-      </ScrollView>}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 5, paddingVertical: 10 }}>
+        {SPEEDS.map((k) => <Pill key={k.key} color="secondary" label={k.label} active={speed === k.key} onPress={() => setSpeed(k.key)} />)}
+      </ScrollView>
 
-      {list.length === 0 ? (
+      {catalogue.isError && !list.length ? (
+        <EmptyState icon="alert-circle" title="Не удалось загрузить каталог" text="Проверь соединение и повтори загрузку." action="Повторить" onAction={() => void catalogue.refetch()} />
+      ) : catalogue.isPending ? (
+        <Text style={{ color: c.mutedForeground, textAlign: 'center', margin: 20 }}>Загружаем танцы…</Text>
+      ) : list.length === 0 ? (
         <EmptyState
           icon="search"
-          title="Ничего не найдено"
-          text={search.trim() ? 'Попробуй изменить запрос или сбросить поиск и фильтры.' : 'Для выбранных фильтров танцев нет. Попробуй выбрать другие.'}
-          action="Очистить поиск и фильтры"
-          onAction={() => { setSearch(''); setCat('all'); setSpeed('any'); setVisibleCount(CATALOG_PAGE_SIZE); }}
+          title={!search.trim() && cat === 'all' && speed === 'any' ? 'Пока нет опубликованных танцев' : 'Ничего не найдено'}
+          text={!search.trim() && cat === 'all' && speed === 'any' ? 'Сохранённые черновики по-прежнему доступны в студии.' : 'Попробуй изменить запрос или сбросить поиск и фильтры.'}
+          action={!search.trim() && cat === 'all' && speed === 'any' ? 'В студию' : 'Очистить поиск и фильтры'}
+          onAction={() => { if (!search.trim() && cat === 'all' && speed === 'any') router.push('/studio'); else { setSearch(''); setCat('all'); setSpeed('any'); } }}
         />
       ) : (
         <View style={styles.grid}>
-          {visibleList.map((t) => (
+          {list.map((t) => (
             <View key={t.id}>
               <TemplateCard t={t} width={cardW} height={250} onPress={() => router.push(`/template/${t.id}`)} />
             </View>
           ))}
         </View>
       )}
-      {visibleList.length < list.length && (
+      {catalogue.isError && list.length > 0 && <EmptyState icon="alert-circle" title="Не удалось загрузить продолжение" text="Уже загруженные танцы остаются доступны." action="Повторить" onAction={() => void catalogue.fetchNextPage({ cancelRefetch: false })} />}
+      {catalogue.hasNextPage && (
         <Text style={{ color: c.mutedForeground, fontFamily: F.body, fontSize: 12, textAlign: 'center', marginTop: 12 }}>
-          Показано {visibleList.length} из {list.length} · прокрути ниже, чтобы увидеть ещё
+          Показано {list.length} из {catalogue.total} · {catalogue.isFetchingNextPage ? 'Загружаем…' : 'прокрути ниже, чтобы увидеть ещё'}
         </Text>
       )}
+      {!catalogue.hasNextPage && !catalogue.isPending && list.length > 0 &&
+        <Text style={{ color: c.mutedForeground, textAlign: 'center', marginTop: 12 }}>Все танцы загружены</Text>}
 
       <View style={[styles.honest, { backgroundColor: c.card, borderColor: c.border }]}>
         <Feather name="info" size={18} color={c.violet} />

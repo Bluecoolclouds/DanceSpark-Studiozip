@@ -15,6 +15,7 @@ import UsersPage from '@/pages/users';
 import Generations from '@/pages/generations';
 import SettingsPage from '@/pages/settings';
 import Audit from '@/pages/audit';
+import CataloguePage from '@/pages/catalogue';
 
 const clerkPubKey = publishableKeyFromHost(
   window.location.hostname,
@@ -141,6 +142,7 @@ const UsersRoute = protect(UsersPage);
 const GenerationsRoute = protect(Generations);
 const SettingsRoute = protect(SettingsPage);
 const AuditRoute = protect(Audit);
+const CatalogueRoute = protect(CataloguePage);
 
 function AccountQueryProvider({ children }: { children: ReactNode }) {
   const { userId, isLoaded } = useAuth();
@@ -209,6 +211,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/generations" component={GenerationsRoute} />
               <Route path="/settings" component={SettingsRoute} />
               <Route path="/audit" component={AuditRoute} />
+              <Route path="/catalogue" component={CatalogueRoute} />
               <Route component={NotFound} />
             </Switch>
           </RoutedErrorBoundary>

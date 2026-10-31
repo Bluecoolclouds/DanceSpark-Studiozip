@@ -25,6 +25,9 @@ export default function Overview() {
   return (
     <>
       <PageHeader kicker="живые счётчики" title="Обзор">
+        <Link href="/catalogue" data-testid="link-overview-catalogue" className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+          каталог танцев <ArrowUpRight className="h-3 w-3" />
+        </Link>
         {o && <span className="font-mono text-xs text-muted-foreground" data-testid="text-generated-at">срез: {fmtUtc(o.generatedAt)}</span>}
       </PageHeader>
 

@@ -5,6 +5,106 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type CatalogueInputCategory = typeof CatalogueInputCategory[keyof typeof CatalogueInputCategory];
+
+
+export const CatalogueInputCategory = {
+  kpop: 'kpop',
+  street: 'street',
+  disco: 'disco',
+  trend: 'trend',
+} as const;
+
+export type CatalogueInputColor = typeof CatalogueInputColor[keyof typeof CatalogueInputColor];
+
+
+export const CatalogueInputColor = {
+  primary: 'primary',
+  secondary: 'secondary',
+  accent: 'accent',
+  violet: 'violet',
+  sun: 'sun',
+} as const;
+
+export interface CatalogueInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title: string;
+  /** @maxLength 200 */
+  dancer: string;
+  category: CatalogueInputCategory;
+  /** @maxLength 500 */
+  tagline: string;
+  /** @maxLength 5000 */
+  description: string;
+  /**
+     * @minimum 1
+     * @maximum 400
+     * @nullable
+     */
+  bpm: number | null;
+  /**
+     * @minimum 1
+     * @maximum 5
+     * @nullable
+     */
+  energy: number | null;
+  /**
+     * @minItems 1
+     * @maxItems 20
+     * @items.minimum 1
+     * @items.maximum 300
+     */
+  durations: number[];
+  /**
+     * @maxItems 50
+     * @items.maxLength 500
+     */
+  moves: string[];
+  color: CatalogueInputColor;
+  isNew: boolean;
+  /**
+     * @minimum 0.1
+     * @maximum 300
+     * @nullable
+     */
+  sourceDurationSeconds: number | null;
+  published: boolean;
+  /**
+     * @minimum 0
+     * @maximum 1000000
+     */
+  sortOrder: number;
+  /**
+     * @minimum 0
+     * @maximum 2
+     */
+  referenceCount: number;
+  hasVideoPoster: boolean;
+  hasExample: boolean;
+  /** @maxLength 10000 */
+  prompt: string;
+}
+
+export type CatalogueTemplate = CatalogueInput & {
+  id: string;
+  imageUri: string;
+  videoUri: string;
+  videoPosterUri?: string;
+  exampleResultUri?: string;
+  referenceImageUris: string[];
+};
+
+export interface CataloguePage {
+  items: CatalogueTemplate[];
+  /** @nullable */
+  nextCursor: string | null;
+  hasNextPage: boolean;
+  total: number;
+}
+
 export type CatalogueMediaInput = Blob;
 
 export type AccountSubscriptionPlan = typeof AccountSubscriptionPlan[keyof typeof AccountSubscriptionPlan];
@@ -276,6 +376,54 @@ export interface VideoGenerationStatus {
   /** @nullable */
   queuePosition: number | null;
 }
+
+export type ListCatalogueParams = {
+/**
+ * @maxLength 1024
+ */
+cursor?: string;
+/**
+ * @minimum 1
+ * @maximum 50
+ */
+limit?: number;
+/**
+ * @maxLength 200
+ */
+search?: string;
+category?: ListCatalogueCategory;
+speed?: ListCatalogueSpeed;
+section?: ListCatalogueSection;
+};
+
+export type ListCatalogueCategory = typeof ListCatalogueCategory[keyof typeof ListCatalogueCategory];
+
+
+export const ListCatalogueCategory = {
+  all: 'all',
+  kpop: 'kpop',
+  street: 'street',
+  disco: 'disco',
+  trend: 'trend',
+} as const;
+
+export type ListCatalogueSpeed = typeof ListCatalogueSpeed[keyof typeof ListCatalogueSpeed];
+
+
+export const ListCatalogueSpeed = {
+  any: 'any',
+  chill: 'chill',
+  hype: 'hype',
+} as const;
+
+export type ListCatalogueSection = typeof ListCatalogueSection[keyof typeof ListCatalogueSection];
+
+
+export const ListCatalogueSection = {
+  all: 'all',
+  featured: 'featured',
+  recommended: 'recommended',
+} as const;
 
 export type PutCatalogueMedia200 = {
   id: string;

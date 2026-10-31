@@ -28,7 +28,7 @@ beforeEach(async () => {
   mock.method(S3Client.prototype, "send", async (command: any) => {
     calls.push({ name: command.constructor.name, input: command.input });
     assert.equal(command.input.Bucket, "catalogue-test");
-    assert.match(command.input.Key, /^dance-templates\/trend-0[1-6]\/(video\.mp4|poster\.jpg)$/);
+    assert.match(command.input.Key, /^dance-templates\/(trend-0[1-6]|dance-upload-test)\/(video\.mp4|poster\.jpg)$/);
     if (command instanceof PutObjectCommand) {
       data = Buffer.from(command.input.Body); version++;
       return { ETag: `"v${version}"` };
@@ -128,6 +128,28 @@ test("PUT creates/replaces atomically and reads reflect replacement rather than 
     assert.equal(response.headers.get("etag"), '"v3"');
     assert.deepEqual(Buffer.from(await response.arrayBuffer()), replacement);
   });
+});
+
+test("owner uploads to server catalogue IDs, unknown IDs stay blocked and drafts are not public", async () => {
+  await pool.query(`INSERT INTO dance_catalogue(id,metadata,published,sort_order)
+    VALUES ('dance-upload-test','{}',false,100) ON CONFLICT(id) DO NOTHING`);
+  await serve(uploadHarness(), async root => {
+    const saved = await fetch(`${root}/admin/dance-templates/dance-upload-test/video.mp4`, {
+      method: "PUT", headers: { "Content-Type": "video/mp4" }, body: original,
+    });
+    assert.equal(saved.status, 200);
+    assert.equal((await saved.json()).id, "dance-upload-test");
+    assert.equal(calls.at(-1)?.input.Key, "dance-templates/dance-upload-test/video.mp4");
+    assert.equal((await fetch(`${root}/admin/dance-templates/missing-record/video.mp4`, {
+      method: "PUT", headers: { "Content-Type": "video/mp4" }, body: original,
+    })).status, 404);
+  });
+  const before = calls.length;
+  await serve(publicApp(), async root => {
+    assert.equal((await fetch(`${root}/dance-templates/dance-upload-test/video.mp4`)).status, 404);
+  });
+  assert.equal(calls.length, before);
+  await pool.query("DELETE FROM dance_catalogue WHERE id='dance-upload-test'");
 });
 
 test("production mount rejects anonymous/forged uploads before storage or body parsing", async () => {

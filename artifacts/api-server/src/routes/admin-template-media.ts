@@ -6,15 +6,17 @@ import {
 } from "../lib/template-storage";
 import { pool } from "@workspace/db";
 import { audit } from "../lib/admin-data";
+import { findCatalogue } from "../lib/catalogue-data";
 
 const router: IRouter = Router();
 // Bound buffered upload memory across all administrators. Authentication precedes parsing.
 let uploading: symbol | undefined;
 router.put("/admin/dance-templates/:id/:asset",
   requireAccount, requireAdmin, protectAdminMutation,
-  (req, res, next) => {
+  async (req, res, next) => {
     const id = String(req.params.id), asset = String(req.params.asset);
     if (!allowedTemplateFile(id, asset)) { res.sendStatus(404); return; }
+    if (!await findCatalogue(id)) { res.sendStatus(404); return; }
     if (req.get("content-type") !== templateMime(asset) || req.get("content-encoding")) {
       res.status(415).json({ error: "Нужен исходный файл с правильным Content-Type, без сжатия" }); return;
     }

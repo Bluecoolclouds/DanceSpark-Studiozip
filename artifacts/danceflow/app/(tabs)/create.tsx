@@ -6,9 +6,11 @@ import React, { useState } from 'react';
 import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SwapWorkspace } from '@/components/swap-workspace';
-import { BigButton, Bouncy } from '@/components/ui';
+import { BigButton, Bouncy, EmptyState } from '@/components/ui';
 import { F } from '@/constants/fonts';
 import { getTemplate, type DanceTemplate } from '@/constants/templates';
+import { photoStyleId } from '@/constants/photo-styles';
+import { useCatalogueTemplate } from '@/hooks/useCatalogue';
 import { useDance } from '@/context/DanceContext';
 import { useColors } from '@/hooks/useColors';
 import { useCreateVideoGeneration, VideoGenerationInputStyleId, type VideoGenerationInput } from '@workspace/api-client-react';
@@ -29,7 +31,8 @@ export default function Create() {
   const [mode, setMode] = useState<'swap' | 'photo'>('swap');
   const top = Platform.OS === 'web' ? 67 : insets.top;
   // Only an explicit ?template= link preselects a trend; otherwise Create starts empty.
-  const linked = params.template ? getTemplate(params.template) ?? null : null;
+  const linkedQuery = useCatalogueTemplate(params.template);
+  const linked = params.template ? linkedQuery.template ?? null : null;
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: c.background }} contentContainerStyle={{ paddingTop: top + 12, paddingBottom: 130 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -50,7 +53,11 @@ export default function Create() {
           })}
         </View>
         <View style={mode === 'swap' ? undefined : { display: 'none' }}>
-          <SwapWorkspace key={linked?.id ?? 'empty'} initialTrend={linked} allowTrendPicker defaultModel="motion-transfer" />
+          {params.template && !linked ? (
+            <EmptyState icon="info" title={linkedQuery.isPending ? 'Загружаем танец…' : 'Танец недоступен'}
+              text="Для нового черновика нужен опубликованный танец. Сохранённые черновики остаются в студии."
+              action="Повторить" onAction={() => void linkedQuery.refetch()} />
+          ) : <SwapWorkspace key={linked?.id ?? 'empty'} initialTrend={linked} allowTrendPicker defaultModel="motion-transfer" />}
         </View>
         <View style={mode === 'photo' ? undefined : { display: 'none' }}>
           <PhotoDance />
@@ -103,11 +110,11 @@ function PhotoDance() {
     if (blocker || generating || !photo || !styleId || !dur) return;
     if (!isSignedIn) { router.push('/sign-in'); return; }
     setGenerating(true); setError(null);
-    const draft = addDraft({ templateId: styleId, photoUri: photo, duration: dur, generationStatus: 'submitting' });
+    const draft = addDraft({ templateId: styleId, templateSnapshot: style, photoUri: photo, duration: dur, generationStatus: 'submitting' });
     try {
       const imageDataUrl = await photoToDataUrl(photo);
       const result = await createGeneration.mutateAsync({
-        data: { clientRequestId: draft.id, imageDataUrl, styleId, duration: dur as VideoGenerationInput['duration'] },
+        data: { clientRequestId: draft.id, imageDataUrl, styleId: photoStyleId(styleId), duration: dur as VideoGenerationInput['duration'] },
       });
       updateDraft(draft.id, { generationStatus: 'queued', generationRequestId: result.requestId });
       setPhoto(null);

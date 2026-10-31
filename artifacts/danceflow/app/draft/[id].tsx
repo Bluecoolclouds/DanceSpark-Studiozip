@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BigButton, Bouncy, DemoBadge, EmptyState, tone } from '@/components/ui';
 import { F } from '@/constants/fonts';
 import { resolveDraftTemplate, isCustomVideoId } from '@/lib/draft-meta';
+import { photoStyleId } from '@/constants/photo-styles';
 import { useDance } from '@/context/DanceContext';
 import { useColors } from '@/hooks/useColors';
 import { CostPreview, RefGrid, SourcePreview, fmtSec, getModel } from '@/components/generation-form';
@@ -31,7 +32,7 @@ export default function DraftScreen() {
   const createGeneration = useCreateVideoGeneration();
   const { isSignedIn } = useAuth();
   const d = drafts.find((x) => x.id === id);
-  const t = d ? resolveDraftTemplate(d.templateId) : undefined;
+  const t = d ? d.templateSnapshot ?? resolveDraftTemplate(d.templateId) : undefined;
   const m = getModel(d?.model);
   const top = Platform.OS === 'web' ? 67 : insets.top;
   const bottom = Platform.OS === 'web' ? 34 : insets.bottom;
@@ -170,7 +171,7 @@ export default function DraftScreen() {
         data: {
           clientRequestId: d.id,
           imageDataUrl,
-          styleId: d.templateId as VideoGenerationInput['styleId'],
+          styleId: photoStyleId(d.templateId),
           duration: d.duration as VideoGenerationInput['duration'],
         },
       });

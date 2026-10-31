@@ -9,7 +9,8 @@ import { CostPreview, QualityPicker, RefGrid, SourcePreview, fmtSec, getModel } 
 import { Bouncy } from '@/components/ui';
 import { F } from '@/constants/fonts';
 import { GENERATION_MODELS, GenerationModel, GenerationResolution, MAX_OUTPUT_SECONDS, MAX_REFERENCE_IMAGES } from '@/constants/generation';
-import { TEMPLATES, type DanceTemplate } from '@/constants/templates';
+import { type DanceTemplate } from '@/constants/templates';
+import { useCatalogue } from '@/hooks/useCatalogue';
 import { useDance } from '@/context/DanceContext';
 import { useColors } from '@/hooks/useColors';
 import { CUSTOM_VIDEO_ID } from '@/lib/draft-meta';
@@ -28,6 +29,7 @@ const trendSource = (t?: DanceTemplate | null): SourceVideo | null =>
 export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = 'object-swap', wide }: {
   initialTrend: DanceTemplate | null; allowTrendPicker?: boolean; defaultModel?: GenerationModel; wide?: boolean;
 }) {
+  const catalogue = useCatalogue({ limit: 12 });
   const c = useColors();
   const { addDraft, draftStorageIssue } = useDance();
   const [trend, setTrend] = useState<DanceTemplate | null>(initialTrend);
@@ -122,7 +124,7 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
     try {
       const d = addDraft({
         // Own-source drafts never inherit a catalogue trend.
-        templateId: trend?.id ?? CUSTOM_VIDEO_ID, photoUri: refs[0], duration: Math.min(source.seconds, MAX_OUTPUT_SECONDS),
+        templateId: trend?.id ?? CUSTOM_VIDEO_ID, templateSnapshot: trend ?? undefined, photoUri: refs[0], duration: Math.min(source.seconds, MAX_OUTPUT_SECONDS),
         model, resolution, sourceVideoUri: source.uri, sourceVideoDurationSeconds: source.seconds,
         referenceImageUris: refs, prompt: prompt.trim() || undefined,
       });
@@ -229,7 +231,7 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
           </View>}
           {allowTrendPicker && choosing && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-              {TEMPLATES.map((x) => {
+              {catalogue.items.map((x) => {
                 const on = x.id === trend?.id;
                 return (
                   <Bouncy key={x.id} testID={`trend-${x.id}`} accessibilityLabel={`Тренд ${x.title}${on ? ', выбран' : ''}`} onPress={() => selectTrend(x)}
@@ -239,6 +241,11 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
                   </Bouncy>
                 );
               })}
+              {catalogue.hasNextPage && <Bouncy disabled={catalogue.isFetching} onPress={() => void catalogue.fetchNextPage({ cancelRefetch: false })} style={[s.ghost, { borderColor: c.border }]}>
+                <Text style={[s.ghostText, { color: c.foreground }]}>{catalogue.isFetching ? 'Загружаем…' : 'Ещё танцы'}</Text>
+              </Bouncy>}
+              {catalogue.isError && <Bouncy onPress={() => void catalogue.refetch()}><Text style={[s.hint, { color: c.destructive }]}>Не удалось загрузить танцы. Повторить</Text></Bouncy>}
+              {!catalogue.isPending && !catalogue.items.length && !catalogue.isError && <Text style={[s.hint, { color: c.mutedForeground }]}>Пока нет опубликованных танцев. Можно выбрать своё видео.</Text>}
             </ScrollView>
           )}
           <Text style={[s.hint, { color: c.mutedForeground }]}>Берутся первые {MAX_OUTPUT_SECONDS} сек, звук сохраняется.</Text>

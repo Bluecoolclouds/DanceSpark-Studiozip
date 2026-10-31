@@ -11,7 +11,8 @@ import { Bouncy, EmptyState, FavButton } from '@/components/ui';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import colors from '@/constants/colors';
 import { F } from '@/constants/fonts';
-import { categoryLabel, getTemplate } from '@/constants/templates';
+import { categoryLabel, type DanceTemplate } from '@/constants/templates';
+import { useCatalogueTemplate } from '@/hooks/useCatalogue';
 import { ColorScope, useColors } from '@/hooks/useColors';
 
 const N = colors.neon;
@@ -19,14 +20,20 @@ const N = colors.neon;
 
 export default function TemplatePlayground() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  return <ColorScope.Provider value={N}><TemplatePlaygroundForm key={id} id={id} /></ColorScope.Provider>;
+  const query = useCatalogueTemplate(id);
+  const c = useColors();
+  if (!query.template) return <View style={{ flex: 1, backgroundColor: c.background, paddingTop: 90 }}>
+    <EmptyState icon="info" title={query.isPending ? 'Загружаем танец…' : 'Танец недоступен'}
+      text={query.isError ? 'Не удалось загрузить танец или он снят с публикации. Сохранённые черновики остаются в студии.' : 'Получаем актуальное описание.'}
+      action={query.isPending ? 'В каталог' : 'Повторить'} onAction={() => query.isPending ? router.back() : void query.refetch()} />
+  </View>;
+  return <ColorScope.Provider value={N}><TemplatePlaygroundForm key={id} id={id} t={query.template} /></ColorScope.Provider>;
 }
 
-function TemplatePlaygroundForm({ id }: { id: string }) {
+function TemplatePlaygroundForm({ id, t }: { id: string; t: DanceTemplate }) {
   const c = useColors();
   const insets = useSafeAreaInsets();
   const { width, height: windowHeight } = useWindowDimensions();
-  const t = getTemplate(id);
   const top = Platform.OS === 'web' ? 67 : insets.top;
   const bottom = Platform.OS === 'web' ? 34 : insets.bottom;
   const wide = width >= 900;

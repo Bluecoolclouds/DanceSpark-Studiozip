@@ -9,7 +9,7 @@ export function isolatedDatabase() {
   pool.options.options = `-c search_path=${schema}`;
   before(async () => {
     await pool.query(`CREATE SCHEMA ${schema}`);
-    for (const table of ["df_accounts", "df_jobs", "df_controls", "df_admin_audit"]) {
+    for (const table of ["df_accounts", "df_jobs", "df_controls", "df_admin_audit", "dance_catalogue"]) {
       await pool.query(`CREATE TABLE ${schema}.${table} (LIKE public.${table} INCLUDING ALL)`);
     }
     // LIKE does not copy foreign keys.

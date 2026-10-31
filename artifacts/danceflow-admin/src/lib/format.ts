@@ -17,11 +17,11 @@ export function apiStatus(err: unknown): number | null {
   return null;
 }
 
-export function apiMessage(err: unknown): string {
+export function apiMessage(err: unknown, conflictMessage = 'Данные изменились на сервере.'): string {
   const status = apiStatus(err);
   if (status === 401) return 'Сессия истекла. Войдите снова.';
   if (status === 403) return 'Нет прав администратора.';
-  if (status === 409) return 'Данные изменились на сервере.';
+  if (status === 409) return conflictMessage;
   if (status === 400 || status === 422) return 'Сервер отклонил значения. Проверьте поля.';
   if (status && status >= 500) return `Сервер ответил ошибкой ${status}.`;
   return 'Не удалось связаться с сервером.';

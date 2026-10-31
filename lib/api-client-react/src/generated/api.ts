@@ -6,18 +6,23 @@
  * OpenAPI spec version: 0.1.0
  */
 import {
+  useInfiniteQuery,
   useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
+  DefinedUseInfiniteQueryResult,
   DefinedUseQueryResult,
+  InfiniteData,
   MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseInfiniteQueryOptions,
+  UseInfiniteQueryResult,
   UseMutationOptions,
   UseMutationResult,
   UseQueryOptions,
@@ -36,10 +41,14 @@ import type {
   AdminUserUpdate,
   AdminUsersPage,
   ApiError,
+  CatalogueInput,
+  CataloguePage,
+  CatalogueTemplate,
   HealthStatus,
   ListAdminAuditParams,
   ListAdminGenerationsParams,
   ListAdminUsersParams,
+  ListCatalogueParams,
   PutCatalogueMedia200,
   VideoGenerationInput,
   VideoGenerationStatus,
@@ -73,7 +82,534 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export const getPutCatalogueMediaUrl = (id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05' | 'trend-06',
+export const getListCatalogueUrl = (params?: ListCatalogueParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/catalogue?${stringifiedParams}` : `/api/catalogue`
+}
+
+export const listCatalogue = async (params?: ListCatalogueParams, options?: Parameters<typeof customFetch>[1]): Promise<CataloguePage> => {
+
+  return customFetch<CataloguePage>(getListCatalogueUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCatalogueInfiniteQueryKey = (params?: ListCatalogueParams,) => {
+    return [
+    'infinite', `/api/catalogue`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+export const getListCatalogueQueryKey = (params?: ListCatalogueParams,) => {
+    return [
+    `/api/catalogue`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCatalogueInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof listCatalogue>>, ListCatalogueParams['cursor']>, TError = ErrorType<unknown>>(params?: ListCatalogueParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof listCatalogue>>, TError, TData, QueryKey, ListCatalogueParams['cursor']>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCatalogueInfiniteQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCatalogue>>, QueryKey, ListCatalogueParams['cursor']> = ({ signal, pageParam }) => listCatalogue({...params, 'cursor': pageParam ?? params?.['cursor']}, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof listCatalogue>>, TError, TData, QueryKey, ListCatalogueParams['cursor']> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListCatalogueInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof listCatalogue>>>
+export type ListCatalogueInfiniteQueryError = ErrorType<unknown>
+
+
+export function useListCatalogueInfinite<TData = InfiniteData<Awaited<ReturnType<typeof listCatalogue>>, ListCatalogueParams['cursor']>, TError = ErrorType<unknown>>(
+ params: undefined |  ListCatalogueParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof listCatalogue>>, TError, TData, QueryKey, ListCatalogueParams['cursor']>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listCatalogue>>,
+          TError,
+          Awaited<ReturnType<typeof listCatalogue>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListCatalogueInfinite<TData = InfiniteData<Awaited<ReturnType<typeof listCatalogue>>, ListCatalogueParams['cursor']>, TError = ErrorType<unknown>>(
+ params?: ListCatalogueParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof listCatalogue>>, TError, TData, QueryKey, ListCatalogueParams['cursor']>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listCatalogue>>,
+          TError,
+          Awaited<ReturnType<typeof listCatalogue>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListCatalogueInfinite<TData = InfiniteData<Awaited<ReturnType<typeof listCatalogue>>, ListCatalogueParams['cursor']>, TError = ErrorType<unknown>>(
+ params?: ListCatalogueParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof listCatalogue>>, TError, TData, QueryKey, ListCatalogueParams['cursor']>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useListCatalogueInfinite<TData = InfiniteData<Awaited<ReturnType<typeof listCatalogue>>, ListCatalogueParams['cursor']>, TError = ErrorType<unknown>>(
+ params?: ListCatalogueParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof listCatalogue>>, TError, TData, QueryKey, ListCatalogueParams['cursor']>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListCatalogueInfiniteQueryOptions(params,options)
+
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getListCatalogueQueryOptions = <TData = Awaited<ReturnType<typeof listCatalogue>>, TError = ErrorType<unknown>>(params?: ListCatalogueParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCatalogue>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCatalogueQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCatalogue>>> = ({ signal }) => listCatalogue(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCatalogue>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListCatalogueQueryResult = NonNullable<Awaited<ReturnType<typeof listCatalogue>>>
+export type ListCatalogueQueryError = ErrorType<unknown>
+
+
+export function useListCatalogue<TData = Awaited<ReturnType<typeof listCatalogue>>, TError = ErrorType<unknown>>(
+ params: undefined |  ListCatalogueParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCatalogue>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listCatalogue>>,
+          TError,
+          Awaited<ReturnType<typeof listCatalogue>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListCatalogue<TData = Awaited<ReturnType<typeof listCatalogue>>, TError = ErrorType<unknown>>(
+ params?: ListCatalogueParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCatalogue>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listCatalogue>>,
+          TError,
+          Awaited<ReturnType<typeof listCatalogue>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListCatalogue<TData = Awaited<ReturnType<typeof listCatalogue>>, TError = ErrorType<unknown>>(
+ params?: ListCatalogueParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCatalogue>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useListCatalogue<TData = Awaited<ReturnType<typeof listCatalogue>>, TError = ErrorType<unknown>>(
+ params?: ListCatalogueParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCatalogue>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListCatalogueQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCatalogueTemplateUrl = (id: string,) => {
+
+
+
+
+  return `/api/catalogue/${id}`
+}
+
+export const getCatalogueTemplate = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<CatalogueTemplate> => {
+
+  return customFetch<CatalogueTemplate>(getGetCatalogueTemplateUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCatalogueTemplateQueryKey = (id: string,) => {
+    return [
+    `/api/catalogue/${id}`
+    ] as const;
+    }
+
+
+export const getGetCatalogueTemplateQueryOptions = <TData = Awaited<ReturnType<typeof getCatalogueTemplate>>, TError = ErrorType<void>>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCatalogueTemplate>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCatalogueTemplateQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCatalogueTemplate>>> = ({ signal }) => getCatalogueTemplate(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCatalogueTemplate>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetCatalogueTemplateQueryResult = NonNullable<Awaited<ReturnType<typeof getCatalogueTemplate>>>
+export type GetCatalogueTemplateQueryError = ErrorType<void>
+
+
+export function useGetCatalogueTemplate<TData = Awaited<ReturnType<typeof getCatalogueTemplate>>, TError = ErrorType<void>>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCatalogueTemplate>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCatalogueTemplate>>,
+          TError,
+          Awaited<ReturnType<typeof getCatalogueTemplate>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCatalogueTemplate<TData = Awaited<ReturnType<typeof getCatalogueTemplate>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCatalogueTemplate>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCatalogueTemplate>>,
+          TError,
+          Awaited<ReturnType<typeof getCatalogueTemplate>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCatalogueTemplate<TData = Awaited<ReturnType<typeof getCatalogueTemplate>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCatalogueTemplate>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetCatalogueTemplate<TData = Awaited<ReturnType<typeof getCatalogueTemplate>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCatalogueTemplate>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetCatalogueTemplateQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListAdminCatalogueUrl = () => {
+
+
+
+
+  return `/api/admin/catalogue`
+}
+
+export const listAdminCatalogue = async ( options?: Parameters<typeof customFetch>[1]): Promise<CatalogueTemplate[]> => {
+
+  return customFetch<CatalogueTemplate[]>(getListAdminCatalogueUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminCatalogueQueryKey = () => {
+    return [
+    `/api/admin/catalogue`
+    ] as const;
+    }
+
+
+export const getListAdminCatalogueQueryOptions = <TData = Awaited<ReturnType<typeof listAdminCatalogue>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminCatalogue>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminCatalogueQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminCatalogue>>> = ({ signal }) => listAdminCatalogue({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminCatalogue>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListAdminCatalogueQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminCatalogue>>>
+export type ListAdminCatalogueQueryError = ErrorType<unknown>
+
+
+export function useListAdminCatalogue<TData = Awaited<ReturnType<typeof listAdminCatalogue>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminCatalogue>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminCatalogue>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminCatalogue>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAdminCatalogue<TData = Awaited<ReturnType<typeof listAdminCatalogue>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminCatalogue>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminCatalogue>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminCatalogue>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAdminCatalogue<TData = Awaited<ReturnType<typeof listAdminCatalogue>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminCatalogue>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useListAdminCatalogue<TData = Awaited<ReturnType<typeof listAdminCatalogue>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminCatalogue>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListAdminCatalogueQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateCatalogueTemplateUrl = () => {
+
+
+
+
+  return `/api/admin/catalogue`
+}
+
+export const createCatalogueTemplate = async (catalogueInput: CatalogueInput, options?: Parameters<typeof customFetch>[1]): Promise<CatalogueTemplate> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CatalogueTemplate>(getCreateCatalogueTemplateUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(catalogueInput)
+  }
+);}
+
+
+
+
+
+export const getCreateCatalogueTemplateMutationKey = () => ['createCatalogueTemplate'] as const;
+
+export const getCreateCatalogueTemplateMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCatalogueTemplate>>, TError,CreateCatalogueTemplateMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCatalogueTemplate>>, TError,CreateCatalogueTemplateMutationVariables, TContext> => {
+
+const mutationKey = getCreateCatalogueTemplateMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCatalogueTemplate>>, CreateCatalogueTemplateMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCatalogueTemplate(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCatalogueTemplateMutationResult = NonNullable<Awaited<ReturnType<typeof createCatalogueTemplate>>>
+    export type CreateCatalogueTemplateMutationBody = BodyType<CatalogueInput>
+    export type CreateCatalogueTemplateMutationError = ErrorType<unknown>
+    export type CreateCatalogueTemplateMutationVariables = {data: BodyType<CatalogueInput>}
+
+    export const useCreateCatalogueTemplate = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCatalogueTemplate>>, TError,CreateCatalogueTemplateMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createCatalogueTemplate>>,
+        TError,
+        CreateCatalogueTemplateMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateCatalogueTemplateMutationOptions(options), queryClient);
+    }
+
+export const getUpdateCatalogueTemplateUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/catalogue/${id}`
+}
+
+export const updateCatalogueTemplate = async (id: string,
+    catalogueInput: CatalogueInput, options?: Parameters<typeof customFetch>[1]): Promise<CatalogueTemplate> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CatalogueTemplate>(getUpdateCatalogueTemplateUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(catalogueInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateCatalogueTemplateMutationKey = () => ['updateCatalogueTemplate'] as const;
+
+export const getUpdateCatalogueTemplateMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCatalogueTemplate>>, TError,UpdateCatalogueTemplateMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCatalogueTemplate>>, TError,UpdateCatalogueTemplateMutationVariables, TContext> => {
+
+const mutationKey = getUpdateCatalogueTemplateMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCatalogueTemplate>>, UpdateCatalogueTemplateMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateCatalogueTemplate(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCatalogueTemplateMutationResult = NonNullable<Awaited<ReturnType<typeof updateCatalogueTemplate>>>
+    export type UpdateCatalogueTemplateMutationBody = BodyType<CatalogueInput>
+    export type UpdateCatalogueTemplateMutationError = ErrorType<unknown>
+    export type UpdateCatalogueTemplateMutationVariables = {id: string;data: BodyType<CatalogueInput>}
+
+    export const useUpdateCatalogueTemplate = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCatalogueTemplate>>, TError,UpdateCatalogueTemplateMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateCatalogueTemplate>>,
+        TError,
+        UpdateCatalogueTemplateMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateCatalogueTemplateMutationOptions(options), queryClient);
+    }
+
+export const getPutCatalogueMediaUrl = (id: string,
     asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg' | 'character-01.jpg' | 'character-02.jpg' | 'reference-poster.jpg' | 'result.mp4' | 'result-preview.mp4' | 'result.webm',) => {
 
 
@@ -86,7 +622,7 @@ export const getPutCatalogueMediaUrl = (id: 'trend-01' | 'trend-02' | 'trend-03'
  * Requires a verified administrator and same-origin request or verified native bearer token. Raw binary body; maximum 100 MiB for videos or 10 MiB for JPEG. Does not accept arbitrary bucket keys.
  * @summary Upload or atomically replace an allowlisted catalogue file
  */
-export const putCatalogueMedia = async (id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05' | 'trend-06',
+export const putCatalogueMedia = async (id: string,
     asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg' | 'character-01.jpg' | 'character-02.jpg' | 'reference-poster.jpg' | 'result.mp4' | 'result-preview.mp4' | 'result.webm',
     putCatalogueMediaBody: Blob, options?: Parameters<typeof customFetch>[1]): Promise<PutCatalogueMedia200> => {
 
@@ -149,7 +685,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type PutCatalogueMediaMutationResult = NonNullable<Awaited<ReturnType<typeof putCatalogueMedia>>>
     export type PutCatalogueMediaMutationBody = BodyType<Blob>
     export type PutCatalogueMediaMutationError = ErrorType<void>
-    export type PutCatalogueMediaMutationVariables = {id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05' | 'trend-06';asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg' | 'character-01.jpg' | 'character-02.jpg' | 'reference-poster.jpg' | 'result.mp4' | 'result-preview.mp4' | 'result.webm';data: BodyType<Blob>}
+    export type PutCatalogueMediaMutationVariables = {id: string;asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg' | 'character-01.jpg' | 'character-02.jpg' | 'reference-poster.jpg' | 'result.mp4' | 'result-preview.mp4' | 'result.webm';data: BodyType<Blob>}
 
     /**
  * @summary Upload or atomically replace an allowlisted catalogue file
@@ -165,7 +701,7 @@ export const usePutCatalogueMedia = <TError = ErrorType<void>,
       return useMutation(getPutCatalogueMediaMutationOptions(options), queryClient);
     }
 
-export const getGetDanceTemplateMediaUrl = (id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05' | 'trend-06',
+export const getGetDanceTemplateMediaUrl = (id: string,
     asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg' | 'character-01.jpg' | 'character-02.jpg' | 'reference-poster.jpg' | 'result.mp4' | 'result-preview.mp4' | 'result.webm',) => {
 
 
@@ -177,7 +713,7 @@ export const getGetDanceTemplateMediaUrl = (id: 'trend-01' | 'trend-02' | 'trend
 /**
  * @summary Public video or poster for a published dance template
  */
-export const getDanceTemplateMedia = async (id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05' | 'trend-06',
+export const getDanceTemplateMedia = async (id: string,
     asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg' | 'character-01.jpg' | 'character-02.jpg' | 'reference-poster.jpg' | 'result.mp4' | 'result-preview.mp4' | 'result.webm', options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
 
   return customFetch<Blob>(getGetDanceTemplateMediaUrl(id,asset),
@@ -193,7 +729,7 @@ export const getDanceTemplateMedia = async (id: 'trend-01' | 'trend-02' | 'trend
 
 
 
-export const getGetDanceTemplateMediaQueryKey = (id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05' | 'trend-06',
+export const getGetDanceTemplateMediaQueryKey = (id: string,
     asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg' | 'character-01.jpg' | 'character-02.jpg' | 'reference-poster.jpg' | 'result.mp4' | 'result-preview.mp4' | 'result.webm',) => {
     return [
     `/api/dance-templates/${id}/${asset}`
@@ -201,7 +737,7 @@ export const getGetDanceTemplateMediaQueryKey = (id: 'trend-01' | 'trend-02' | '
     }
 
 
-export const getGetDanceTemplateMediaQueryOptions = <TData = Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError = ErrorType<void>>(id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05' | 'trend-06',
+export const getGetDanceTemplateMediaQueryOptions = <TData = Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError = ErrorType<void>>(id: string,
     asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg' | 'character-01.jpg' | 'character-02.jpg' | 'reference-poster.jpg' | 'result.mp4' | 'result-preview.mp4' | 'result.webm', options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
@@ -225,7 +761,7 @@ export type GetDanceTemplateMediaQueryError = ErrorType<void>
 
 
 export function useGetDanceTemplateMedia<TData = Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError = ErrorType<void>>(
- id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05' | 'trend-06',
+ id: string,
     asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg' | 'character-01.jpg' | 'character-02.jpg' | 'reference-poster.jpg' | 'result.mp4' | 'result-preview.mp4' | 'result.webm', options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getDanceTemplateMedia>>,
@@ -236,7 +772,7 @@ export function useGetDanceTemplateMedia<TData = Awaited<ReturnType<typeof getDa
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetDanceTemplateMedia<TData = Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError = ErrorType<void>>(
- id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05' | 'trend-06',
+ id: string,
     asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg' | 'character-01.jpg' | 'character-02.jpg' | 'reference-poster.jpg' | 'result.mp4' | 'result-preview.mp4' | 'result.webm', options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getDanceTemplateMedia>>,
@@ -247,7 +783,7 @@ export function useGetDanceTemplateMedia<TData = Awaited<ReturnType<typeof getDa
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useGetDanceTemplateMedia<TData = Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError = ErrorType<void>>(
- id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05' | 'trend-06',
+ id: string,
     asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg' | 'character-01.jpg' | 'character-02.jpg' | 'reference-poster.jpg' | 'result.mp4' | 'result-preview.mp4' | 'result.webm', options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -256,7 +792,7 @@ export function useGetDanceTemplateMedia<TData = Awaited<ReturnType<typeof getDa
  */
 
 export function useGetDanceTemplateMedia<TData = Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError = ErrorType<void>>(
- id: 'trend-01' | 'trend-02' | 'trend-03' | 'trend-04' | 'trend-05' | 'trend-06',
+ id: string,
     asset: 'video.mp4' | 'preview.mp4' | 'preview.webm' | 'poster.jpg' | 'character-01.jpg' | 'character-02.jpg' | 'reference-poster.jpg' | 'result.mp4' | 'result-preview.mp4' | 'result.webm', options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDanceTemplateMedia>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {

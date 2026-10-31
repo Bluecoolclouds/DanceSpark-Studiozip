@@ -6,8 +6,8 @@ import { Alert, Platform, ScrollView, StyleSheet, Text, useWindowDimensions, Vie
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bouncy, EmptyState, Pill, TemplateCard, tone } from '@/components/ui';
 import { F } from '@/constants/fonts';
-import { TEMPLATES } from '@/constants/templates';
 import { resolveDraftTemplate } from '@/lib/draft-meta';
+import { useCatalogueTemplate } from '@/hooks/useCatalogue';
 import { useDance } from '@/context/DanceContext';
 import { useColors } from '@/hooks/useColors';
 import { AccountSubscription } from '@/components/AccountSubscription';
@@ -19,7 +19,6 @@ export default function Studio() {
   const { favorites, drafts, removeDraft, ready } = useDance();
   const [tab, setTab] = useState<'drafts' | 'favs'>('drafts');
   const top = Platform.OS === 'web' ? 67 : insets.top;
-  const favT = favorites.map((id) => TEMPLATES.find((t) => t.id === id)).filter(Boolean) as typeof TEMPLATES;
   const cardW = (Math.min(width, 600) - 40 - 14) / 2;
 
   const confirmDelete = (id: string) => {
@@ -71,7 +70,7 @@ export default function Studio() {
         ) : (
           <View style={{ paddingHorizontal: 20, gap: 14 }}>
             {drafts.map((d) => {
-              const t = resolveDraftTemplate(d.templateId);
+              const t = d.templateSnapshot ?? resolveDraftTemplate(d.templateId);
               if (!t) return null;
               return (
                 <View key={d.id} style={[styles.draft, { backgroundColor: c.card, borderColor: c.border, shadowColor: c.border }]}>
@@ -96,15 +95,25 @@ export default function Studio() {
             })}
           </View>
         )
-      ) : favT.length === 0 ? (
+      ) : favorites.length === 0 ? (
         <EmptyState icon="heart" title="Сердечек пока нет" text="Отмечай танцы в каталоге, чтобы вернуться к ним позже." action="В каталог" onAction={() => router.push('/')} />
       ) : (
         <View style={styles.grid}>
-          {favT.map((t) => <TemplateCard key={t.id} t={t} width={cardW} height={240} onPress={() => router.push(`/template/${t.id}`)} />)}
+          {favorites.map((id) => <FavoriteTemplate key={id} id={id} width={cardW} />)}
         </View>
       )}
     </ScrollView>
   );
+}
+
+function FavoriteTemplate({ id, width }: { id: string; width: number }) {
+  const query = useCatalogueTemplate(id);
+  const c = useColors();
+  if (!query.template) return <View style={{ width, padding: 16 }}>
+    <Text style={{ color: c.mutedForeground }}>{query.isPending ? 'Загружаем…' : 'Танец недоступен'}</Text>
+    {query.isError && <Bouncy onPress={() => void query.refetch()}><Text style={{ color: c.primary }}>Повторить</Text></Bouncy>}
+  </View>;
+  return <TemplateCard t={query.template} width={width} height={240} onPress={() => router.push(`/template/${id}`)} />;
 }
 
 function Stat({ n, label, color }: { n: number; label: string; color: string }) {

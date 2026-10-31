@@ -6,3 +6,4 @@
 - [Server test failure signals](server-test-failure-signals.md) — Network-safety probes must verify process exit status, not just failed-hook output.
 - [Account transition isolation](account-transition-isolation.md) — Identity changes must isolate in-flight work as well as cached data, especially after admin sessions.
 - [Imported environment](imported-environment.md) — Overlapping Vue modules can keep Node.js 20 active; imported storage settings do not transfer media access.
+- [Catalogue boundaries](catalogue-scope.md) — Preserve existing style and editorial selection; publish owner originals, never fabricated catalogue media.

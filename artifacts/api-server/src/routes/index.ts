@@ -5,10 +5,12 @@ import videoGenerationsRouter from "./video-generations";
 import accountRouter from "./account";
 import danceTemplateMediaRouter from "./dance-template-media";
 import adminTemplateMediaRouter from "./admin-template-media";
+import catalogueRouter from "./catalogue";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(catalogueRouter);
 router.use(danceTemplateMediaRouter);
 router.use(adminTemplateMediaRouter);
 router.use(adminRouter);

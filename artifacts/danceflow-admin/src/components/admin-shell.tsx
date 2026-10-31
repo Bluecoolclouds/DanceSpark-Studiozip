@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Link, Redirect, useLocation } from 'wouter';
 import { useAuth, useClerk } from '@clerk/react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Activity, Gauge, Users, Clapperboard, SlidersHorizontal, ScrollText, LogOut, ShieldX, RotateCw } from 'lucide-react';
+import { Activity, Gauge, Users, Clapperboard, SlidersHorizontal, ScrollText, Film, LogOut, ShieldX, RotateCw } from 'lucide-react';
 import {
   useGetAdminSession,
   getGetAdminSessionQueryKey,
@@ -18,6 +18,7 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 const NAV = [
   { href: '/overview', label: 'Обзор', icon: Gauge },
   { href: '/users', label: 'Пользователи', icon: Users },
+  { href: '/catalogue', label: 'Каталог', icon: Film },
   { href: '/generations', label: 'Генерации', icon: Clapperboard },
   { href: '/settings', label: 'Расход ИИ', icon: SlidersHorizontal },
   { href: '/audit', label: 'Журнал', icon: ScrollText },

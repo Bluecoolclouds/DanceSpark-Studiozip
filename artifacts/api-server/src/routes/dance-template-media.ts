@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
+import { findCatalogue } from "../lib/catalogue-data";
 import {
   allowedTemplateFile, templateMetadata, readTemplate, templateMime, templateLimit,
   TemplateStorageConfigurationError, storageStatus,
@@ -12,6 +13,8 @@ const router: IRouter = Router();
 router.get("/dance-templates/:id/:asset", async (req, res) => {
   const id = String(req.params.id), asset = String(req.params.asset);
   if (!allowedTemplateFile(id, asset)) { res.sendStatus(404); return; }
+  const record = await findCatalogue(id);
+  if (!record?.published) { res.sendStatus(404); return; }
   const abort = new AbortController();
   const onClose = () => abort.abort();
   res.on("close", onClose);

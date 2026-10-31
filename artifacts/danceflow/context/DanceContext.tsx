@@ -1,11 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { GenerationDraftSettings } from '@/constants/generation';
+import { getTemplate, type DanceTemplate } from '@/constants/templates';
 import { CorruptDraftStorageError, parseDrafts, readDrafts as readStoredDrafts, writeDrafts } from '@/lib/draft-storage';
 
 export interface Draft extends GenerationDraftSettings {
   id: string;
   templateId: string;
+  templateSnapshot?: DanceTemplate;
   photoUri: string;
   duration: number;
   createdAt: number;
@@ -187,7 +189,7 @@ export function DanceProvider({ children, ownerId }: { children: React.ReactNode
   }, [favoriteKey]);
 
   const addDraft = useCallback((d: Omit<Draft, 'id' | 'createdAt'>) => {
-    const draft: Draft = { ...d, id: Date.now().toString() + Math.random().toString(36).slice(2, 9), createdAt: Date.now() };
+    const draft: Draft = { ...d, templateSnapshot: d.templateSnapshot ?? getTemplate(d.templateId), id: Date.now().toString() + Math.random().toString(36).slice(2, 9), createdAt: Date.now() };
     changeDrafts([draft, ...draftsRef.current]);
     return draft;
   }, [changeDrafts]);

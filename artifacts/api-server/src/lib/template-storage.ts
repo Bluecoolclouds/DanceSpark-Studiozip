@@ -1,4 +1,6 @@
 import { S3Client, HeadObjectCommand, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import { validCatalogueId, requiredCatalogueAssets } from "./catalogue";
+import type { CatalogueInput } from "@workspace/api-zod";
 
 // A fixed namespace, never a client-provided object path.
 export const templateIds = new Set(["trend-01", "trend-02", "trend-03", "trend-04", "trend-05", "trend-06"]);
@@ -10,7 +12,7 @@ export const templateAssets = new Set([
 export const templateMime = (asset: string) =>
   asset.endsWith(".webm") ? "video/webm" : asset.endsWith(".mp4") ? "video/mp4" : "image/jpeg";
 export const templateLimit = (asset: string) => asset.endsWith(".jpg") ? 10 * 1024 * 1024 : 100 * 1024 * 1024;
-export const allowedTemplateFile = (id: string, asset: string) => templateIds.has(id) && templateAssets.has(asset);
+export const allowedTemplateFile = (id: string, asset: string) => validCatalogueId(id) && templateAssets.has(asset);
 
 export class TemplateStorageConfigurationError extends Error {
   constructor() { super("R2 storage is not configured"); }
@@ -48,6 +50,14 @@ export async function templateMetadata(id: string, asset: string) {
   try {
     return await client.send(new HeadObjectCommand({ Bucket: bucket, Key }));
   } finally { client.destroy(); }
+}
+
+export async function verifyCatalogueMedia(id: string, metadata: CatalogueInput) {
+  for (const asset of requiredCatalogueAssets(metadata)) {
+    const head = await templateMetadata(id, asset);
+    if (!head.ETag || !Number.isSafeInteger(head.ContentLength) || !head.ContentLength ||
+      head.ContentLength < 0 || head.ContentLength > templateLimit(asset)) throw new Error("Missing catalogue media");
+  }
 }
 
 export async function readTemplate(id: string, asset: string, etag: string, range?: string, abortSignal?: AbortSignal) {
