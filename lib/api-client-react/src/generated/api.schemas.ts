@@ -40,6 +40,54 @@ export interface LightSwapperInput {
   resolution: LightSwapperInputResolution;
 }
 
+export type CustomVideoLightSwapperInputModel = typeof CustomVideoLightSwapperInputModel[keyof typeof CustomVideoLightSwapperInputModel];
+
+
+export const CustomVideoLightSwapperInputModel = {
+  'higgsfield/genjutsu-light/motion-transfer/v10': 'higgsfield/genjutsu-light/motion-transfer/v1.0',
+  'higgsfield/genjutsu-light/object-swap/v10': 'higgsfield/genjutsu-light/object-swap/v1.0',
+} as const;
+
+export type CustomVideoLightSwapperInputResolution = typeof CustomVideoLightSwapperInputResolution[keyof typeof CustomVideoLightSwapperInputResolution];
+
+
+export const CustomVideoLightSwapperInputResolution = {
+  '480p': '480p',
+  '720p': '720p',
+  '1080p': '1080p',
+} as const;
+
+export interface CustomVideoLightSwapperInput {
+  /** @pattern ^[A-Za-z0-9_-]{8,150}$ */
+  clientRequestId: string;
+  model: CustomVideoLightSwapperInputModel;
+  sourceVideoId: string;
+  /**
+     * @minItems 1
+     * @maxItems 8
+     * @items.maxLength 16777260
+     * @items.pattern ^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$
+     */
+  photos: string[];
+  /** @maxLength 10000 */
+  prompt: string;
+  resolution: CustomVideoLightSwapperInputResolution;
+}
+
+export interface LightSwapperSourceVideo {
+  sourceVideoId: string;
+  /**
+     * @minimum 0.1
+     * @maximum 300
+     */
+  durationSeconds: number;
+  /**
+     * @minimum 1
+     * @maximum 104857600
+     */
+  sizeBytes: number;
+}
+
 export type CatalogueInputCategory = typeof CatalogueInputCategory[keyof typeof CatalogueInputCategory];
 
 

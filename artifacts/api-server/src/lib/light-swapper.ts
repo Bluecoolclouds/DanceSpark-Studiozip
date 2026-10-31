@@ -1,28 +1,19 @@
 import { createHash } from "node:crypto";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db, danceJobs, danceCatalogue } from "@workspace/db";
-import { CreateLightSwapperGenerationBody, type LightSwapperInput } from "@workspace/api-zod";
+import {
+  CreateLightSwapperGenerationBody, CreateCustomVideoLightSwapperGenerationBody,
+  type LightSwapperInput, type CustomVideoLightSwapperInput,
+} from "@workspace/api-zod";
 import { beginGeneration, finishGeneration, GenerationPolicyError, reserveGeneration } from "./generation-governance";
 import {
   assertVideoProviderConfigured, decodeImageDataUrl, submitLightSwapper,
   uploadGenerationMedia, VideoSubmissionUnknownError,
 } from "./video-generation";
 import { readTemplate, templateLimit, templateMetadata, validTemplateBytes } from "./template-storage";
+import { CustomVideoStorageError, readOwnedCustomVideo } from "./custom-video-storage";
+import { CustomVideoValidationError, inspectCustomVideo } from "./custom-video-validation";
 import type { Readable } from "node:stream";
-
-function validateInput(value: unknown) {
-  const parsed = CreateLightSwapperGenerationBody.strict().safeParse(value);
-  if (!parsed.success) throw new GenerationPolicyError("invalid_request", 400);
-  const input = parsed.data;
-  const photos = input.photos.map(photo => {
-    try { return decodeImageDataUrl(photo); }
-    catch { throw new GenerationPolicyError("invalid_request", 400); }
-  });
-  if (photos.reduce((sum, photo) => sum + photo.bytes.length, 0) > 12 * 1024 * 1024) {
-    throw new GenerationPolicyError("input_too_large", 413);
-  }
-  return { input, photos };
-}
 
 async function publishedTemplate(id: string) {
   const [template] = await db.select().from(danceCatalogue)
@@ -31,11 +22,10 @@ async function publishedTemplate(id: string) {
   return template;
 }
 
-function minimumCostRub(metadata: Record<string, unknown>, resolution: LightSwapperInput["resolution"]) {
+function minimumCostRub(seconds: number, resolution: LightSwapperInput["resolution"]) {
   // An operator-provided conservative USD/RUB rate, not a customer tariff.
   // Never silently assume parity or use a client-supplied duration/quote.
   const usdRub = Number(process.env.DANCEFLOW_LIGHT_USD_RUB);
-  const seconds = metadata.sourceDurationSeconds;
   if (!Number.isFinite(usdRub) || usdRub <= 0 || typeof seconds !== "number" ||
       !Number.isFinite(seconds) || seconds <= 0 || seconds > 300) {
     throw new GenerationPolicyError("light_pricing_not_configured", 503);
@@ -71,32 +61,85 @@ async function originalVideo(templateId: string) {
 }
 
 export async function createOwnedLightSwapper(ownerId: string, value: LightSwapperInput) {
-  const { input, photos } = validateInput(value);
+  return createOwnedLightSwapperForVideo(ownerId, value, false);
+}
+
+export async function createOwnedCustomVideoLightSwapper(
+  ownerId: string, value: CustomVideoLightSwapperInput,
+) {
+  return createOwnedLightSwapperForVideo(ownerId, value, true);
+}
+
+async function createOwnedLightSwapperForVideo(
+  ownerId: string, value: LightSwapperInput | CustomVideoLightSwapperInput, custom: boolean,
+) {
+  const parsed = custom
+    ? CreateCustomVideoLightSwapperGenerationBody.strict().safeParse(value)
+    : CreateLightSwapperGenerationBody.strict().safeParse(value);
+  if (!parsed.success) throw new GenerationPolicyError("invalid_request", 400);
+  const input = parsed.data as LightSwapperInput | CustomVideoLightSwapperInput;
+  const photos = input.photos.map(photo => {
+    try { return decodeImageDataUrl(photo); }
+    catch { throw new GenerationPolicyError("invalid_request", 400); }
+  });
+  if (photos.reduce((sum, photo) => sum + photo.bytes.length, 0) > 12 * 1024 * 1024) {
+    throw new GenerationPolicyError("input_too_large", 413);
+  }
+  const customInput = custom ? input as CustomVideoLightSwapperInput : null;
+  let customVideo: Buffer | undefined;
+  let sourceDurationSeconds: number;
+  let template: Awaited<ReturnType<typeof publishedTemplate>> | undefined;
+  if (customInput) {
+    try {
+      customVideo = await readOwnedCustomVideo(ownerId, customInput.sourceVideoId);
+      sourceDurationSeconds = await inspectCustomVideo(customVideo);
+    } catch (error) {
+      if (error instanceof CustomVideoValidationError) {
+        throw new GenerationPolicyError(error.code, error.code === "source_validation_unavailable" ? 503 : 400);
+      }
+      if (error instanceof CustomVideoStorageError) {
+        throw new GenerationPolicyError(
+          error.code === "source_storage_unavailable" ? error.code : "invalid_source_video",
+          error.code === "source_storage_unavailable" ? 503 : 400,
+        );
+      }
+      throw new GenerationPolicyError("invalid_source_video", 400);
+    }
+  } else {
+    const catalogInput = input as LightSwapperInput;
+    template = await publishedTemplate(catalogInput.templateId);
+    const duration = template.metadata.sourceDurationSeconds;
+    if (typeof duration !== "number") throw new GenerationPolicyError("light_pricing_not_configured", 503);
+    sourceDurationSeconds = duration;
+  }
   // Fingerprint every selected parameter and the ordered decoded photo contents,
   // never persist local URIs, prompts, photos or temporary upload URLs.
   const fingerprint = createHash("sha256").update(JSON.stringify([
-    input.model, input.templateId, input.prompt, input.resolution,
+    input.model,
+    customInput ? ["custom", customInput.sourceVideoId, createHash("sha256").update(customVideo!).digest("hex")] :
+      ["catalogue", (input as LightSwapperInput).templateId],
+    input.prompt, input.resolution,
     photos.map(photo => [photo.mimeType, createHash("sha256").update(photo.bytes).digest("hex")]),
   ])).digest("hex");
-  const template = await publishedTemplate(input.templateId);
   // Replays must remain readable even after pricing configuration is removed.
   const [previous] = await db.select({ fingerprint: danceJobs.requestFingerprint }).from(danceJobs)
     .where(and(eq(danceJobs.userId, ownerId), eq(danceJobs.idempotencyKey, input.clientRequestId))).limit(1);
   const reservation = await reserveGeneration({
-    userId: ownerId, idempotencyKey: input.clientRequestId, templateId: input.templateId,
+    userId: ownerId, idempotencyKey: input.clientRequestId,
+    templateId: customInput ? `custom-${customInput.sourceVideoId}` : (input as LightSwapperInput).templateId,
     fingerprint, model: input.model,
-    minimumCostRub: previous ? undefined : minimumCostRub(template.metadata, input.resolution),
+    minimumCostRub: previous ? undefined : minimumCostRub(sourceDurationSeconds, input.resolution),
   });
   if (reservation.reused) return { requestId: reservation.id };
   let paidStarted = false;
   try {
     assertVideoProviderConfigured();
-    const video = await originalVideo(input.templateId);
+    const video = customVideo ?? await originalVideo((input as LightSwapperInput).templateId);
     const videoUrl = await uploadGenerationMedia(video, "video/mp4");
     const imageUrls: string[] = [];
     // Sequential upload preserves the caller's exact selection order.
     for (const photo of photos) imageUrls.push(await uploadGenerationMedia(photo.bytes, photo.mimeType));
-    await publishedTemplate(input.templateId);
+    if (!customInput) await publishedTemplate((input as LightSwapperInput).templateId);
     // Upload can be slow. Recheck pause, account and subscription immediately
     // before acquiring the worker and starting the one paid POST.
     if (!await beginGeneration(reservation.id, true)) throw new GenerationPolicyError("generation_paused", 503);

@@ -1,4 +1,6 @@
-import type { LightSwapperInput, VideoGenerationSubmission } from '@workspace/api-client-react';
+import type {
+  CustomVideoLightSwapperInput, LightSwapperInput, VideoGenerationSubmission,
+} from '@workspace/api-client-react';
 import type { Draft, DraftUpdates } from '../context/DanceContext';
 
 const locks = new Set<string>();
@@ -8,9 +10,9 @@ export async function launchLightGeneration(options: {
   ownerId: string;
   draft: Draft;
   active: () => boolean;
-  prepare: () => Promise<LightSwapperInput>;
+  prepare: () => Promise<LightSwapperInput | CustomVideoLightSwapperInput>;
   persist: (updates: DraftUpdates) => Promise<boolean>;
-  submit: (input: LightSwapperInput) => Promise<VideoGenerationSubmission>;
+  submit: (input: LightSwapperInput | CustomVideoLightSwapperInput) => Promise<VideoGenerationSubmission>;
 }) {
   const { draft, ownerId, active, prepare, persist, submit } = options;
   const key = `${ownerId}:${draft.id}`;
@@ -67,8 +69,10 @@ export function lightRejectionReason(error: unknown): string {
 /** A local/custom video must never silently become the catalogue original. */
 export function lightDraftBlocker(draft: Draft): string | null {
   if (!draft.model || !draft.resolution) return 'В старом черновике не хватает настроек. Создай новый.';
-  if (!draft.templateSnapshot?.videoUri || draft.templateSnapshot.videoUri !== draft.sourceVideoUri) {
-    return 'API пока принимает только оригинал опубликованного танца. Своё видео можно сохранить в черновик, но нельзя отправить. Выбери исходное видео из каталога.';
+  const catalogueOriginal = !!draft.templateSnapshot?.videoUri &&
+    draft.templateSnapshot.videoUri === draft.sourceVideoUri;
+  if (!catalogueOriginal && !draft.lightSourceVideoId) {
+    return 'Сначала проверь и загрузи своё видео. Это бесплатно и не запускает генерацию.';
   }
   if (!draft.referenceImageUris?.length) return 'Добавь фотографии в новом черновике.';
   return null;

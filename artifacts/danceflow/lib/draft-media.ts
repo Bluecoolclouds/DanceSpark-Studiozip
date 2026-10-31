@@ -2,6 +2,7 @@ import { File, Paths } from 'expo-file-system';
 import { Platform } from 'react-native';
 
 const PREFIX = 'danceflow-media:';
+const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 function openMedia(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open('danceflow-draft-media', 1);
@@ -65,4 +66,31 @@ export async function resolveDraftVideo(uri: string): Promise<{ uri: string; dis
     const url = URL.createObjectURL(blob);
     return { uri: url, dispose: () => URL.revokeObjectURL(url) };
   } finally { db.close(); }
+}
+
+/** Read the selected source bytes for the authenticated, raw-MP4 upload API. */
+export async function draftVideoUploadBlob(uri: string): Promise<Blob> {
+  const media = await resolveDraftVideo(uri);
+  try {
+    let bytes: ArrayBuffer;
+    if (/^(https?:|blob:)/i.test(media.uri)) {
+      const response = await fetch(media.uri);
+      if (!response.ok) throw new Error('Выбранное видео недоступно. Выбери его заново.');
+      const length = Number(response.headers.get('content-length'));
+      if (Number.isFinite(length) && length > MAX_UPLOAD_BYTES) {
+        throw new Error('Видео должно быть не больше 100 МБ.');
+      }
+      const blob = await response.blob();
+      if (!blob.size) throw new Error('Видео пустое. Выбери другой файл.');
+      if (blob.size > MAX_UPLOAD_BYTES) throw new Error('Видео должно быть не больше 100 МБ.');
+      return blob;
+    } else {
+      const file = new File(media.uri);
+      if (!file.exists || !file.size) throw new Error('Видео пустое. Выбери другой файл.');
+      if (file.size > MAX_UPLOAD_BYTES) throw new Error('Видео должно быть не больше 100 МБ.');
+      // Expo File implements Blob, so native uploads can read the file directly
+      // instead of duplicating a potentially large video in JS memory.
+      return file;
+    }
+  } finally { media.dispose(); }
 }

@@ -2,7 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@clerk/expo';
-import { useCreateLightSwapperGeneration, useFindLightSwapperGeneration } from '@workspace/api-client-react';
+import {
+  useCreateCustomVideoLightSwapperGeneration, useCreateLightSwapperGeneration,
+  useFindLightSwapperGeneration, useUploadLightSwapperSourceVideo,
+} from '@workspace/api-client-react';
 import { BigButton } from '@/components/ui';
 import { fmtUsd, getModel } from '@/components/generation-form';
 import { F } from '@/constants/fonts';
@@ -10,6 +13,7 @@ import { estimateGenerationCost } from '@/constants/generation';
 import { useDance, type Draft } from '@/context/DanceContext';
 import { useColors } from '@/hooks/useColors';
 import { launchLightGeneration, lightDraftBlocker, validatePhotoPayload } from '@/lib/light-generation';
+import { draftVideoUploadBlob } from '@/lib/draft-media';
 import { photoToDataUrl, readableVideoError } from '@/lib/video-generation';
 
 /** Mounted only for Light drafts. PixVerse keeps its own submission path. */
@@ -20,10 +24,17 @@ export function LightGeneration({ draft: d }: { draft: Draft }) {
   const active = useRef(true);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [sourceBusy, setSourceBusy] = useState(false);
+  const [sourceError, setSourceError] = useState<string | null>(null);
   const mutation = useCreateLightSwapperGeneration({ mutation: { retry: false } });
+  const customMutation = useCreateCustomVideoLightSwapperGeneration({ mutation: { retry: false } });
+  const sourceUpload = useUploadLightSwapperSourceVideo({ mutation: { retry: false } });
   const model = getModel(d.model)!;
   const estimate = d.resolution ? estimateGenerationCost(d.resolution, d.sourceVideoDurationSeconds) : null;
   const blocker = lightDraftBlocker(d);
+  const catalogueSource = !!d.templateSnapshot?.videoUri &&
+    d.templateSnapshot.videoUri === d.sourceVideoUri;
+  const customSourceNeedsUpload = !catalogueSource && !d.lightSourceVideoId;
   const attempted = !!(d.lightSubmissionStarted || d.generationRequestId ||
     ['submitting', 'unknown', 'queued', 'processing', 'completed'].includes(d.generationStatus ?? ''));
   const status = useFindLightSwapperGeneration(d.id, {
@@ -62,14 +73,41 @@ export function LightGeneration({ draft: d }: { draft: Draft }) {
           photos.push(await photoToDataUrl(uri));
         }
         validatePhotoPayload(photos);
-        return {
-          clientRequestId: d.id, templateId: d.templateId, model: model.endpointId,
-          photos, prompt: d.prompt ?? '', resolution: d.resolution!,
+        const common = {
+          clientRequestId: d.id, model: model.endpointId, photos,
+          prompt: d.prompt ?? '', resolution: d.resolution!,
         };
+        return catalogueSource
+          ? { ...common, templateId: d.templateId }
+          : { ...common, sourceVideoId: d.lightSourceVideoId! };
       },
-      submit: data => mutation.mutateAsync({ data }),
+      submit: data => 'sourceVideoId' in data
+        ? customMutation.mutateAsync({ data })
+        : mutation.mutateAsync({ data }),
     });
     if (active.current) setBusy(false);
+  };
+
+  const uploadSourceVideo = async () => {
+    if (sourceBusy || !d.sourceVideoUri || !isSignedIn || !active.current) return;
+    setSourceBusy(true);
+    setSourceError(null);
+    try {
+      const video = await draftVideoUploadBlob(d.sourceVideoUri);
+      if (!active.current) return;
+      const result = await sourceUpload.mutateAsync({ data: video });
+      if (!active.current) return;
+      const saved = await persistDraft(d.id, {
+        lightSourceVideoId: result.sourceVideoId,
+        sourceVideoDurationSeconds: result.durationSeconds,
+        duration: Math.min(result.durationSeconds, 15),
+      });
+      if (!saved) throw new Error('Не удалось сохранить результат проверки. Восстанови сохранение черновика.');
+    } catch (error) {
+      if (active.current) setSourceError(readableVideoError(error));
+    } finally {
+      if (active.current) setSourceBusy(false);
+    }
   };
 
   if (d.videoUri) return null;
@@ -93,6 +131,21 @@ export function LightGeneration({ draft: d }: { draft: Draft }) {
       onPress={() => void status.refetch()} disabled={busy || status.isFetching} /> : <>
       {blocker && <Text style={{ color: c.mutedForeground }}>{blocker}</Text>}
       {draftStorageIssue && <Text style={{ color: c.destructive }}>Сначала восстанови сохранение черновиков. Без него платный запуск заблокирован.</Text>}
+      {customSourceNeedsUpload && <>
+        {sourceError && <Text accessibilityRole="alert" style={{ color: c.destructive }}>{sourceError}</Text>}
+        <BigButton testID="light-validate-own-video"
+          label={sourceBusy ? 'Проверяем и загружаем видео…' : 'Проверить своё видео'}
+          icon={sourceBusy ? undefined : 'upload'}
+          disabled={!isSignedIn || !!draftStorageIssue || sourceBusy || busy}
+          onPress={() => void uploadSourceVideo()} />
+        <Text style={{ color: c.mutedForeground }}>
+          Видео будет проверено на сервере и сохранено приватно для твоего аккаунта. Это бесплатно и не запускает генерацию.
+        </Text>
+      </>}
+      {!customSourceNeedsUpload && !catalogueSource && d.lightSourceVideoId &&
+        <Text style={{ color: c.mutedForeground }}>
+          Собственное видео проверено: {d.sourceVideoDurationSeconds?.toFixed(1)} сек. Перед запуском будет отдельное подтверждение.
+        </Text>}
       {!confirm && <BigButton testID="light-review-launch" label={isSignedIn ? 'Запустить Light Swapper…' : 'Войти для запуска'}
         icon="play" disabled={!!blocker || !!draftStorageIssue || busy}
         onPress={() => isSignedIn ? setConfirm(true) : router.push('/sign-in')} />}
@@ -100,7 +153,7 @@ export function LightGeneration({ draft: d }: { draft: Draft }) {
         <Text style={{ color: c.foreground, fontFamily: F.display }}>Подтвердить платный запуск</Text>
         <Text style={{ color: c.foreground }}>Модель: {model.title}{'\n'}{model.endpointId}{'\n'}
           Качество: {d.resolution} · Фото: {d.referenceImageUris?.length}{'\n'}
-          Видео: {d.templateSnapshot?.title} · оригинал каталога</Text>
+          Видео: {catalogueSource ? `${d.templateSnapshot?.title} · оригинал каталога` : `Своё видео · ${d.sourceVideoDurationSeconds?.toFixed(1)} сек, проверено сервером`}</Text>
         <Text style={{ color: c.foreground }}>Предварительная себестоимость у Higgsfield: {estimate ? `≈ ${fmtUsd(estimate.estimatedUsd)}` : 'пока неизвестна'}.
           Это оценка, а не гарантированная цена и не доплата к подписке. Фактическая стоимость зависит от обработки поставщиком.</Text>
         <Text style={{ color: c.foreground }}>Видео, выбранные фото и промпт будут переданы Higgsfield. Нужна действующая оплаченная подписка; запуск расходует её лимит и баланс сервиса. Закрытие экрана не отменяет задание.</Text>

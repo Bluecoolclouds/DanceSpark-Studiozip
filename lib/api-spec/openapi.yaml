@@ -329,6 +329,55 @@ paths:
         "429": { description: "Quota, concurrency or budget exhausted" }
         "502": { description: Upload failed or submission acknowledgement uncertain; never automatically resubmit }
         "503": { description: "Paused, unconfigured provider or unavailable original" }
+  /light-swapper/source-videos:
+    post:
+      operationId: uploadLightSwapperSourceVideo
+      tags: [video-generations]
+      summary: Validate and privately store an authenticated user's own video
+      description: Accepts raw MP4 bytes only. The server validates the actual media and duration, then returns an owner-scoped identifier. Uploading is not a paid generation.
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "201":
+          description: Private upload accepted after server-side media inspection
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LightSwapperSourceVideo" }
+        "400": { description: Invalid MP4 or unsupported duration }
+        "401": { description: Authentication required }
+        "403": { description: Authenticated request required }
+        "413": { description: Video exceeds the upload size limit }
+        "415": { description: Only MP4 uploads are accepted }
+        "429": { description: Another upload is already being processed }
+        "503": { description: Private storage or media validation is unavailable }
+  /light-swapper/custom-video-generations:
+    post:
+      operationId: createCustomVideoLightSwapperGeneration
+      tags: [video-generations]
+      summary: Submit Light Swapper using an owned, validated video
+      description: Authenticated paid subscribers only. The sourceVideoId must belong to the authenticated owner and refer to a video previously validated by the server. The server determines duration and minimum estimated cost; local URIs, remote URLs and client-supplied durations are not accepted. Reuse clientRequestId for retries; a changed payload conflicts. No automatic paid retries.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CustomVideoLightSwapperInput" }
+      responses:
+        "202":
+          description: Durable application job identifier; replay does not resubmit
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VideoGenerationSubmission" }
+        "400": { description: "Invalid model, media or parameters" }
+        "401": { description: Authentication required }
+        "403": { description: "Account blocked or subscription required" }
+        "409": { description: "Idempotency key reused with different parameters" }
+        "413": { description: Input too large }
+        "429": { description: "Quota, concurrency or budget exhausted" }
+        "502": { description: "Upload failed or submission acknowledgement uncertain; never automatically resubmit" }
+        "503": { description: "Paused, unconfigured provider, storage or pricing" }
   /light-swapper/generations/by-client/{clientRequestId}:
     get:
       operationId: findLightSwapperGeneration
@@ -480,6 +529,31 @@ components:
           items: { type: string, maxLength: 16777260, pattern: "^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$" }
         prompt: { type: string, maxLength: 10000 }
         resolution: { type: string, enum: [480p, 720p, 1080p] }
+    CustomVideoLightSwapperInput:
+      type: object
+      additionalProperties: false
+      required: [clientRequestId, model, sourceVideoId, photos, prompt, resolution]
+      properties:
+        clientRequestId: { type: string, pattern: "^[A-Za-z0-9_-]{8,150}$" }
+        model:
+          type: string
+          enum: [higgsfield/genjutsu-light/motion-transfer/v1.0, higgsfield/genjutsu-light/object-swap/v1.0]
+        sourceVideoId: { type: string, format: uuid }
+        photos:
+          type: array
+          minItems: 1
+          maxItems: 8
+          items: { type: string, maxLength: 16777260, pattern: "^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$" }
+        prompt: { type: string, maxLength: 10000 }
+        resolution: { type: string, enum: [480p, 720p, 1080p] }
+    LightSwapperSourceVideo:
+      type: object
+      additionalProperties: false
+      required: [sourceVideoId, durationSeconds, sizeBytes]
+      properties:
+        sourceVideoId: { type: string, format: uuid }
+        durationSeconds: { type: number, minimum: 0.1, maximum: 300 }
+        sizeBytes: { type: integer, minimum: 1, maximum: 104857600 }
     CatalogueInput:
       type: object
       required: [title, dancer, category, tagline, description, bpm, energy, durations, moves, color, isNew, sourceDurationSeconds, published, sortOrder, referenceCount, hasVideoPoster, hasExample, prompt]

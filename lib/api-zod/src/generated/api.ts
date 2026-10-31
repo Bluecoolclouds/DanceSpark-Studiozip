@@ -776,6 +776,54 @@ export const CreateLightSwapperGenerationResponse = zod.object({
 
 
 /**
+ * Accepts raw MP4 bytes only. The server validates the actual media and duration, then returns an owner-scoped identifier. Uploading is not a paid generation.
+ * @summary Validate and privately store an authenticated user's own video
+ */
+export const uploadLightSwapperSourceVideoResponseDurationSecondsMin = 0.1;
+export const uploadLightSwapperSourceVideoResponseDurationSecondsMax = 300;
+
+export const uploadLightSwapperSourceVideoResponseSizeBytesMax = 104857600;
+
+
+
+export const UploadLightSwapperSourceVideoResponse = zod.object({
+  "sourceVideoId": zod.string().uuid(),
+  "durationSeconds": zod.number().min(uploadLightSwapperSourceVideoResponseDurationSecondsMin).max(uploadLightSwapperSourceVideoResponseDurationSecondsMax),
+  "sizeBytes": zod.number().int().min(1).max(uploadLightSwapperSourceVideoResponseSizeBytesMax)
+})
+
+
+/**
+ * Authenticated paid subscribers only. The sourceVideoId must belong to the authenticated owner and refer to a video previously validated by the server. The server determines duration and minimum estimated cost; local URIs, remote URLs and client-supplied durations are not accepted. Reuse clientRequestId for retries; a changed payload conflicts. No automatic paid retries.
+ * @summary Submit Light Swapper using an owned, validated video
+ */
+export const createCustomVideoLightSwapperGenerationBodyClientRequestIdRegExp = new RegExp('^[A-Za-z0-9_-]{8,150}$');
+export const createCustomVideoLightSwapperGenerationBodyPhotosItemMax = 16777260;
+
+
+export const createCustomVideoLightSwapperGenerationBodyPhotosItemRegExp = new RegExp('^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$');
+export const createCustomVideoLightSwapperGenerationBodyPhotosMax = 8;
+
+export const createCustomVideoLightSwapperGenerationBodyPromptMax = 10000;
+
+
+
+export const CreateCustomVideoLightSwapperGenerationBody = zod.object({
+  "clientRequestId": zod.string().regex(createCustomVideoLightSwapperGenerationBodyClientRequestIdRegExp),
+  "model": zod.enum(['higgsfield/genjutsu-light/motion-transfer/v1.0', 'higgsfield/genjutsu-light/object-swap/v1.0']),
+  "sourceVideoId": zod.string().uuid(),
+  "photos": zod.array(zod.string().max(createCustomVideoLightSwapperGenerationBodyPhotosItemMax).regex(createCustomVideoLightSwapperGenerationBodyPhotosItemRegExp)).min(1).max(createCustomVideoLightSwapperGenerationBodyPhotosMax),
+  "prompt": zod.string().max(createCustomVideoLightSwapperGenerationBodyPromptMax),
+  "resolution": zod.enum(['480p', '720p', '1080p'])
+})
+
+export const CreateCustomVideoLightSwapperGenerationResponse = zod.object({
+  "requestId": zod.string(),
+  "status": zod.enum(['queued'])
+})
+
+
+/**
  * @summary Recover an owned Light Swapper job without submitting
  */
 export const findLightSwapperGenerationPathClientRequestIdRegExp = new RegExp('^[A-Za-z0-9_-]{8,150}$');

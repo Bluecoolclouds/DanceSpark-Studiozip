@@ -20,5 +20,8 @@ Custom-video inputs must not silently become catalogue originals.
 originals only; accepting arbitrary video URLs would bypass trusted duration,
 media validation and spending controls.
 
-**How to apply:** Keep custom-video drafts usable locally, but add a separately
-validated authenticated upload contract before enabling their paid generation.
+**How to apply:** Keep custom-video drafts local until the signed-in owner
+explicitly requests a private upload. Return an owner-scoped server ID and
+server-measured duration; revalidate the owned object and derive spending from
+server media when launching. Persist that ID before the paid confirmation, and
+never send local URIs or client-supplied durations/quotes in the generation body.

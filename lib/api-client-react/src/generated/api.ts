@@ -44,8 +44,10 @@ import type {
   CatalogueInput,
   CataloguePage,
   CatalogueTemplate,
+  CustomVideoLightSwapperInput,
   HealthStatus,
   LightSwapperInput,
+  LightSwapperSourceVideo,
   ListAdminAuditParams,
   ListAdminGenerationsParams,
   ListAdminUsersParams,
@@ -1851,6 +1853,184 @@ export const useCreateLightSwapperGeneration = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getCreateLightSwapperGenerationMutationOptions(options), queryClient);
+    }
+
+export const getUploadLightSwapperSourceVideoUrl = () => {
+
+
+
+
+  return `/api/light-swapper/source-videos`
+}
+
+/**
+ * Accepts raw MP4 bytes only. The server validates the actual media and duration, then returns an owner-scoped identifier. Uploading is not a paid generation.
+ * @summary Validate and privately store an authenticated user's own video
+ */
+export const uploadLightSwapperSourceVideo = async (uploadLightSwapperSourceVideoBody: Blob, options?: Parameters<typeof customFetch>[1]): Promise<LightSwapperSourceVideo> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<LightSwapperSourceVideo>(getUploadLightSwapperSourceVideoUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/octet-stream', ...getHeaders(options?.headers) },
+    body: uploadLightSwapperSourceVideoBody
+  }
+);}
+
+
+
+
+
+export const getUploadLightSwapperSourceVideoMutationKey = () => ['uploadLightSwapperSourceVideo'] as const;
+
+export const getUploadLightSwapperSourceVideoMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadLightSwapperSourceVideo>>, TError,UploadLightSwapperSourceVideoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof uploadLightSwapperSourceVideo>>, TError,UploadLightSwapperSourceVideoMutationVariables, TContext> => {
+
+const mutationKey = getUploadLightSwapperSourceVideoMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadLightSwapperSourceVideo>>, UploadLightSwapperSourceVideoMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  uploadLightSwapperSourceVideo(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UploadLightSwapperSourceVideoMutationResult = NonNullable<Awaited<ReturnType<typeof uploadLightSwapperSourceVideo>>>
+    export type UploadLightSwapperSourceVideoMutationBody = BodyType<Blob>
+    export type UploadLightSwapperSourceVideoMutationError = ErrorType<void>
+    export type UploadLightSwapperSourceVideoMutationVariables = {data: BodyType<Blob>}
+
+    /**
+ * @summary Validate and privately store an authenticated user's own video
+ */
+export const useUploadLightSwapperSourceVideo = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadLightSwapperSourceVideo>>, TError,UploadLightSwapperSourceVideoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof uploadLightSwapperSourceVideo>>,
+        TError,
+        UploadLightSwapperSourceVideoMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUploadLightSwapperSourceVideoMutationOptions(options), queryClient);
+    }
+
+export const getCreateCustomVideoLightSwapperGenerationUrl = () => {
+
+
+
+
+  return `/api/light-swapper/custom-video-generations`
+}
+
+/**
+ * Authenticated paid subscribers only. The sourceVideoId must belong to the authenticated owner and refer to a video previously validated by the server. The server determines duration and minimum estimated cost; local URIs, remote URLs and client-supplied durations are not accepted. Reuse clientRequestId for retries; a changed payload conflicts. No automatic paid retries.
+ * @summary Submit Light Swapper using an owned, validated video
+ */
+export const createCustomVideoLightSwapperGeneration = async (customVideoLightSwapperInput: CustomVideoLightSwapperInput, options?: Parameters<typeof customFetch>[1]): Promise<VideoGenerationSubmission> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<VideoGenerationSubmission>(getCreateCustomVideoLightSwapperGenerationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(customVideoLightSwapperInput)
+  }
+);}
+
+
+
+
+
+export const getCreateCustomVideoLightSwapperGenerationMutationKey = () => ['createCustomVideoLightSwapperGeneration'] as const;
+
+export const getCreateCustomVideoLightSwapperGenerationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCustomVideoLightSwapperGeneration>>, TError,CreateCustomVideoLightSwapperGenerationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCustomVideoLightSwapperGeneration>>, TError,CreateCustomVideoLightSwapperGenerationMutationVariables, TContext> => {
+
+const mutationKey = getCreateCustomVideoLightSwapperGenerationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCustomVideoLightSwapperGeneration>>, CreateCustomVideoLightSwapperGenerationMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCustomVideoLightSwapperGeneration(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCustomVideoLightSwapperGenerationMutationResult = NonNullable<Awaited<ReturnType<typeof createCustomVideoLightSwapperGeneration>>>
+    export type CreateCustomVideoLightSwapperGenerationMutationBody = BodyType<CustomVideoLightSwapperInput>
+    export type CreateCustomVideoLightSwapperGenerationMutationError = ErrorType<void>
+    export type CreateCustomVideoLightSwapperGenerationMutationVariables = {data: BodyType<CustomVideoLightSwapperInput>}
+
+    /**
+ * @summary Submit Light Swapper using an owned, validated video
+ */
+export const useCreateCustomVideoLightSwapperGeneration = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCustomVideoLightSwapperGeneration>>, TError,CreateCustomVideoLightSwapperGenerationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createCustomVideoLightSwapperGeneration>>,
+        TError,
+        CreateCustomVideoLightSwapperGenerationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateCustomVideoLightSwapperGenerationMutationOptions(options), queryClient);
     }
 
 export const getFindLightSwapperGenerationUrl = (clientRequestId: string,) => {

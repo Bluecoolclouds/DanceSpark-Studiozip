@@ -103,13 +103,34 @@ test('late accepted job does not write into the next account', async () => {
   assert.equal(s.updates.some(u => u.generationRequestId === 'private-job'), false);
 });
 
-test('custom, changed, preview and old videos never silently use a different catalogue input', () => {
+test('custom sources require server validation and never become a different catalogue input', () => {
   assert.equal(lightDraftBlocker(draft), null);
   for (const sourceVideoUri of ['file:///my-video.mp4', 'blob:picker', 'https://example.invalid/preview.mp4']) {
-    assert.match(lightDraftBlocker({ ...draft, sourceVideoUri }), /только оригинал/);
+    const custom = { ...draft, sourceVideoUri };
+    assert.match(lightDraftBlocker(custom), /проверь и загрузи своё видео/);
+    assert.equal(lightDraftBlocker({ ...custom, lightSourceVideoId: 'server-video-id' }), null);
   }
-  assert.match(lightDraftBlocker({ ...draft, templateSnapshot: undefined }), /только оригинал/);
+  assert.match(lightDraftBlocker({ ...draft, templateSnapshot: undefined }), /проверь и загрузи своё видео/);
   assert.match(lightDraftBlocker({ ...draft, model: undefined }), /старом черновике/);
+});
+
+test('custom paid submission contains the server source ID and no device URI', async () => {
+  const sourceId = 'server-owned-video-id';
+  const s = setup({
+    draft: { ...draft, sourceVideoUri: 'file:///private/source.mp4', lightSourceVideoId: sourceId },
+    prepare: async () => ({
+      clientRequestId: draft.id, sourceVideoId: sourceId,
+      model: 'higgsfield/genjutsu-light/object-swap/v1.0', resolution: '720p',
+      photos: ['first'], prompt: draft.prompt,
+    }),
+  });
+  await launchLightGeneration(s.options);
+  assert.deepEqual(s.submissions[0], {
+    clientRequestId: draft.id, sourceVideoId: sourceId,
+    model: 'higgsfield/genjutsu-light/object-swap/v1.0', resolution: '720p',
+    photos: ['first'], prompt: draft.prompt,
+  });
+  assert.doesNotMatch(JSON.stringify(s.submissions[0]), /file:|blob:|example\.invalid/);
 });
 
 test('total photo limit and allowed inline formats are checked before submission', () => {

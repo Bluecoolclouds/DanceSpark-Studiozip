@@ -2,10 +2,15 @@ import "./helpers/setup.mjs";
 import assert from "node:assert/strict";
 import { beforeEach, test, type TestContext } from "node:test";
 import { Readable } from "node:stream";
+import { execFileSync } from "node:child_process";
+import { createHash, randomUUID } from "node:crypto";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { S3Client, HeadObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import type { AddressInfo } from "node:net";
 import { isolatedDatabase } from "./helpers/database";
-import { createOwnedLightSwapper } from "../src/lib/light-swapper";
+import { createOwnedCustomVideoLightSwapper, createOwnedLightSwapper } from "../src/lib/light-swapper";
 import { getOwnedGeneration, VideoNotFoundError } from "../src/lib/generation-access";
 import { GenerationPolicyError } from "../src/lib/generation-governance";
 import { VideoSubmissionUnknownError } from "../src/lib/video-generation";
@@ -241,6 +246,92 @@ test("unconfigured conversion or unknown duration blocks spending; exact replay 
   assert.equal(calls.length, 7);
 });
 
+test("custom source uses server-inspected duration, is owner-scoped, and replays without a second paid request", async t => {
+  const directory = mkdtempSync(join(tmpdir(), "danceflow-custom-video-"));
+  const path = join(directory, "source.mp4");
+  try {
+    execFileSync("ffmpeg", [
+      "-nostdin", "-hide_banner", "-loglevel", "error",
+      "-f", "lavfi", "-i", "color=c=black:s=32x32:r=10:d=1.25",
+      "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-y", path,
+    ]);
+    const video = readFileSync(path);
+    const sourceVideoId = randomUUID();
+    const ownedKey = `danceflow-user-videos/${createHash("sha256").update("u1").digest("hex")}/${sourceVideoId}.mp4`;
+    let s3Reads = 0;
+    let paidCalls = 0;
+    const fetches: { url: string; init?: RequestInit }[] = [];
+    t.mock.method(S3Client.prototype, "send", async (command: any) => {
+      s3Reads++;
+      if (command.input.Key !== ownedKey) return {};
+      if (command instanceof HeadObjectCommand) return {
+        ETag: '"source-v1"', ContentLength: video.length, ContentType: "video/mp4",
+      };
+      assert.ok(command instanceof GetObjectCommand);
+      assert.equal(command.input.IfMatch, '"source-v1"');
+      return { Body: Readable.from([video]) };
+    });
+    t.mock.method(globalThis, "fetch", async (url, init) => {
+      const address = String(url);
+      fetches.push({ url: address, init });
+      if (address.endsWith("/files/generate-upload-url")) {
+        const mime = JSON.parse(String(init?.body)).content_type;
+        return Response.json({
+          upload_url: `https://storage.example.test/upload-${fetches.length}`,
+          public_url: `https://cdn.example.test/input-${fetches.length}`,
+          upload_headers: { "Content-Type": mime },
+        });
+      }
+      if (address.startsWith("https://storage.example.test/")) return new Response(null, { status: 200 });
+      if (address === `https://api.higgsfield.ai/${models[0]}`) {
+        paidCalls++;
+        const payload = JSON.parse(String(init?.body));
+        assert.equal(payload.video_url, "https://cdn.example.test/input-1");
+        assert.equal(payload.prompt, input.prompt);
+        assert.equal(payload.resolution, "480p");
+        assert.deepEqual(Buffer.from(await (fetches[1].init!.body as Blob).arrayBuffer()), video);
+        return Response.json({ status: "queued", request_id: "custom-video-provider-id" });
+      }
+      assert.fail("Unexpected provider request");
+    });
+    await pool.query("UPDATE df_controls SET cost_per_generation_rub=0.01");
+    const customInput = {
+      clientRequestId: "custom-source-request", model: models[0], sourceVideoId,
+      photos: [photo(1)], prompt: input.prompt, resolution: "480p" as const,
+    };
+    const first = await createOwnedCustomVideoLightSwapper("u1", customInput);
+    assert.deepEqual(await createOwnedCustomVideoLightSwapper("u1", customInput), first);
+    assert.equal((await pool.query("SELECT estimated_cost_rub FROM df_jobs")).rows[0].estimated_cost_rub, "0.17");
+    assert.equal(paidCalls, 1);
+    assert.equal(s3Reads, 4, "valid replays read only the owning account's object");
+    await assert.rejects(createOwnedCustomVideoLightSwapper("u2", customInput),
+      (error: unknown) => error instanceof GenerationPolicyError && error.code === "invalid_source_video");
+    assert.equal(s3Reads, 5, "another account resolves a different private object key");
+    assert.equal(paidCalls, 1);
+    assert.equal((await pool.query("SELECT count(*)::int n FROM df_jobs")).rows[0].n, 1);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("custom source rejects invalid media and strict input rejects client duration and URLs", async t => {
+  t.mock.method(S3Client.prototype, "send", async (command: any) => {
+    if (command instanceof HeadObjectCommand) return {
+      ETag: '"bad-source"', ContentLength: original.length, ContentType: "video/mp4",
+    };
+    return { Body: Readable.from([original]) };
+  });
+  const invalid = {
+    clientRequestId: "custom-invalid-request", model: models[0], sourceVideoId: randomUUID(),
+    photos: [photo(1)], prompt: "", resolution: "720p" as const,
+  };
+  await assert.rejects(createOwnedCustomVideoLightSwapper("u1", { ...invalid, sourceVideoId: "https://example.invalid/source.mp4" } as never));
+  await assert.rejects(createOwnedCustomVideoLightSwapper("u1", { ...invalid, duration: 10 } as never));
+  await assert.rejects(createOwnedCustomVideoLightSwapper("u1", invalid),
+    (error: unknown) => error instanceof GenerationPolicyError && error.code === "invalid_source_video");
+  assert.equal((await pool.query("SELECT count(*)::int n FROM df_jobs")).rows[0].n, 0);
+});
+
 for (const options of [
   { headSize: 100 * 1024 * 1024 + 1 }, { bytes: Buffer.alloc(original.length) },
   { bytes: original.subarray(0, 12) }, { uploadFails: true },
@@ -299,6 +390,10 @@ test("production route rejects signed-out and forged identities before provider 
       });
       assert.equal(response.status, 401);
     }
+    const upload = await fetch(`${root}/api/light-swapper/source-videos`, {
+      method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: Buffer.from("not a video"),
+    });
+    assert.equal(upload.status, 401, "private uploads require verified Clerk ownership");
     assert.equal(boundary.calls.length, 0);
     assert.equal(boundary.storageReads, 0);
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); }

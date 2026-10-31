@@ -17,6 +17,7 @@ export interface Draft extends GenerationDraftSettings {
   generationError?: string;
   videoUri?: string;
   savedVideoAssetId?: string;
+  lightSourceVideoId?: string;
 }
 
 export type DraftStorageIssue = 'read' | 'write' | 'corrupt' | null;
@@ -38,7 +39,10 @@ interface Ctx {
   removeDraft: (id: string) => void;
 }
 
-export type DraftUpdates = Partial<Pick<Draft, 'generationStatus' | 'generationRequestId' | 'generationError' | 'videoUri' | 'savedVideoAssetId' | 'lightSubmissionStarted'>>;
+export type DraftUpdates = Partial<Pick<Draft,
+  'generationStatus' | 'generationRequestId' | 'generationError' | 'videoUri' | 'savedVideoAssetId' |
+  'lightSubmissionStarted' | 'lightSourceVideoId' | 'sourceVideoDurationSeconds' | 'duration'
+>>;
 
 const DanceContext = createContext<Ctx | null>(null);
 const FAV_KEY = 'danceflow:favorites';
