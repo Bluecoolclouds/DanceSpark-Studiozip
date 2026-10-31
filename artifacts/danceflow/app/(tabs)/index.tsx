@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useVideoPlayer } from 'expo-video';
 import { router } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { NativeScrollEvent, NativeSyntheticEvent, Platform, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import Animated, { useReducedMotion, Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -71,20 +71,18 @@ export default function Discover() {
     setActiveFeaturedIndex(next);
     featuredScroll.current?.scrollTo({ x: next * (featuredCardWidth + 2), y: 0, animated: true });
   }, [activeFeaturedIndex, featured.length, featuredCardWidth]);
-  const previewUri = activeFeatured?.videoUri
-    ? templatePreviewCandidates(activeFeatured.videoUri)[0]
-    : null;
+  const previewCandidates = useMemo(
+    () => activeFeatured?.videoUri ? templatePreviewCandidates(activeFeatured.videoUri) : [],
+    [activeFeatured?.videoUri],
+  );
   const videoPlayer = useVideoPlayer(null, (player) => {
     player.loop = true;
     player.muted = true;
   });
-  const activeIdRef = useRef(activeFeatured?.id);
   const shouldPreviewRef = useRef(false);
 
   useEffect(() => {
-    if (!activeFeatured || !previewUri) return;
-    const templateChanged = activeIdRef.current !== activeFeatured.id;
-    activeIdRef.current = activeFeatured.id;
+    if (!activeFeatured || previewCandidates.length === 0) return;
     shouldPreviewRef.current = featuredInView && !reduced;
     if (!shouldPreviewRef.current) {
       setFeaturedPreviewReady(false);
@@ -92,30 +90,45 @@ export default function Discover() {
       void videoPlayer.replaceAsync(null).catch(() => {});
       return;
     }
-    if (!templateChanged && videoPlayer.status === 'readyToPlay') {
-      videoPlayer.play();
-      return;
-    }
+
     let cancelled = false;
+    let candidateIndex = -1;
     setFeaturedPreviewReady(false);
     videoPlayer.pause();
-    void videoPlayer.replaceAsync(previewUri).then(() => {
-      if (!cancelled && shouldPreviewRef.current) videoPlayer.play();
-    }).catch(() => {});
-    return () => { cancelled = true; videoPlayer.pause(); };
-  }, [activeFeatured?.id, featuredInView, previewUri, reduced, videoPlayer]);
 
-  useEffect(() => {
+    const loadCandidate = (index: number) => {
+      if (cancelled || index >= previewCandidates.length) {
+        candidateIndex = previewCandidates.length;
+        setFeaturedPreviewReady(false);
+        return;
+      }
+      candidateIndex = index;
+      setFeaturedPreviewReady(false);
+      void videoPlayer.replaceAsync(previewCandidates[index]).then(() => {
+        if (!cancelled && candidateIndex === index && shouldPreviewRef.current) videoPlayer.play();
+      }).catch(() => {
+        if (!cancelled && candidateIndex === index) loadCandidate(index + 1);
+      });
+    };
+
     const subscription = videoPlayer.addListener('statusChange', ({ status }) => {
-      if (status === 'readyToPlay' && shouldPreviewRef.current) {
+      if (status === 'readyToPlay' && candidateIndex < previewCandidates.length && shouldPreviewRef.current) {
         setFeaturedPreviewReady(true);
         videoPlayer.play();
-      } else if (status === 'loading' || status === 'idle' || status === 'error') {
+      } else if (status === 'error') {
+        loadCandidate(candidateIndex + 1);
+      } else if (status === 'loading' || status === 'idle') {
         setFeaturedPreviewReady(false);
       }
     });
-    return () => subscription.remove();
-  }, [videoPlayer]);
+    loadCandidate(0);
+
+    return () => {
+      cancelled = true;
+      subscription.remove();
+      videoPlayer.pause();
+    };
+  }, [activeFeatured?.id, featuredInView, previewCandidates, reduced, videoPlayer]);
 
   const handlePageScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;

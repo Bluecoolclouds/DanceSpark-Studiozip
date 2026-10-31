@@ -110,7 +110,7 @@ export function TemplateCard({ t, onPress, width, height = 280, previewPlayer }:
     <View style={[s.card, { width, height, borderColor: c.glassEdge, backgroundColor: col, shadowColor: c.glow }]}>
       <Bouncy onPress={onPress} scaleTo={0.97} style={StyleSheet.absoluteFill}>
         <Image source={t.image} style={StyleSheet.absoluteFill} contentFit="cover" />
-        {previewPlayer && <VideoView player={previewPlayer} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} surfaceType={Platform.OS === 'android' ? 'textureView' : 'surfaceView'} />}
+        {previewPlayer && <VideoView player={previewPlayer} style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]} contentFit="cover" nativeControls={false} surfaceType={Platform.OS === 'android' ? 'textureView' : 'surfaceView'} />}
         <LinearGradient colors={[c.clear, c.scrim]} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0.5 }} end={{ x: 0, y: 1 }} />
       </Bouncy>
       <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
