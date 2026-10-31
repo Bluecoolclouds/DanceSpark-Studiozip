@@ -41,9 +41,9 @@ export default function Studio() {
           <Stat n={drafts.length} label="черновиков" color={c.accent} />
           <Stat n={favorites.length} label="в избранном" color={c.primary} />
         </View>
-        <Bouncy testID="open-subscription" scaleTo={0.97} onPress={() => router.push('/subscription')}
+        <Bouncy testID="open-subscription" accessibilityLabel="Тарифы подписки" scaleTo={0.97} onPress={() => router.push('/subscription')}
           style={[styles.subEntry, { backgroundColor: c.violet, borderColor: c.border, shadowColor: c.border }]}>
-          <View accessible accessibilityRole="button" accessibilityLabel="Тарифы подписки" style={styles.subRow}>
+          <View style={styles.subRow}>
             <View style={[styles.subIcon, { backgroundColor: c.sun, borderColor: c.border }]}>
               <Feather name="star" size={18} color={c.foreground} />
             </View>
@@ -73,7 +73,8 @@ export default function Studio() {
               const t = getTemplate(d.templateId);
               if (!t) return null;
               return (
-                <Bouncy key={d.id} scaleTo={0.97} onPress={() => router.push(`/draft/${d.id}`)} style={[styles.draft, { backgroundColor: c.card, borderColor: c.border, shadowColor: c.border }]}>
+                <View key={d.id} style={[styles.draft, { backgroundColor: c.card, borderColor: c.border, shadowColor: c.border }]}>
+                  <Bouncy accessibilityLabel={`Открыть черновик: ${t.title}`} scaleTo={0.97} onPress={() => router.push(`/draft/${d.id}`)} style={styles.draftOpen}>
                   <Image source={{ uri: d.photoUri }} style={[styles.thumb, { borderColor: c.border, backgroundColor: c.muted }]} contentFit="cover" />
                   <Image source={t.image} style={[styles.thumbSmall, { borderColor: c.border }]} contentFit="cover" />
                   <View style={{ flex: 1, gap: 4 }}>
@@ -85,10 +86,11 @@ export default function Studio() {
                       </Text>
                     </View>
                   </View>
-                  <Bouncy onPress={() => confirmDelete(d.id)} style={[styles.del, { borderColor: c.border }]}>
+                  </Bouncy>
+                  <Bouncy accessibilityLabel={`Удалить черновик: ${t.title}`} onPress={() => confirmDelete(d.id)} style={[styles.del, { borderColor: c.border }]}>
                     <Feather name="trash-2" size={16} color={c.foreground} />
                   </Bouncy>
-                </Bouncy>
+                </View>
               );
             })}
           </View>
@@ -128,8 +130,9 @@ const styles = StyleSheet.create({
   tabs: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginVertical: 20 },
   skel: { height: 110, borderRadius: 22 },
   draft: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 8, borderRadius: 8, borderWidth: 1, shadowOffset: { width: 2, height: 3 }, shadowOpacity: 0.35, shadowRadius: 14, elevation: 2 },
+  draftOpen: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 0 },
   thumb: { width: 72, height: 92, borderRadius: 4, borderWidth: 1 },
-  thumbSmall: { position: 'absolute', left: 62, top: 60, width: 36, height: 36, borderRadius: 18, borderWidth: 1 },
+  thumbSmall: { position: 'absolute', left: 54, top: 52, width: 36, height: 36, borderRadius: 18, borderWidth: 1 },
   dTitle: { fontFamily: F.displayBold, fontSize: 16 },
   dMeta: { fontFamily: F.bodyBold, fontSize: 12 },
   badge: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2, marginTop: 2 },
