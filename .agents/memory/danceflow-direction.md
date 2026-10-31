@@ -47,6 +47,12 @@ For the paid service, “unlimited” means no daily generation-count cap, not u
 
 The user explicitly selected both Higgsfield **Genjutsu Light v1.0** modes: Motion Transfer and Object Swap, and named their playgrounds as references for the creation page.
 
+The user also wants the trend page itself to follow the Object Swap playground, with the same input fields, rather than just information about the dance.
+
+**Why:** They explicitly supplied the Genjutsu Light Object Swap playground as the reference for improving the trend page.
+
+**How to apply:** Treat the selected trend as the prefilled source in an editable workspace; preserve the distinction between Object Swap and Motion Transfer and between a saved draft and an actual generated result.
+
 **Why:** This is the user's provider/model choice. The similarly named standard Genjutsu has different pricing and limits and is not an interchangeable substitute.
 
 **How to apply:** Keep both Light modes, explain their different purposes, and never silently replace them with standard Genjutsu or another provider. Preserve the user's subscription prices pending their decision about the resulting economics.

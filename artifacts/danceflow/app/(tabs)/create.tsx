@@ -76,8 +76,10 @@ export default function Create() {
     const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['videos'], quality: 1 });
     const a = !r.canceled ? r.assets[0] : undefined;
     if (!a) return;
-    const ms = a.duration;
-    setSource({ uri: a.uri, seconds: ms != null && Number.isFinite(ms) && ms > 0 ? ms / 1000 : null });
+    // Web returns seconds; native image pickers return milliseconds.
+    const duration = a.duration;
+    setSource({ uri: a.uri, seconds: duration != null && Number.isFinite(duration) && duration > 0
+      ? duration / (Platform.OS === 'web' ? 1 : 1000) : null });
   });
 
   const addRefs = (uris: string[]) => {
