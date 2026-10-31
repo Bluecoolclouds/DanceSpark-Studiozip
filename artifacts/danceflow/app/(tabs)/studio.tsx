@@ -38,6 +38,12 @@ export default function Studio() {
       <View style={{ paddingHorizontal: 20 }}>
         <Text style={[styles.title, { color: c.foreground }]}>Моя <Text style={{ color: c.violet }}>сцена</Text></Text>
         <AccountSubscription />
+        <Bouncy testID="open-privacy-policy" accessibilityLabel="Политика конфиденциальности и поддержка" onPress={() => router.push('/privacy')}
+          style={[styles.privacyLink, { backgroundColor: c.card, borderColor: c.border }]}>
+          <Feather name="shield" size={16} color={c.violet} />
+          <Text style={[styles.privacyText, { color: c.foreground }]}>Конфиденциальность и поддержка</Text>
+          <Feather name="chevron-right" size={17} color={c.mutedForeground} />
+        </Bouncy>
         <View style={styles.stats}>
           <Stat n={drafts.length} label="черновиков" color={c.accent} />
           <Stat n={favorites.length} label="в избранном" color={c.primary} />
@@ -143,6 +149,8 @@ const styles = StyleSheet.create({
   subIcon: { width: 38, height: 38, borderRadius: 19, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   subTitle: { fontFamily: F.displayBold, fontSize: 15 },
   subText: { fontFamily: F.bodyBold, fontSize: 12, opacity: 0.9, marginTop: 2 },
+  privacyLink: { minHeight: 48, borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  privacyText: { flex: 1, fontFamily: F.bodyBold, fontSize: 13 },
   tabs: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginVertical: 20 },
   skel: { height: 110, borderRadius: 22 },
   draft: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 8, borderRadius: 8, borderWidth: 1, shadowOffset: { width: 2, height: 3 }, shadowOpacity: 0.35, shadowRadius: 14, elevation: 2 },

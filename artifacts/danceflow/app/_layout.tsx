@@ -70,6 +70,7 @@ function RootLayoutNav() {
         <Stack.Screen name="template/[id]" />
         <Stack.Screen name="draft/[id]" />
         <Stack.Screen name="subscription" />
+        <Stack.Screen name="privacy" />
         <Stack.Screen name="sign-in" />
         <Stack.Screen name="sign-up" />
         <Stack.Screen name="forgot-password" />

@@ -8,6 +8,12 @@
 import * as zod from 'zod';
 
 
+/**
+ * Public Russian-language draft of the Danceflow privacy policy. Must not be used for store publication until the marked operator and retention details are verified.
+ */
+export const GetPrivacyPolicyResponse = zod.unknown()
+
+
 export const GetAuthConfigResponse = zod.object({
   "enabled": zod.boolean(),
   "endpoint": zod.string(),

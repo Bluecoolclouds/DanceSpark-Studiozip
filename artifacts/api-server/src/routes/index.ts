@@ -7,6 +7,7 @@ import danceTemplateMediaRouter from "./dance-template-media";
 import adminTemplateMediaRouter from "./admin-template-media";
 import catalogueRouter from "./catalogue";
 import authRouter from "./auth";
+import privacyPolicyRouter from "./privacy-policy";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(adminTemplateMediaRouter);
 router.use(adminRouter);
 router.use(videoGenerationsRouter);
 router.use(accountRouter);
+router.use(privacyPolicyRouter);
 
 export default router;
