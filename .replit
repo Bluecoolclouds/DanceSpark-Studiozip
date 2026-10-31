@@ -23,6 +23,8 @@ timeoutMs = 20000
 
 [userenv.shared]
 DANCEFLOW_OWNER_EMAIL = "89033784036@mail.ru"
+CLOUDFLARE_R2_ACCOUNT_ID = "9b879b0faf68469fa9bf38c821281cab"
+CLOUDFLARE_R2_BUCKET_NAME = "danceflow-media"
 
 [nix]
 channel = "stable-25_05"

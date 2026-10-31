@@ -1,19 +1,28 @@
 import { Router, type IRouter } from "express";
 import { createReadStream } from "node:fs";
-import { cachedTemplateFile } from "../lib/template-storage";
+import {
+  cachedTemplateFile,
+  isAllowedTemplateAsset,
+  TemplateMediaError,
+  uploadTemplateFile,
+} from "../lib/template-storage";
+import {
+  protectAdminMutation,
+  requireAccount,
+  requireAdmin,
+} from "../middlewares/admin-auth";
 
 const router: IRouter = Router();
-const templateIds = new Set(["trend-01", "trend-02", "trend-03", "trend-04", "trend-05", "trend-06"]);
-const templateAssets = new Set([
-  "video.mp4", "preview.mp4", "preview.webm", "poster.jpg",
-  "character-01.jpg", "character-02.jpg", "reference-poster.jpg",
-  "result.mp4", "result-preview.mp4", "result.webm",
-]);
+
+function routeParam(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
 
 // Only explicitly published catalogue assets are accessible; never arbitrary bucket paths.
 router.get("/dance-templates/:id/:asset", async (req, res) => {
-  const { id, asset } = req.params;
-  if (!templateIds.has(id) || !templateAssets.has(asset)) {
+  const id = routeParam(req.params.id);
+  const asset = routeParam(req.params.asset);
+  if (!isAllowedTemplateAsset(id, asset)) {
     res.sendStatus(404);
     return;
   }
@@ -60,10 +69,45 @@ router.get("/dance-templates/:id/:asset", async (req, res) => {
       else res.destroy();
     });
     stream.pipe(res);
-  } catch {
+  } catch (error) {
     req.log.error({ templateId: id, asset }, "Template media unavailable");
-    if (!res.headersSent) res.status(503).json({ error: "Видео шаблона временно недоступно" });
+    if (!res.headersSent) {
+      const statusCode = error instanceof TemplateMediaError ? error.statusCode : 503;
+      res.status(statusCode).json({ error: "Видео шаблона временно недоступно" });
+    }
   }
 });
+
+router.put(
+  "/admin/dance-templates/:id/:asset",
+  requireAccount,
+  requireAdmin,
+  protectAdminMutation,
+  async (req, res): Promise<void> => {
+    const id = routeParam(req.params.id);
+    const asset = routeParam(req.params.asset);
+    if (!isAllowedTemplateAsset(id, asset)) {
+      res.sendStatus(404);
+      return;
+    }
+    const contentLength = Number(req.get("content-length"));
+    const contentType = req.get("content-type")?.split(";")[0]?.trim();
+    if (!contentType || !Number.isSafeInteger(contentLength)) {
+      res.status(411).json({ error: "Укажи размер и тип файла" });
+      return;
+    }
+    try {
+      await uploadTemplateFile(id, asset, req, contentLength, contentType);
+      res.status(204).end();
+    } catch (error) {
+      if (error instanceof TemplateMediaError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
+      req.log.error({ templateId: id, asset }, "Template media upload failed");
+      res.status(502).json({ error: "Не удалось сохранить медиа" });
+    }
+  },
+);
 
 export default router;
