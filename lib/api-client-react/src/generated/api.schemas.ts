@@ -5,6 +5,41 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type LightSwapperInputModel = typeof LightSwapperInputModel[keyof typeof LightSwapperInputModel];
+
+
+export const LightSwapperInputModel = {
+  'higgsfield/genjutsu-light/motion-transfer/v10': 'higgsfield/genjutsu-light/motion-transfer/v1.0',
+  'higgsfield/genjutsu-light/object-swap/v10': 'higgsfield/genjutsu-light/object-swap/v1.0',
+} as const;
+
+export type LightSwapperInputResolution = typeof LightSwapperInputResolution[keyof typeof LightSwapperInputResolution];
+
+
+export const LightSwapperInputResolution = {
+  '480p': '480p',
+  '720p': '720p',
+  '1080p': '1080p',
+} as const;
+
+export interface LightSwapperInput {
+  /** @pattern ^[A-Za-z0-9_-]{8,150}$ */
+  clientRequestId: string;
+  model: LightSwapperInputModel;
+  /** @pattern ^[a-z0-9][a-z0-9-]{0,79}$ */
+  templateId: string;
+  /**
+     * @minItems 1
+     * @maxItems 8
+     * @items.maxLength 16777260
+     * @items.pattern ^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$
+     */
+  photos: string[];
+  /** @maxLength 10000 */
+  prompt: string;
+  resolution: LightSwapperInputResolution;
+}
+
 export type CatalogueInputCategory = typeof CatalogueInputCategory[keyof typeof CatalogueInputCategory];
 
 

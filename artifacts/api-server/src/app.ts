@@ -66,7 +66,10 @@ app.use((error: unknown, req: express.Request, res: express.Response, _next: exp
   // No raw provider error/headers/body: those can contain credentials and signed URLs.
   req.log.error({ category: error instanceof SyntaxError ? "invalid_json" : "request_failed" }, "API request failed");
   if (!res.headersSent) {
-    res.status(error instanceof SyntaxError ? 400 : 500).json({ error: error instanceof SyntaxError ? "Некорректный JSON" : "Ошибка сервера. Повторите запрос позже" });
+    const tooLarge = (error as { type?: string })?.type === "entity.too.large";
+    res.status(tooLarge ? 413 : error instanceof SyntaxError ? 400 : 500).json({
+      error: tooLarge ? "Файлы слишком большие." : error instanceof SyntaxError ? "Некорректный JSON" : "Ошибка сервера. Повторите запрос позже",
+    });
   }
 });
 

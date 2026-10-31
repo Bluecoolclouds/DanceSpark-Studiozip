@@ -45,7 +45,7 @@ const stylePrompts: Record<VideoGenerationInput["styleId"], string> = {
     "A cute, precise K-pop dance with finger hearts, a step-touch, and a playful side lean toward the camera.",
 };
 
-function decodeImageDataUrl(imageDataUrl: string): { bytes: Buffer; mimeType: string } {
+export function decodeImageDataUrl(imageDataUrl: string): { bytes: Buffer; mimeType: string } {
   const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/i.exec(imageDataUrl);
   if (!match) {
     throw new VideoProviderError("Выбери фото в формате JPG, PNG или WebP.");
@@ -180,6 +180,27 @@ async function uploadPhoto(credentials: string, bytes: Buffer, mimeType: string)
     throw new VideoProviderError("Не удалось загрузить фото в Higgsfield. Попробуй позже.");
   }
   return publicUrl;
+}
+
+/** Shared upload boundary; credentials and storage handles never leave the server. */
+export async function uploadGenerationMedia(bytes: Buffer, mimeType: string): Promise<string> {
+  return uploadPhoto(getCredentials(), bytes, mimeType);
+}
+
+export async function submitLightSwapper(
+  model: string, input: { video_url: string; image_urls: string[]; prompt: string; resolution: string },
+): Promise<{ requestId: string }> {
+  if (!["higgsfield/genjutsu-light/motion-transfer/v1.0", "higgsfield/genjutsu-light/object-swap/v1.0"].includes(model)) {
+    throw new VideoProviderError("Неподдерживаемая модель.");
+  }
+  const credentials = getCredentials();
+  try {
+    const queued = await apiRequest(`/${model}`, credentials, input);
+    if (typeof queued.request_id !== "string" || !/^[A-Za-z0-9_-]{1,100}$/.test(queued.request_id)) {
+      throw new VideoSubmissionUnknownError();
+    }
+    return { requestId: queued.request_id };
+  } catch { throw new VideoSubmissionUnknownError(); }
 }
 
 export async function submitDanceVideo(input: VideoGenerationInput): Promise<{

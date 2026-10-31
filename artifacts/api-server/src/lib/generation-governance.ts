@@ -17,6 +17,8 @@ export class GenerationPolicyError extends Error {
  */
 export async function reserveGeneration(input: {
   userId: string; idempotencyKey: string; templateId: string;
+  fingerprint?: string; model?: string;
+  minimumCostRub?: number;
 }): Promise<{ id: string; status: string; reused: boolean }> {
   if (!input.userId || !/^[A-Za-z0-9_-]{8,150}$/.test(input.idempotencyKey) ||
     !/^[A-Za-z0-9_-]{1,150}$/.test(input.templateId)) {
@@ -30,11 +32,12 @@ export async function reserveGeneration(input: {
     const user = (await client.query("SELECT * FROM df_accounts WHERE id=$1 FOR UPDATE", [input.userId])).rows[0];
     if (!user || user.blocked) throw new GenerationPolicyError("account_blocked", 403);
     const previous = (await client.query(
-      "SELECT id,status,template_id FROM df_jobs WHERE user_id=$1 AND idempotency_key=$2",
+      "SELECT id,status,template_id,request_fingerprint FROM df_jobs WHERE user_id=$1 AND idempotency_key=$2",
       [input.userId, input.idempotencyKey],
     )).rows[0];
     if (previous) {
       if (previous.template_id !== input.templateId) throw new GenerationPolicyError("idempotency_conflict", 409);
+      if ((previous.request_fingerprint ?? undefined) !== input.fingerprint) throw new GenerationPolicyError("idempotency_conflict", 409);
       await client.query("COMMIT");
       return { id: previous.id, status: previous.status, reused: true };
     }
@@ -61,14 +64,18 @@ export async function reserveGeneration(input: {
     if (controls.cost_per_generation_rub == null || controls.max_daily_spend_rub == null) {
       throw new GenerationPolicyError("budget_not_configured", 503);
     }
-    const cost = Number(controls.cost_per_generation_rub);
+    if (input.minimumCostRub !== undefined &&
+        (!Number.isFinite(input.minimumCostRub) || input.minimumCostRub <= 0)) {
+      throw new GenerationPolicyError("budget_not_configured", 503);
+    }
+    const cost = Math.max(Number(controls.cost_per_generation_rub), input.minimumCostRub ?? 0);
     if (usage.spend + cost > Number(controls.max_daily_spend_rub)) {
       throw new GenerationPolicyError("daily_budget_reached", 429);
     }
     const id = randomUUID();
     await client.query(
-      "INSERT INTO df_jobs(id,user_id,idempotency_key,template_id,estimated_cost_rub) VALUES($1,$2,$3,$4,$5)",
-      [id, input.userId, input.idempotencyKey, input.templateId, controls.cost_per_generation_rub],
+      "INSERT INTO df_jobs(id,user_id,idempotency_key,template_id,estimated_cost_rub,request_fingerprint,provider_model) VALUES($1,$2,$3,$4,$5,$6,$7)",
+      [id, input.userId, input.idempotencyKey, input.templateId, cost, input.fingerprint ?? null, input.model ?? null],
     );
     await client.query("COMMIT");
     return { id, status: "queued", reused: false };
@@ -79,7 +86,7 @@ export async function reserveGeneration(input: {
 }
 
 /** Returns true only for the worker that acquired the job. Recheck global pause. */
-export async function beginGeneration(id: string): Promise<boolean> {
+export async function beginGeneration(id: string, recheckAccount = false): Promise<boolean> {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -87,6 +94,16 @@ export async function beginGeneration(id: string): Promise<boolean> {
     if (!controls || controls.paused) {
       await client.query("ROLLBACK");
       return false;
+    }
+    if (recheckAccount) {
+      const { rows: [account] } = await client.query(
+        "SELECT a.* FROM df_accounts a JOIN df_jobs j ON j.user_id=a.id WHERE j.id=$1 FOR UPDATE OF a", [id],
+      );
+      if (!account || account.blocked) throw new GenerationPolicyError("account_blocked", 403);
+      if (!["warmup", "dancefloor", "stage"].includes(account.plan) ||
+          !account.subscription_until || new Date(account.subscription_until) <= new Date()) {
+        throw new GenerationPolicyError("subscription_required", 403);
+      }
     }
     const result = await client.query(
       "UPDATE df_jobs SET status='running' WHERE id=$1 AND status='queued' RETURNING id", [id],

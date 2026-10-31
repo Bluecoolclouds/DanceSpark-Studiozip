@@ -12,6 +12,9 @@ export const danceJobs = pgTable("df_jobs", {
   estimatedCostRub: numeric("estimated_cost_rub", { precision: 14, scale: 2 }),
   errorCode: text("error_code"),
   providerRequestId: text("provider_request_id"),
+  requestFingerprint: text("request_fingerprint"),
+  providerModel: text("provider_model"),
+  resultUrl: text("result_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   completedAt: timestamp("completed_at", { withTimezone: true }),
 }, (t) => [

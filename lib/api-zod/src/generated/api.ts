@@ -745,6 +745,37 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * Authenticated paid subscribers only. Uses the published template original MP4, never a preview. Photos are inline JPEG/PNG/WebP in selection order; maximum 12 MiB decoded in total and 18 MiB JSON. No local URI or remote input URL is accepted. Duration and audio controls are unsupported. Reuse clientRequestId for retries; a changed payload conflicts. No automatic paid retries.
+ * @summary Submit the selected Genjutsu Light v1.0 model
+ */
+export const createLightSwapperGenerationBodyClientRequestIdRegExp = new RegExp('^[A-Za-z0-9_-]{8,150}$');
+export const createLightSwapperGenerationBodyTemplateIdRegExp = new RegExp('^[a-z0-9][a-z0-9-]{0,79}$');
+export const createLightSwapperGenerationBodyPhotosItemMax = 16777260;
+
+
+export const createLightSwapperGenerationBodyPhotosItemRegExp = new RegExp('^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$');
+export const createLightSwapperGenerationBodyPhotosMax = 8;
+
+export const createLightSwapperGenerationBodyPromptMax = 10000;
+
+
+
+export const CreateLightSwapperGenerationBody = zod.object({
+  "clientRequestId": zod.string().regex(createLightSwapperGenerationBodyClientRequestIdRegExp),
+  "model": zod.enum(['higgsfield/genjutsu-light/motion-transfer/v1.0', 'higgsfield/genjutsu-light/object-swap/v1.0']),
+  "templateId": zod.string().regex(createLightSwapperGenerationBodyTemplateIdRegExp),
+  "photos": zod.array(zod.string().max(createLightSwapperGenerationBodyPhotosItemMax).regex(createLightSwapperGenerationBodyPhotosItemRegExp)).min(1).max(createLightSwapperGenerationBodyPhotosMax),
+  "prompt": zod.string().max(createLightSwapperGenerationBodyPromptMax),
+  "resolution": zod.enum(['480p', '720p', '1080p'])
+})
+
+export const CreateLightSwapperGenerationResponse = zod.object({
+  "requestId": zod.string(),
+  "status": zod.enum(['queued'])
+})
+
+
+/**
  * @summary Start a dance video generation
  */
 export const createVideoGenerationBodyClientRequestIdMax = 100;

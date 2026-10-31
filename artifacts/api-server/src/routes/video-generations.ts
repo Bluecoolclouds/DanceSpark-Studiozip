@@ -10,8 +10,34 @@ import { VideoProviderError, VideoProviderNotConfiguredError } from "../lib/vide
 import { createOwnedGeneration, getOwnedGeneration, VideoNotFoundError } from "../lib/generation-access";
 import { GenerationPolicyError } from "../lib/generation-governance";
 import { requireAccount } from "../middlewares/admin-auth";
+import { protectAdminMutation } from "../middlewares/admin-auth";
+import { createOwnedLightSwapper } from "../lib/light-swapper";
+import { CreateLightSwapperGenerationBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
+
+router.post("/light-swapper/generations", requireAccount, protectAdminMutation, async (req, res): Promise<void> => {
+  const ownerId = getAuth(req).userId;
+  if (!ownerId) { res.status(401).json({ error: "Войди в аккаунт." }); return; }
+  const parsed = CreateLightSwapperGenerationBody.strict().safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Проверь модель, оригинал видео, фотографии и настройки." }); return; }
+  try {
+    const result = await createOwnedLightSwapper(ownerId, parsed.data);
+    res.status(202).json(CreateVideoGenerationResponse.parse({ requestId: result.requestId, status: "queued" }));
+  } catch (error) {
+    if (error instanceof GenerationPolicyError) {
+      res.status(error.status).json({ error: "Создание видео недоступно. Проверь подписку, лимиты, настройки и исходные материалы.", code: error.code });
+      return;
+    }
+    if (error instanceof VideoProviderNotConfiguredError || error instanceof VideoProviderError) {
+      res.status(error instanceof VideoProviderNotConfiguredError ? 503 : 502).json({ error: error.message });
+      return;
+    }
+    // Never log raw errors: SDK exceptions may include signed URLs or credentials.
+    req.log.error({ category: "light_submission_failed" }, "Light Swapper submission failed");
+    res.status(502).json({ error: "Запуск не подтверждён. Проверь статус этого задания; не создавай повторный платный запрос." });
+  }
+});
 
 router.post("/video-generations", requireAccount, async (req, res): Promise<void> => {
   const ownerId = getAuth(req).userId;
@@ -64,6 +90,7 @@ router.post("/video-generations", requireAccount, async (req, res): Promise<void
 });
 
 router.get("/video-generations/:requestId", async (req, res): Promise<void> => {
+  res.setHeader("Cache-Control", "no-store");
   const ownerId = getAuth(req).userId;
   if (!ownerId) {
     res.status(401).json({ error: "Войди в аккаунт, чтобы смотреть своё видео." });
@@ -91,7 +118,7 @@ router.get("/video-generations/:requestId", async (req, res): Promise<void> => {
       res.status(502).json({ error: error.message });
       return;
     }
-    req.log.error({ err: error }, "Video generation status check failed");
+    req.log.error({ category: "generation_status_failed" }, "Video generation status check failed");
     res.status(502).json({ error: "Не удалось проверить статус. Попробуй ещё раз." });
   }
 });

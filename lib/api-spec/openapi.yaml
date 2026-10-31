@@ -304,6 +304,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /light-swapper/generations:
+    post:
+      operationId: createLightSwapperGeneration
+      tags: [video-generations]
+      summary: Submit the selected Genjutsu Light v1.0 model
+      description: Authenticated paid subscribers only. Uses the published template original MP4, never a preview. Photos are inline JPEG/PNG/WebP in selection order; maximum 12 MiB decoded in total and 18 MiB JSON. No local URI or remote input URL is accepted. Duration and audio controls are unsupported. Reuse clientRequestId for retries; a changed payload conflicts. No automatic paid retries.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LightSwapperInput" }
+      responses:
+        "202":
+          description: Durable application job identifier; replay does not resubmit
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VideoGenerationSubmission" }
+        "400": { description: "Invalid model, media, template or parameters" }
+        "401": { description: Authentication required }
+        "403": { description: "Account blocked, invalid origin or subscription required" }
+        "409": { description: Idempotency key reused with different parameters }
+        "413": { description: Input too large }
+        "429": { description: "Quota, concurrency or budget exhausted" }
+        "502": { description: Upload failed or submission acknowledgement uncertain; never automatically resubmit }
+        "503": { description: "Paused, unconfigured provider or unavailable original" }
   /video-generations:
     post:
       operationId: createVideoGeneration
@@ -416,6 +441,23 @@ paths:
                 $ref: "#/components/schemas/ApiError"
 components:
   schemas:
+    LightSwapperInput:
+      type: object
+      additionalProperties: false
+      required: [clientRequestId, model, templateId, photos, prompt, resolution]
+      properties:
+        clientRequestId: { type: string, pattern: "^[A-Za-z0-9_-]{8,150}$" }
+        model:
+          type: string
+          enum: [higgsfield/genjutsu-light/motion-transfer/v1.0, higgsfield/genjutsu-light/object-swap/v1.0]
+        templateId: { type: string, pattern: "^[a-z0-9][a-z0-9-]{0,79}$" }
+        photos:
+          type: array
+          minItems: 1
+          maxItems: 8
+          items: { type: string, maxLength: 16777260, pattern: "^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$" }
+        prompt: { type: string, maxLength: 10000 }
+        resolution: { type: string, enum: [480p, 720p, 1080p] }
     CatalogueInput:
       type: object
       required: [title, dancer, category, tagline, description, bpm, energy, durations, moves, color, isNew, sourceDurationSeconds, published, sortOrder, referenceCount, hasVideoPoster, hasExample, prompt]

@@ -8,3 +8,4 @@
 - [Imported environment](imported-environment.md) — Overlapping Vue modules can keep Node.js 20 active; imported storage settings do not transfer media access.
 - [Catalogue boundaries](catalogue-scope.md) — Preserve existing style and editorial selection; publish owner originals, never fabricated catalogue media.
 - [Ambiguous submissions](ambiguous-generation-submissions.md) — Missing acknowledgement is potentially billable; retain quota and spend, never automatically resubmit.
+- [Provider model discovery](provider-model-discovery.md) — Verify selected models through their official model-specific docs, not a shared catalogue's omissions.

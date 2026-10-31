@@ -4,6 +4,9 @@ import { logger } from "./logger";
 // Upload URL (45s), photo upload (60s), paid submission (45s), plus ample
 // scheduling/DB headroom. Use database time so API instance clock skew is safe.
 export const SUBMISSION_RECOVERY_AGE_MS = 10 * 60 * 1000;
+// Light can upload one video plus eight images sequentially (9 * 105s),
+// in addition to reading R2 and submitting. Do not recover a live upload early.
+export const LIGHT_SUBMISSION_RECOVERY_AGE_MS = 30 * 60 * 1000;
 export const SUBMISSION_RECOVERY_BATCH_SIZE = 100;
 export const SUBMISSION_RECOVERY_INTERVAL_MS = 60 * 1000;
 
@@ -13,7 +16,7 @@ export async function recoverStaleSubmissions(): Promise<number> {
     WITH candidates AS (
       SELECT id FROM df_jobs
       WHERE status IN ('queued','running') AND provider_request_id IS NULL
-        AND created_at < now() - ($1::double precision * interval '1 millisecond')
+        AND created_at < now() - ((CASE WHEN provider_model IS NULL THEN $1 ELSE $3 END)::double precision * interval '1 millisecond')
       ORDER BY created_at, id
       LIMIT $2 FOR UPDATE SKIP LOCKED
     )
@@ -22,9 +25,9 @@ export async function recoverStaleSubmissions(): Promise<number> {
     FROM candidates
     WHERE job.id=candidates.id AND job.status IN ('queued','running')
       AND job.provider_request_id IS NULL
-      AND job.created_at < now() - ($1::double precision * interval '1 millisecond')
+      AND job.created_at < now() - ((CASE WHEN job.provider_model IS NULL THEN $1 ELSE $3 END)::double precision * interval '1 millisecond')
     RETURNING job.id
-  `, [SUBMISSION_RECOVERY_AGE_MS, SUBMISSION_RECOVERY_BATCH_SIZE]);
+  `, [SUBMISSION_RECOVERY_AGE_MS, SUBMISSION_RECOVERY_BATCH_SIZE, LIGHT_SUBMISSION_RECOVERY_AGE_MS]);
   return result.rowCount ?? 0;
 }
 

@@ -46,6 +46,9 @@ export async function getOwnedGeneration(ownerId: string, requestId: string) {
     .limit(1);
   if (!generation) throw new VideoNotFoundError();
   const base = { requestId, videoUrl: null, queuePosition: null };
+  if (generation.providerModel && generation.status === "succeeded" && generation.resultUrl) {
+    return { ...base, status: "completed" as const, videoUrl: generation.resultUrl, error: null };
+  }
   if (generation.status === "failed") {
     return { ...base, status: "failed" as const, error: "Генерация не выполнена. Проверь запросы в Higgsfield Console перед повторной платной попыткой." };
   }
@@ -56,7 +59,11 @@ export async function getOwnedGeneration(ownerId: string, requestId: string) {
     return { ...base, status: "queued" as const, error: null };
   }
   const status = await getDanceVideoStatus(generation.providerRequestId);
-  if (status.status === "completed") await finishGeneration(generation.id, "succeeded");
+  if (status.status === "completed") {
+    if (generation.providerModel) await db.update(danceJobs).set({ resultUrl: status.videoUrl })
+      .where(and(eq(danceJobs.id, generation.id), inArray(danceJobs.status, ["queued", "running", "succeeded"])));
+    await finishGeneration(generation.id, "succeeded");
+  }
   else if (status.status === "failed") await finishGeneration(generation.id, "failed", "provider_error");
   return { ...status, requestId };
 }
