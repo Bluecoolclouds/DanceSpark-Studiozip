@@ -1,25 +1,21 @@
 import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
-import { Alert, Linking, Platform, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import React from 'react';
+import { Platform, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CostPreview, QualityPicker, RefGrid, SourcePreview, fmtSec, getModel } from '@/components/generation-form';
+import { SourcePreview } from '@/components/generation-form';
+import { SwapWorkspace } from '@/components/swap-workspace';
 import { Bouncy, EmptyState, FavButton } from '@/components/ui';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import colors from '@/constants/colors';
 import { F } from '@/constants/fonts';
-import { GENERATION_MODELS, GenerationModel, GenerationResolution, MAX_OUTPUT_SECONDS, MAX_REFERENCE_IMAGES } from '@/constants/generation';
 import { categoryLabel, getTemplate } from '@/constants/templates';
-import { useDance } from '@/context/DanceContext';
 import { ColorScope, useColors } from '@/hooks/useColors';
 
 const N = colors.neon;
 
-const MAX_PROMPT = 10000;
-interface SourceVideo { uri: string; seconds: number | null }
 
 export default function TemplatePlayground() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -31,21 +27,9 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
   const insets = useSafeAreaInsets();
   const { width, height: windowHeight } = useWindowDimensions();
   const t = getTemplate(id);
-  const { addDraft, draftStorageIssue } = useDance();
   const top = Platform.OS === 'web' ? 67 : insets.top;
   const bottom = Platform.OS === 'web' ? 34 : insets.bottom;
   const wide = width >= 900;
-
-  const original: SourceVideo | null = t?.videoUri && t.sourceDurationSeconds != null
-    ? { uri: t.videoUri, seconds: t.sourceDurationSeconds } : null;
-  const [model, setModel] = useState<GenerationModel>('object-swap');
-  const [source, setSource] = useState<SourceVideo | null>(original);
-  const [refs, setRefs] = useState<string[]>(() => t?.referenceImageUris ?? []);
-  const [prompt, setPrompt] = useState<string>(() => t?.prompt ?? '');
-  const [resolution, setResolution] = useState<GenerationResolution>('720p');
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [expanded, setExpanded] = useState<'video' | 'images' | 'prompt' | null>(() => t?.prompt ? 'prompt' : null);
 
   if (!t) {
     return (
@@ -54,216 +38,8 @@ function TemplatePlaygroundForm({ id }: { id: string }) {
       </View>
     );
   }
-  const m = getModel(model)!;
-  const isOriginal = !!original && source?.uri === original.uri;
-
-  const denied = (what: string) => {
-    const msg = `Нет доступа к ${what}. Разреши его в ${Platform.OS === 'web' ? 'браузере' : 'настройках'}.`;
-    setError(msg);
-    if (Platform.OS === 'web') return;
-    Alert.alert('Нет доступа', msg, [
-      { text: 'Отмена', style: 'cancel' },
-      { text: 'Настройки', onPress: () => Linking.openSettings().catch(() => {}) },
-    ]);
-  };
-  const run = async (fn: () => Promise<void>) => {
-    setError(null);
-    try { await fn(); } catch (e) { setError(e instanceof Error ? `Не получилось: ${e.message}` : 'Не получилось открыть галерею.'); }
-  };
-  const pickVideo = () => run(async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return denied('галерее');
-    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['videos'], quality: 1 });
-    const a = !r.canceled ? r.assets[0] : undefined;
-    if (!a) return;
-    // Expo's web picker returns HTMLVideoElement.duration (seconds);
-    // native pickers return milliseconds.
-    const duration = a.duration;
-    setSource({ uri: a.uri, seconds: duration != null && Number.isFinite(duration) && duration > 0
-      ? duration / (Platform.OS === 'web' ? 1 : 1000) : null });
-  });
-  const addRefs = (uris: string[]) => setRefs((prev) => {
-    const room = Math.max(MAX_REFERENCE_IMAGES - prev.length, 0);
-    if (uris.length > room) setError(`Можно не больше ${MAX_REFERENCE_IMAGES} фото. Добавлено ${room} из ${uris.length}.`);
-    return [...prev, ...uris.slice(0, room)];
-  });
-  const full = () => { setError(`Уже ${MAX_REFERENCE_IMAGES} фото — удали одно, чтобы добавить новое.`); };
-  const pickImages = () => run(async () => {
-    if (refs.length >= MAX_REFERENCE_IMAGES) return full();
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return denied('галерее');
-    const r = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'], allowsMultipleSelection: true, selectionLimit: MAX_REFERENCE_IMAGES - refs.length, quality: 0.8,
-    });
-    if (!r.canceled) addRefs(r.assets.map((a) => a.uri));
-  });
-  const pickCamera = () => run(async () => {
-    if (refs.length >= MAX_REFERENCE_IMAGES) return full();
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) return denied('камере');
-    const r = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [3, 4], quality: 0.8 });
-    if (!r.canceled && r.assets[0]) addRefs([r.assets[0].uri]);
-  });
-
-  const reset = () => {
-    setModel('object-swap'); setSource(original); setRefs(t?.referenceImageUris ?? []); setPrompt(t?.prompt ?? ''); setResolution('720p'); setError(null);
-    setExpanded(t?.prompt ? 'prompt' : null);
-  };
-
-  const blocker = !source ? 'Добавь видео'
-    : source.seconds == null || !(source.seconds > 0) ? 'Выбери другое видео'
-    : refs.length === 0 ? 'Добавь фото' : null;
-
-  const save = () => {
-    if (blocker || saving || !source || source.seconds == null) return;
-    setSaving(true);
-    try {
-      const d = addDraft({
-        templateId: t.id, photoUri: refs[0], duration: Math.min(source.seconds, MAX_OUTPUT_SECONDS),
-        model, resolution, sourceVideoUri: source.uri, sourceVideoDurationSeconds: source.seconds,
-        referenceImageUris: refs, prompt: prompt.trim() || undefined,
-      });
-      router.push(`/draft/${d.id}`);
-    } catch (e) {
-      setError(e instanceof Error ? `Черновик не сохранён: ${e.message}` : 'Черновик не сохранён. Попробуй ещё раз.');
-    } finally { setSaving(false); }
-  };
-
   const panel = [styles.panel, { backgroundColor: c.card, borderColor: c.glassEdge }];
-
-  const toggle = (key: 'video' | 'images' | 'prompt') => setExpanded((value) => value === key ? null : key);
-  const compactRow = (key: 'video' | 'images' | 'prompt', icon: React.ComponentProps<typeof Feather>['name'], title: string, subtitle: string, media?: React.ReactNode, onPress?: () => void) => {
-    const active = expanded === key;
-    return (
-      <Bouncy testID={`input-row-${key}`} accessibilityLabel={`${title}. ${subtitle}${active ? ', свернуть' : ', открыть'}`}
-        onPress={onPress ?? (() => toggle(key))} style={[styles.compactRow, key === 'prompt' && styles.promptRow, { backgroundColor: c.muted, borderColor: c.border }]}>
-        {media ?? <View style={[styles.rowIcon, { backgroundColor: c.card }]}><Feather name={icon} size={18} color={c.foreground} /></View>}
-        <View style={styles.rowCopy}>
-          <Text style={[styles.rowTitle, { color: c.foreground }]}>{title}</Text>
-          <Text numberOfLines={1} style={[styles.rowSubtitle, { color: c.mutedForeground }]}>{subtitle}</Text>
-        </View>
-        <Feather name={active ? 'chevron-up' : 'chevron-right'} size={19} color={c.mutedForeground} />
-      </Bouncy>
-    );
-  };
-  const chooseImageSource = () => {
-    if (refs.length >= MAX_REFERENCE_IMAGES) return full();
-    if (Platform.OS === 'web') {
-      void pickImages();
-      return;
-    }
-    Alert.alert('Добавить фото', undefined, [
-      { text: 'Галерея', onPress: () => { void pickImages(); } },
-      { text: 'Камера', onPress: () => { void pickCamera(); } },
-      { text: 'Отмена', style: 'cancel' },
-    ]);
-  };
-  const openImageSection = () => {
-    if (expanded === 'images') {
-      setExpanded(null);
-      return;
-    }
-    setExpanded('images');
-    if (refs.length === 0) chooseImageSource();
-  };
-  const input = (
-    <View style={{ gap: 10 }}>
-      <View accessibilityRole="radiogroup" style={[styles.seg, { backgroundColor: c.muted, borderColor: c.border }]}>
-        {GENERATION_MODELS.map((x) => {
-          const on = x.id === model;
-          return <Bouncy key={x.id} testID={`model-${x.id}`} accessibilityLabel={`${x.id === 'object-swap' ? 'Замена объекта' : 'Перенос движения'}${on ? ', выбрано' : ''}`} onPress={() => setModel(x.id)} scaleTo={0.97}
-            style={[styles.segItem, on && { backgroundColor: x.id === 'object-swap' ? N.pink : N.violet, borderColor: 'transparent' }]}>
-            <Text style={[styles.segText, { color: on ? c.primaryForeground : c.foreground }]}>{x.id === 'object-swap' ? 'Замена объекта' : 'Перенос движения'}</Text>
-          </Bouncy>;
-        })}
-      </View>
-      <Text style={[styles.hint, { color: c.mutedForeground, marginTop: -5 }]}>{m.subtitle}</Text>
-      <View style={[panel, { padding: 10, gap: 8 }]}>
-        <View style={styles.panelHead}>
-          <Text style={[styles.panelTitle, { color: c.foreground, fontSize: 18 }]}>Ввод</Text>
-          <View style={{ flex: 1 }} />
-          <Feather name="info" size={16} color={c.mutedForeground} />
-          <Bouncy testID="reset-form" accessibilityLabel="Сбросить настройки" onPress={reset} style={styles.resetIcon}>
-            <Feather name="rotate-ccw" size={15} color={c.mutedForeground} />
-          </Bouncy>
-        </View>
-        {compactRow('video', 'video', 'Добавь видео для переноса движений', source
-          ? (source.seconds == null ? 'Видео выбрано' : fmtSec(source.seconds))
-          : 'До 1 видео', source && isOriginal ? (
-            <View style={styles.mediaThumb}>
-              <Image source={t.videoPoster ?? t.image} style={StyleSheet.absoluteFill} contentFit="cover" />
-              <View style={[styles.mediaPlay, { backgroundColor: c.scrim }]}>
-                <Feather name="play" size={13} color={c.primaryForeground} />
-              </View>
-            </View>
-          ) : undefined)}
-        {expanded === 'video' && <View style={[styles.expandedContent, { backgroundColor: c.card, borderColor: c.border }]}>
-          {source ? <View style={{ gap: 8 }}>
-            <SourcePreview key={source.uri} uri={source.uri} height={wide ? 220 : 190} />
-            <View style={styles.row}>
-              <Text style={[styles.meta, { color: c.foreground }]} numberOfLines={2}>{isOriginal ? `Танец «${t.title}» · ` : 'Твоё видео · '}{source.seconds == null ? 'длительность неизвестна' : fmtSec(source.seconds)}</Text>
-              {!isOriginal && original && <Sq id="restore-video" icon="corner-up-left" label="Вернуть видео танца" onPress={() => { setSource(original); setError(null); }} />}
-              <Sq id="replace-video" icon="refresh-cw" label="Заменить видео" onPress={pickVideo} />
-              <Sq id="remove-video" icon="x" label="Убрать видео" onPress={() => setSource(null)} />
-            </View>
-            {source.seconds == null && <Text style={[styles.warn, { color: c.destructive }]}>Галерея не сообщила длину ролика — выбери другое видео.</Text>}
-          </View> : <View style={{ gap: 8 }}>
-            <Bouncy testID="pick-video" onPress={pickVideo} style={[styles.pick, { minHeight: 48, borderColor: c.border, backgroundColor: c.muted }]}>
-              <Feather name="upload" size={17} color={c.foreground} /><Text style={[styles.pickText, { color: c.foreground }]}>Выбрать видео</Text>
-            </Bouncy>
-            {original && <Bouncy testID="restore-video" onPress={() => setSource(original)} style={[styles.ghost, { borderColor: c.border, alignSelf: 'flex-start' }]}>
-              <Feather name="corner-up-left" size={14} color={c.foreground} /><Text style={[styles.ghostText, { color: c.foreground }]}>Вернуть видео «{t.title}»</Text>
-            </Bouncy>}
-            {!original && <Text style={[styles.hint, { color: c.mutedForeground }]}>У этого танца нет исходного ролика — загрузи своё видео.</Text>}
-          </View>}
-        </View>}
-        {compactRow('images', 'image', 'Добавь персонажей, товары или одежду', `${refs.length ? `${refs.length} из ${MAX_REFERENCE_IMAGES} добавлено` : `До ${MAX_REFERENCE_IMAGES} изображений`}`,
-          refs.length > 0 ? (
-            <View style={styles.refThumbs}>
-              {refs.slice(0, 2).map((uri, index) => (
-                <Image key={`${uri}-${index}`} source={{ uri }} style={styles.refThumb} contentFit="cover" />
-              ))}
-            </View>
-          ) : undefined, openImageSection)}
-        {expanded === 'images' && <View style={[styles.expandedContent, { backgroundColor: c.card, borderColor: c.border }]}>
-          <View style={{ gap: 8 }}>
-            {refs.length > 0 && <RefGrid uris={refs} onRemove={(i) => setRefs((p) => p.filter((_, j) => j !== i))} />}
-            <View style={[styles.row, { justifyContent: 'space-between' }]}>
-              <Text style={[styles.hint, { color: c.mutedForeground }]}>До {MAX_REFERENCE_IMAGES} фото. Первое станет обложкой черновика.</Text>
-              <Sq id="pick-library" icon="plus" label="Добавить фото" onPress={chooseImageSource} />
-            </View>
-          </View>
-        </View>}
-        {compactRow('prompt', 'star', 'Промпт', prompt.trim() ? prompt.trim() : 'Опиши новую сцену')}
-        {expanded === 'prompt' && <View style={[styles.expandedContent, { backgroundColor: c.card, borderColor: c.border, gap: 6 }]}>
-          <TextInput testID="prompt-input" value={prompt} onChangeText={setPrompt} maxLength={MAX_PROMPT} multiline
-            placeholder={model === 'object-swap' ? 'Опиши новую сцену: «заменить куртку на красную»' : 'Необязательно: «танцует на крыше на закате»'}
-            placeholderTextColor={c.mutedForeground} style={[styles.input, { borderColor: c.border, backgroundColor: c.muted, color: c.foreground }]} />
-          <Text style={[styles.count, { color: c.mutedForeground, textAlign: 'right' }]}>{prompt.length} / {MAX_PROMPT}</Text>
-        </View>}
-        <View style={{ gap: 6 }}>
-          <Text style={[styles.label, { color: c.foreground }]}>Качество</Text>
-          <QualityPicker value={resolution} onChange={setResolution} />
-        </View>
-      </View>
-      {draftStorageIssue && <Text style={[styles.warn, { color: c.destructive }]}>Хранилище черновиков сейчас недоступно — черновик может не сохраниться после перезапуска.</Text>}
-      {error && (
-        <View accessibilityRole="alert" style={[styles.err, { borderColor: c.border, backgroundColor: c.destructive }]}>
-          <Feather name="alert-triangle" size={16} color={c.destructiveForeground} />
-          <Text style={[styles.errText, { color: c.destructiveForeground }]}>{error}</Text>
-          <Bouncy accessibilityLabel="Закрыть" onPress={() => setError(null)}><Feather name="x" size={16} color={c.destructiveForeground} /></Bouncy>
-        </View>
-      )}
-      <Bouncy testID="save-draft" accessibilityLabel={blocker ?? 'Сохранить черновик'} disabled={!!blocker || saving} onPress={save} scaleTo={0.97}
-        style={[styles.go, { opacity: blocker || saving ? 0.55 : 1 }]}>
-        <LinearGradient colors={[N.pink, '#FF7A6B', N.yellow]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={StyleSheet.absoluteFill} />
-        <Feather name={blocker ? 'lock' : 'bookmark'} size={20} color={c.primaryForeground} />
-        <Text style={[styles.goText, { color: c.primaryForeground }]} numberOfLines={1}>{blocker ?? (saving ? 'Сохраняем…' : 'Сохранить черновик')}</Text>
-      </Bouncy>
-      <CostPreview resolution={resolution} seconds={source?.seconds} />
-      <Text style={[styles.hint, { color: c.mutedForeground }]}>{`Модель берёт первые ${MAX_OUTPUT_SECONDS} сек исходного видео и оставляет его оригинальный звук.`}</Text>
-    </View>
-  );
+  const input = <SwapWorkspace initialTrend={t} defaultModel="object-swap" wide={wide} />;
 
   const result = (
     <View style={[panel, { gap: 12 }]}>
@@ -335,28 +111,6 @@ function Stage() {
       <View style={[styles.slab, { top: 760, left: -150, width: 300, height: 60, backgroundColor: N.pink, opacity: 0.12 }]} />
       <View style={[styles.slab, { top: 300, left: -200, width: 280, height: 26, backgroundColor: N.violet, opacity: 0.12 }]} />
     </View>
-  );
-}
-
-function Field({ label, right, children }: { label: string; right?: React.ReactNode; children: React.ReactNode }) {
-  const c = useColors();
-  return (
-    <View style={{ gap: 8 }}>
-      <View style={styles.panelHead}>
-        <Text style={[styles.label, { color: c.foreground }]}>{label}</Text>
-        {right}
-      </View>
-      {children}
-    </View>
-  );
-}
-
-function Sq({ id, icon, label, onPress }: { id: string; icon: React.ComponentProps<typeof Feather>['name']; label: string; onPress: () => void }) {
-  const c = useColors();
-  return (
-    <Bouncy testID={id} accessibilityLabel={label} onPress={onPress} style={[styles.sq, { backgroundColor: c.muted, borderColor: c.border }]}>
-      <Feather name={icon} size={16} color={c.foreground} />
-    </Bouncy>
   );
 }
 

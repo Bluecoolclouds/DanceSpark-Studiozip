@@ -6,7 +6,8 @@ import { Alert, Platform, ScrollView, StyleSheet, Text, useWindowDimensions, Vie
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bouncy, EmptyState, Pill, TemplateCard, tone } from '@/components/ui';
 import { F } from '@/constants/fonts';
-import { TEMPLATES, getTemplate } from '@/constants/templates';
+import { TEMPLATES } from '@/constants/templates';
+import { resolveDraftTemplate } from '@/lib/draft-meta';
 import { useDance } from '@/context/DanceContext';
 import { useColors } from '@/hooks/useColors';
 import { AccountSubscription } from '@/components/AccountSubscription';
@@ -70,7 +71,7 @@ export default function Studio() {
         ) : (
           <View style={{ paddingHorizontal: 20, gap: 14 }}>
             {drafts.map((d) => {
-              const t = getTemplate(d.templateId);
+              const t = resolveDraftTemplate(d.templateId);
               if (!t) return null;
               return (
                 <View key={d.id} style={[styles.draft, { backgroundColor: c.card, borderColor: c.border, shadowColor: c.border }]}>

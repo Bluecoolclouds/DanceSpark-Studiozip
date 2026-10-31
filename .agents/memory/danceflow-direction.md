@@ -79,3 +79,9 @@ For real generation, the user explicitly selected Higgsfield rather than fal.ai.
 **Why:** The user confirmed “Да, используем Higgsfield” when asked to distinguish the providers.
 
 **How to apply:** Use Higgsfield's documented server-side API. Do not silently substitute another billable provider.
+
+The Create page and a selected trend use the same compact input workflow, but Create starts without an implicitly selected trend; a trend page starts prefilled.
+
+**Why:** The user approved simplifying Create to distinguish starting with one's own video from remixing a chosen trend, rather than automatically attaching the first catalogue item.
+
+**How to apply:** Keep explicit source selection on Create, one trend chooser, and an editable prefilled workspace on trend pages. Preserve the separate PixVerse photo-to-video option and the distinction between saving a local draft and launching paid generation.

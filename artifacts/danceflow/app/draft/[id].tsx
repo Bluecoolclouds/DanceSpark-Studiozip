@@ -7,7 +7,7 @@ import { ActivityIndicator, Alert, Linking, Platform, ScrollView, StyleSheet, Te
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BigButton, Bouncy, DemoBadge, EmptyState, tone } from '@/components/ui';
 import { F } from '@/constants/fonts';
-import { getTemplate } from '@/constants/templates';
+import { resolveDraftTemplate, isCustomVideoId } from '@/lib/draft-meta';
 import { useDance } from '@/context/DanceContext';
 import { useColors } from '@/hooks/useColors';
 import { CostPreview, RefGrid, SourcePreview, fmtSec, getModel } from '@/components/generation-form';
@@ -31,7 +31,7 @@ export default function DraftScreen() {
   const createGeneration = useCreateVideoGeneration();
   const { isSignedIn } = useAuth();
   const d = drafts.find((x) => x.id === id);
-  const t = d ? getTemplate(d.templateId) : undefined;
+  const t = d ? resolveDraftTemplate(d.templateId) : undefined;
   const m = getModel(d?.model);
   const top = Platform.OS === 'web' ? 67 : insets.top;
   const bottom = Platform.OS === 'web' ? 34 : insets.bottom;
@@ -241,7 +241,7 @@ export default function DraftScreen() {
       <View style={[styles.summary, { backgroundColor: c.card, borderColor: c.border }]}>
         {m && <Row k="Режим" v={m.title} />}
         {m && d.resolution && <Row k="Качество" v={d.resolution} />}
-        <Row k={m ? 'Идея' : 'Танец'} v={t.title} />
+        <Row k={m ? (isCustomVideoId(t.id) ? 'Источник' : 'Тренд') : 'Танец'} v={t.title} />
         {!m && <Row k="Стиль" v={t.tagline} />}
         {!m && <Row k="Темп" v={`${t.bpm} BPM`} />}
         <Row k={m ? 'Ожидаемый результат' : 'Длительность'} v={m ? fmtSec(d.duration) : `${d.duration} сек`} />
@@ -324,7 +324,7 @@ export default function DraftScreen() {
             <BigButton label={busy === 'share' ? 'Готовим видео…' : 'Поделиться танцем'} icon="share-2" color="violet" onPress={share} disabled={!!busy} testID="share-video" />
           </>
         )}
-        <BigButton label="Открыть танец" icon="music" color="violet" onPress={() => router.push(`/template/${t.id}`)} />
+        {!isCustomVideoId(t.id) && <BigButton label="Открыть танец" icon="music" color="violet" onPress={() => router.push(`/template/${t.id}`)} />}
         <BigButton label="Новый черновик" icon="plus" color="accent" onPress={() => router.push('/create')} />
         <BigButton label="Удалить" icon="trash-2" color="sun" onPress={del} small />
       </View>
