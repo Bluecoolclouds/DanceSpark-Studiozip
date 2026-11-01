@@ -12,3 +12,4 @@
 - [Light mobile safety](light-mobile-recovery.md) — Recovery after lost acknowledgement is read-only; custom videos need a validated upload contract, never silent substitution.
 - [Browser auth runtime](browser-auth-runtime.md) — Logto React SDK may swallow rejected operations; observe its error state and reset it for recovery.
 - [Expo API origins](expo-api-origins.md) — Use same-origin `/api` for Expo web and the explicit deployment host for native apps.
+- [Expo preview loading](expo-preview-loading.md) — A blank first capture can be an unfinished async route bundle, not an authentication restriction.

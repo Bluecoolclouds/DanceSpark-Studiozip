@@ -9,6 +9,7 @@ import Animated, { useReducedMotion, Easing, useAnimatedStyle, useSharedValue, w
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BigButton, Bouncy, Pill, SectionTitle, TemplateCard, EmptyState } from '@/components/ui';
 import { F } from '@/constants/fonts';
+import { StageBackdrop } from '@/components/stage-backdrop';
 import { CATEGORIES, Category, HERO_IMAGE } from '@/constants/templates';
 import { useCatalogue } from '@/hooks/useCatalogue';
 import { useColors } from '@/hooks/useColors';
@@ -148,9 +149,11 @@ export default function Discover() {
   }, [featured.length, featuredCardWidth]);
 
   return (
+    <View style={{ flex: 1, backgroundColor: c.background }}>
+    <StageBackdrop />
     <ScrollView onScroll={handlePageScroll} onContentSizeChange={(_w, h) => {
       if (h - pageScrollY.current - viewportHeight < viewportHeight * 0.7) loadMore();
-    }} onLayout={updateFeaturedVisibility} scrollEventThrottle={120} style={{ flex: 1, backgroundColor: c.background }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+    }} onLayout={updateFeaturedVisibility} scrollEventThrottle={120} style={{ flex: 1, backgroundColor: 'transparent' }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
       <View style={[styles.hero, { paddingTop: top + 12, backgroundColor: c.stage }]}>
         <Image source={HERO_IMAGE} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="right" />
         <LinearGradient colors={[c.stage, c.clear]} start={{ x: 0, y: 0 }} end={{ x: 0.85, y: 0 }} style={StyleSheet.absoluteFill} />
@@ -308,6 +311,7 @@ export default function Discover() {
         <Text style={[styles.honestText, { color: c.foreground }]}>В каталоге реальные ролики: открой танец, посмотри видео и добавь своё фото. Перенос движений пока сохраняется как черновик, без запуска генерации.</Text>
       </View>
     </ScrollView>
+    </View>
   );
 }
 

@@ -8,11 +8,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SwapWorkspace } from '@/components/swap-workspace';
 import { BigButton, Bouncy, EmptyState } from '@/components/ui';
 import { F } from '@/constants/fonts';
+import { StageBackdrop } from '@/components/stage-backdrop';
 import { getTemplate, type DanceTemplate } from '@/constants/templates';
 import { photoStyleId } from '@/constants/photo-styles';
 import { useCatalogueTemplate } from '@/hooks/useCatalogue';
 import { useDance } from '@/context/DanceContext';
-import { useColors } from '@/hooks/useColors';
+import { ColorScope, useColors } from '@/hooks/useColors';
+import colors from '@/constants/colors';
 import { useCreateVideoGeneration, VideoGenerationInputStyleId, type VideoGenerationInput } from '@workspace/api-client-react';
 import { photoToDataUrl, readableVideoError } from '@/lib/video-generation';
 import { useDanceAuth } from '@/lib/dance-auth';
@@ -24,6 +26,10 @@ const PIXVERSE_STYLES = (Object.values(VideoGenerationInputStyleId) as VideoGene
 const API_DURATIONS = [5, 10, 15] as const;
 
 export default function Create() {
+  return <ColorScope.Provider value={colors.neon}><CreateScreen /></ColorScope.Provider>;
+}
+
+function CreateScreen() {
   const c = useColors();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -35,19 +41,22 @@ export default function Create() {
   const linked = params.template ? linkedQuery.template ?? null : null;
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: c.background }} contentContainerStyle={{ paddingTop: top + 12, paddingBottom: 130 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+    <View style={{ flex: 1, backgroundColor: c.background }}>
+    <StageBackdrop />
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingTop: top + 12, paddingBottom: 130 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={[styles.wrap, { maxWidth: width >= 900 ? 720 : 640 }]}>
         <View style={styles.head}>
-          <Text style={[styles.title, { color: c.foreground }]}>Новый <Text style={{ color: c.primary }}>танец</Text></Text>
+          <View style={[styles.kick, { backgroundColor: c.sun }]} />
+          <Text style={[styles.title, { color: c.foreground }]}>Новый <Text style={{ color: c.tint }}>танец</Text></Text>
         </View>
         <View accessibilityRole="tablist" style={[styles.tabs, { borderColor: c.border, backgroundColor: c.card }]}>
           {([['swap', 'Light Swapper', 'layers'], ['photo', 'Фото в танец · PixVerse', 'image']] as const).map(([k, label, icon]) => {
             const on = mode === k;
             return (
               <Bouncy key={k} testID={`mode-${k}`} accessibilityLabel={`${label}${on ? ', выбрано' : ''}`} onPress={() => setMode(k)} scaleTo={0.97}
-                style={[styles.tab, on && { backgroundColor: c.accent }]}>
-                <Feather name={icon} size={14} color={c.foreground} />
-                <Text numberOfLines={1} style={[styles.tabText, { color: c.foreground }]}>{label}</Text>
+                style={[styles.tab, on && { backgroundColor: c.violet }]}>
+                <Feather name={icon} size={14} color={on ? c.primaryForeground : c.foreground} />
+                <Text numberOfLines={1} style={[styles.tabText, { color: on ? c.primaryForeground : c.foreground }]}>{label}</Text>
               </Bouncy>
             );
           })}
@@ -64,6 +73,7 @@ export default function Create() {
         </View>
       </View>
     </ScrollView>
+    </View>
   );
 }
 
@@ -155,7 +165,7 @@ function PhotoDance() {
               <Bouncy key={id} testID={`style-${id}`} accessibilityLabel={`${t.title}${on ? ', выбран' : ''}`} onPress={() => setStyleId(id)}
                 style={[styles.tpl, { backgroundColor: c[t.color], borderColor: on ? c.primary : c.border }]}>
                 <Image source={t.image} style={{ flex: 1 }} contentFit="cover" />
-                <Text numberOfLines={1} style={[styles.tplText, { color: c.foreground, backgroundColor: on ? c.accent : c.card }]}>{t.title}</Text>
+                <Text numberOfLines={1} style={[styles.tplText, { color: c.foreground, backgroundColor: on ? c.sun : c.card }]}>{t.title}</Text>
               </Bouncy>
             );
           })}
@@ -190,12 +200,13 @@ function PhotoDance() {
 
 const styles = StyleSheet.create({
   wrap: { width: '100%', alignSelf: 'center', paddingHorizontal: 16, gap: 12 },
-  head: { flexDirection: 'row', alignItems: 'center' },
-  title: { fontFamily: F.display, fontSize: 28, letterSpacing: -0.8 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
+  kick: { width: 8, height: 30, borderRadius: 4, transform: [{ rotate: '14deg' }] },
+  title: { fontFamily: F.display, fontSize: 32, letterSpacing: -0.9, flexShrink: 1 },
   tabs: { flexDirection: 'row', borderWidth: 1, borderRadius: 999, padding: 3, gap: 3 },
-  tab: { flex: 1, minHeight: 42, borderRadius: 999, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 8 },
+  tab: { flex: 1, minHeight: 46, borderRadius: 999, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 8 },
   tabText: { fontFamily: F.bodyHeavy, fontSize: 12, flexShrink: 1 },
-  panel: { borderWidth: 1, borderRadius: 22, padding: 12, gap: 10 },
+  panel: { borderWidth: 1, borderRadius: 26, padding: 14, gap: 12 },
   label: { fontFamily: F.bodyHeavy, fontSize: 14 },
   photoRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   photoWrap: { width: 56, height: 72, borderRadius: 10, overflow: 'hidden' },
