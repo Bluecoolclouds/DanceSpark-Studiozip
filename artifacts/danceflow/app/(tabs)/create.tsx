@@ -45,9 +45,17 @@ function CreateScreen() {
     <StageBackdrop />
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingTop: top + 12, paddingBottom: 130 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={[styles.wrap, { maxWidth: width >= 900 ? 720 : 640 }]}>
-        <View style={styles.head}>
-          <View style={[styles.kick, { backgroundColor: c.sun }]} />
-          <Text style={[styles.title, { color: c.foreground }]}>Новый <Text style={{ color: c.tint }}>танец</Text></Text>
+        <View style={styles.hero}>
+          <View style={[styles.blob, { backgroundColor: c.secondary }]} />
+          <View style={[styles.blob2, { backgroundColor: c.accent }]} />
+          <View style={styles.heroCopy}>
+            <Text style={[styles.brand, { color: c.violet }]}>Danceflow</Text>
+            <Text style={[styles.title, { color: c.foreground, fontSize: width < 360 ? 27 : 32 }]}>Создай{'\n'}свой{'\n'}<Text style={{ color: c.tint }}>танец!</Text></Text>
+            <View style={[styles.swoosh, { backgroundColor: c.sun }]} />
+          </View>
+          <Image source={require('@/assets/images/create-dancer.png')} style={[styles.dancer, { width: width < 360 ? 130 : 160 }]} contentFit="contain" accessibilityLabel="Танцующий персонаж" />
+          <Feather name="star" size={22} color={c.sun} style={styles.star1} />
+          <Feather name="music" size={16} color={c.violet} style={styles.star2} />
         </View>
         <View accessibilityRole="tablist" style={[styles.tabs, { borderColor: c.border, backgroundColor: c.card }]}>
           {([['swap', 'Light Swapper', 'layers'], ['photo', 'Фото в танец · PixVerse', 'image']] as const).map(([k, label, icon]) => {
@@ -66,7 +74,7 @@ function CreateScreen() {
             <EmptyState icon="info" title={linkedQuery.isPending ? 'Загружаем танец…' : 'Танец недоступен'}
               text="Для нового черновика нужен опубликованный танец. Сохранённые черновики остаются в студии."
               action="Повторить" onAction={() => void linkedQuery.refetch()} />
-          ) : <SwapWorkspace key={linked?.id ?? 'empty'} initialTrend={linked} allowTrendPicker defaultModel="motion-transfer" />}
+          ) : <SwapWorkspace key={linked?.id ?? 'empty'} initialTrend={linked} allowTrendPicker defaultModel="motion-transfer" variant="create" />}
         </View>
         <View style={mode === 'photo' ? undefined : { display: 'none' }}>
           <PhotoDance />
@@ -200,9 +208,16 @@ function PhotoDance() {
 
 const styles = StyleSheet.create({
   wrap: { width: '100%', alignSelf: 'center', paddingHorizontal: 16, gap: 12 },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
-  kick: { width: 8, height: 30, borderRadius: 4, transform: [{ rotate: '14deg' }] },
-  title: { fontFamily: F.display, fontSize: 32, letterSpacing: -0.9, flexShrink: 1 },
+  hero: { minHeight: 210, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  heroCopy: { flex: 1, paddingBottom: 18, gap: 6, zIndex: 2 },
+  brand: { fontFamily: F.bodyHeavy, fontSize: 14 },
+  blob: { position: 'absolute', right: -10, top: 20, width: 180, height: 180, borderRadius: 90, opacity: 0.9 },
+  blob2: { position: 'absolute', right: 120, bottom: 10, width: 60, height: 60, borderRadius: 30, opacity: 0.8 },
+  swoosh: { width: 110, height: 7, borderRadius: 4, transform: [{ rotate: '-4deg' }] },
+  dancer: { height: 220, marginRight: -6 },
+  star1: { position: 'absolute', right: 150, top: 26 },
+  star2: { position: 'absolute', right: 8, top: 40 },
+  title: { fontFamily: F.display, fontSize: 32, lineHeight: 36, letterSpacing: -0.9, flexShrink: 1 },
   tabs: { flexDirection: 'row', borderWidth: 1, borderRadius: 999, padding: 3, gap: 3 },
   tab: { flex: 1, minHeight: 46, borderRadius: 999, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 8 },
   tabText: { fontFamily: F.bodyHeavy, fontSize: 12, flexShrink: 1 },

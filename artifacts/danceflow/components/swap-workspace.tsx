@@ -28,9 +28,12 @@ const trendSource = (t?: DanceTemplate | null): SourceVideo | null =>
  * Shared Light Swapper input form for /create and /template/:id.
  * Saving never starts a generation. Paid consent lives on the saved draft.
  */
-export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = 'object-swap', wide }: {
+export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = 'object-swap', wide, variant = 'default' }: {
   initialTrend: DanceTemplate | null; allowTrendPicker?: boolean; defaultModel?: GenerationModel; wide?: boolean;
+  /** 'create' = illustrated /create presentation; default keeps the /template/:id look. */
+  variant?: 'default' | 'create';
 }) {
+  const cv = variant === 'create';
   const catalogue = useCatalogue({ limit: 12 });
   const c = useColors();
   const { addDraft, persistDraft, ownerId, draftStorageIssue } = useDance();
@@ -221,7 +224,7 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
           </Bouncy>
         </View>
 
-        <View style={[s.stepCard, { backgroundColor: c.card, borderColor: c.border }]}>
+        <View style={[s.stepCard, { backgroundColor: c.card, borderColor: c.border }, cv && s.cvCard]}>
         {row('video', 'video', videoLabel, videoSub, thumb)}
         {expanded === 'video' && <View style={s.expanded}>
           {source ? <View style={{ gap: 8 }}>
@@ -234,13 +237,14 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
             </View>
             {source.seconds == null && <Text style={[s.warn, { color: c.destructive }]}>Галерея не сообщила длину ролика — выбери другое видео.</Text>}
           </View> : <View style={s.pickRow}>
-            <Bouncy testID="pick-video" onPress={pickVideo} style={[s.sourceChoice, { borderColor: c.violet, backgroundColor: c.violet }]}>
+            <Bouncy testID="pick-video" onPress={pickVideo} style={[s.sourceChoice, { borderColor: c.violet, backgroundColor: c.violet }, cv && s.cvChoice]}>
+              {cv && <LinearGradient colors={[c.glow, c.violet]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />}
               <Feather name="upload" size={21} color={c.primaryForeground} /><Text numberOfLines={1} style={[s.sourceText, { color: c.primaryForeground }]}>Своё видео</Text>
             </Bouncy>
-            {original && <Bouncy testID="restore-video" onPress={() => setSource(original)} style={[s.sourceChoice, { borderColor: c.border, backgroundColor: c.background }]}>
+            {original && <Bouncy testID="restore-video" onPress={() => setSource(original)} style={[s.sourceChoice, { borderColor: c.border, backgroundColor: cv ? c.secondary : c.background }, cv && s.cvChoice]}>
               <Feather name="corner-up-left" size={21} color={c.violet} /><Text style={[s.sourceText, { color: c.foreground }]} numberOfLines={1}>Видео тренда</Text>
             </Bouncy>}
-            {allowTrendPicker && !original && <Bouncy testID="choose-trend" onPress={() => setChoosing((v) => !v)} style={[s.sourceChoice, { borderColor: c.border, backgroundColor: choosing ? c.sun : c.background }]}>
+            {allowTrendPicker && !original && <Bouncy testID="choose-trend" onPress={() => setChoosing((v) => !v)} style={[s.sourceChoice, { borderColor: c.border, backgroundColor: choosing ? c.sun : cv ? c.secondary : c.background }, cv && s.cvChoice]}>
               <Feather name="grid" size={21} color={c.violet} /><Text numberOfLines={1} style={[s.sourceText, { color: c.foreground }]}>Из трендов</Text>
             </Bouncy>}
           </View>}
@@ -279,13 +283,21 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
         </View>}
         </View>
 
-        <View style={[s.stepCard, { backgroundColor: c.card, borderColor: c.border }]}>
+        <View style={[s.stepCard, { backgroundColor: c.card, borderColor: c.border }, cv && s.cvCard]}>
         {row('images', 'image', m.referenceLabel, refs.length ? `${refs.length} из ${MAX_REFERENCE_IMAGES} добавлено` : `До ${MAX_REFERENCE_IMAGES} изображений`,
           refs.length > 0 ? (
             <View style={s.refThumbs}>
               {refs.slice(0, 2).map((uri, i) => <Image key={`${uri}-${i}`} source={{ uri }} style={{ flex: 1, height: '100%' }} contentFit="cover" />)}
             </View>
           ) : undefined, openImages)}
+        {cv && refs.length === 0 && expanded !== 'images' && (
+          <Bouncy testID="photo-dropzone" accessibilityLabel="Добавить фото" scaleTo={0.98} onPress={openImages}
+            style={[s.drop, { borderColor: c.violet, backgroundColor: c.muted }]}>
+            <View style={[s.dropPlus, { backgroundColor: c.violet }]}><Feather name="plus" size={20} color={c.primaryForeground} /></View>
+            <Text style={[s.pickText, { color: c.violet }]}>Добавить фото</Text>
+            <Text style={[s.hint, { color: c.mutedForeground }]}>Галерея или камера · до {MAX_REFERENCE_IMAGES} шт.</Text>
+          </Bouncy>
+        )}
         {expanded === 'images' && <View style={s.expanded}>
           {refs.length > 0 && <RefGrid uris={refs} onRemove={(i) => setRefs((p) => p.filter((_, j) => j !== i))} />}
           <View style={s.pickRow}>
@@ -300,7 +312,7 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
         </View>}
         </View>
 
-        <View style={[s.stepCard, { backgroundColor: c.card, borderColor: c.border }]}>
+        <View style={[s.stepCard, { backgroundColor: c.card, borderColor: c.border }, cv && s.cvCard]}>
         {row('prompt', 'edit-3', 'Промпт', prompt.trim() ? prompt.trim() : 'Необязательно: опиши сцену')}
         {expanded === 'prompt' && <View style={[s.expanded, { gap: 6 }]}>
           <TextInput testID="prompt-input" value={prompt} onChangeText={setPrompt} maxLength={MAX_PROMPT} multiline
@@ -310,8 +322,12 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
         </View>}
         </View>
 
-        <View style={[s.qualityCard, { backgroundColor: c.card, borderColor: c.border }]}>
-          <Text style={[s.label, { color: c.foreground }]}>Качество</Text>
+        <View style={[s.qualityCard, { backgroundColor: c.card, borderColor: c.border }, cv && s.cvCard]}>
+          {cv ? <View style={s.qHead}>
+            <Feather name="sliders" size={18} color={c.violet} />
+            <Text style={[s.label, { color: c.foreground, flex: 1, paddingLeft: 0 }]}>Качество видео</Text>
+            <Text style={[s.label, { color: c.violet }]}>{resolution}</Text>
+          </View> : <Text style={[s.label, { color: c.foreground }]}>Качество</Text>}
           <QualityPicker value={resolution} onChange={setResolution} variant="segmented" />
         </View>
       </View>
@@ -325,9 +341,9 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
         </View>
       )}
       <Bouncy testID="save-draft" accessibilityLabel={blocker ?? 'Сохранить черновик'} disabled={!!blocker || saving} onPress={save} scaleTo={0.97}
-        style={[s.go, { opacity: blocker || saving ? 0.55 : 1 }]}>
-        <LinearGradient colors={[c.primary, c.sun]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={StyleSheet.absoluteFill} />
-        <Feather name={blocker ? 'lock' : 'bookmark'} size={20} color={c.primaryForeground} />
+        style={[s.go, cv && s.cvGo, { opacity: blocker || saving ? 0.55 : 1 }]}>
+        <LinearGradient colors={cv ? [c.violet, c.tint, c.sun] : [c.primary, c.sun]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={StyleSheet.absoluteFill} />
+        <Feather name={blocker ? 'lock' : cv ? 'star' : 'bookmark'} size={20} color={c.primaryForeground} />
         <Text style={[s.goText, { color: c.primaryForeground }]} numberOfLines={1}>{blocker ?? (saving ? 'Сохраняем…' : 'Сохранить черновик')}</Text>
       </Bouncy>
       <View style={[s.note, { borderColor: c.border }]}>
@@ -389,5 +405,11 @@ const s = StyleSheet.create({
   errText: { flex: 1, fontFamily: F.bodyBold, fontSize: 13 },
   go: { minHeight: 58, borderRadius: 29, overflow: 'hidden', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 20 },
   goText: { fontFamily: F.display, fontSize: 18, flexShrink: 1 },
+  cvCard: { borderRadius: 26 },
+  cvChoice: { minHeight: 104, borderRadius: 26, overflow: 'hidden' },
+  drop: { marginHorizontal: 14, marginBottom: 14, borderWidth: 1.5, borderStyle: 'dashed', borderRadius: 20, minHeight: 112, alignItems: 'center', justifyContent: 'center', gap: 6, padding: 12 },
+  dropPlus: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  qHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  cvGo: { minHeight: 64, borderRadius: 32 },
   note: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', borderWidth: 1, borderStyle: 'dashed', borderRadius: 14, padding: 10 },
 });
