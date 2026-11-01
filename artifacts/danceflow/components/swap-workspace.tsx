@@ -311,7 +311,7 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
         {cv && refs.length === 0 && expanded !== 'images' && (
           <Bouncy testID="photo-dropzone" accessibilityLabel="Добавить фото" scaleTo={0.98} onPress={openImages}
             style={[s.drop, { borderColor: c.violet, backgroundColor: c.muted }]}>
-            <View style={[s.dropPlus, { backgroundColor: c.violet }]}><Feather name="plus" size={20} color={c.primaryForeground} /></View>
+            <View style={[s.dropPlus, { backgroundColor: c.sun }]}><Feather name="plus" size={20} color={c.foreground} /></View>
             <Text style={[s.pickText, { color: c.violet }]}>Добавить фото</Text>
             <Text style={[s.hint, { color: c.mutedForeground }]}>Галерея или камера · до {MAX_REFERENCE_IMAGES} шт.</Text>
           </Bouncy>
@@ -360,7 +360,7 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
       )}
       <Bouncy testID="save-draft" accessibilityLabel={blocker ?? 'Сохранить черновик'} disabled={!!blocker || saving} onPress={save} scaleTo={0.97}
         style={[s.go, cv && s.cvGo, { opacity: blocker || saving ? 0.55 : 1 }]}>
-        <LinearGradient colors={cv ? [c.violet, c.tint, c.sun] : [c.primary, c.sun]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={cv ? [c.violet, c.tint] : [c.primary, c.sun]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={StyleSheet.absoluteFill} />
         <Feather name={blocker ? 'lock' : cv ? 'star' : 'bookmark'} size={20} color={c.primaryForeground} />
         <Text style={[s.goText, { color: c.primaryForeground }]} numberOfLines={1}>{blocker ?? (saving ? 'Сохраняем…' : 'Сохранить черновик')}</Text>
       </Bouncy>

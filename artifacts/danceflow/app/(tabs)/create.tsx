@@ -25,8 +25,18 @@ const PIXVERSE_STYLES = (Object.values(VideoGenerationInputStyleId) as VideoGene
   .filter((x): x is { id: VideoGenerationInput['styleId']; t: DanceTemplate } => !!x.t);
 const API_DURATIONS = [5, 10, 15] as const;
 
+// Keep this lighter mix local to Create, without recolouring the other screens.
+const createPalette = {
+  ...colors.neon,
+  card: '#FFFFFF',
+  secondary: '#E3F5FC',
+  muted: '#F6F5F8',
+  input: '#FFFFFF',
+  border: 'rgba(71,45,123,0.13)',
+};
+
 export default function Create() {
-  return <ColorScope.Provider value={colors.neon}><CreateScreen /></ColorScope.Provider>;
+  return <ColorScope.Provider value={createPalette}><CreateScreen /></ColorScope.Provider>;
 }
 
 function CreateScreen() {
