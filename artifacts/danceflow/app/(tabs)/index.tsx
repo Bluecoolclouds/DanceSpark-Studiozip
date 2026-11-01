@@ -15,11 +15,6 @@ import { useCatalogue } from '@/hooks/useCatalogue';
 import { useColors } from '@/hooks/useColors';
 import { templatePreviewCandidates } from '@/lib/template-preview';
 
-const SPEEDS = [
-  { key: 'any', label: 'Любой темп' },
-  { key: 'chill', label: 'До 110 BPM' },
-  { key: 'hype', label: '110+ BPM' },
-] as const;
 const CATALOG_PAGE_SIZE = 4;
 
 export default function Discover() {
@@ -28,9 +23,8 @@ export default function Discover() {
   const { width } = useWindowDimensions();
   const { height: viewportHeight } = useWindowDimensions();
   const [cat, setCat] = useState<Category | 'all'>('all');
-  const [speed, setSpeed] = useState<'any' | 'chill' | 'hype'>('any');
   const [search, setSearch] = useState('');
-  const catalogue = useCatalogue({ search, category: cat, speed, limit: CATALOG_PAGE_SIZE });
+  const catalogue = useCatalogue({ search, category: cat, limit: CATALOG_PAGE_SIZE });
   const featuredQuery = useCatalogue({ section: 'featured', limit: 12 });
   const recommendations = useCatalogue({ section: 'recommended', limit: 3 });
   const loadMore = useCallback(() => {
@@ -175,67 +169,69 @@ export default function Discover() {
         <Text style={[styles.marqueeText, { color: c.foreground }]} numberOfLines={1}>K-POP  /  СТРИТ  /  ДИСКО  /  ТРЕНДЫ  /  K-POP  /  СТРИТ  /  ДИСКО</Text>
       </View>
 
-      <SectionTitle kicker="СВЕЖЕЕ НА СЦЕНЕ" title="Новые хиты" />
-      <View
-        onLayout={(event) => {
-          featuredFrame.current = { y: event.nativeEvent.layout.y, height: event.nativeEvent.layout.height };
-          updateFeaturedVisibility();
-        }}
-      >
-        <ScrollView
-          ref={featuredScroll}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          snapToInterval={featuredCardWidth + 2}
-          decelerationRate="fast"
-          disableIntervalMomentum
-          contentContainerStyle={{ paddingHorizontal: 12, gap: 2, paddingBottom: 8 }}
-          onScrollEndDrag={(event) => selectFeaturedAtOffset(event.nativeEvent.contentOffset.x)}
-          onMomentumScrollEnd={(event) => selectFeaturedAtOffset(event.nativeEvent.contentOffset.x)}
-          onScroll={(event) => {
-            const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-            if (contentSize.width - contentOffset.x - layoutMeasurement.width < featuredCardWidth &&
-              featuredQuery.hasNextPage && !featuredQuery.isFetching && !featuredQuery.isError)
-              void featuredQuery.fetchNextPage({ cancelRefetch: false });
+      {featured.length >= 5 && <>
+        <SectionTitle kicker="СВЕЖЕЕ НА СЦЕНЕ" title="Новые хиты" />
+        <View
+          onLayout={(event) => {
+            featuredFrame.current = { y: event.nativeEvent.layout.y, height: event.nativeEvent.layout.height };
+            updateFeaturedVisibility();
           }}
-          scrollEventThrottle={200}
         >
-          {featured.map((t, index) => (
-            <TemplateCard
-              key={t.id}
-              t={t}
-              width={featuredCardWidth}
-              height={340}
-               previewPlayer={index === activeFeaturedIndex && featuredInView && !reduced ? videoPlayer : undefined}
-               previewReady={featuredPreviewReady}
-              onPress={() => router.push(`/template/${t.id}`)}
-            />
-        ))}
-        </ScrollView>
-        {featured.length > 1 && <>
-          <Bouncy
-            testID="featured-previous"
-            accessibilityLabel="Предыдущий хит"
-            disabled={activeFeaturedIndex === 0}
-            onPress={() => moveFeatured(-1)}
-            style={[styles.featuredArrow, styles.featuredArrowLeft, { backgroundColor: c.glass, borderColor: c.glassEdge }]}
+          <ScrollView
+            ref={featuredScroll}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            snapToInterval={featuredCardWidth + 2}
+            decelerationRate="fast"
+            disableIntervalMomentum
+            contentContainerStyle={{ paddingHorizontal: 12, gap: 2, paddingBottom: 8 }}
+            onScrollEndDrag={(event) => selectFeaturedAtOffset(event.nativeEvent.contentOffset.x)}
+            onMomentumScrollEnd={(event) => selectFeaturedAtOffset(event.nativeEvent.contentOffset.x)}
+            onScroll={(event) => {
+              const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+              if (contentSize.width - contentOffset.x - layoutMeasurement.width < featuredCardWidth &&
+                featuredQuery.hasNextPage && !featuredQuery.isFetching && !featuredQuery.isError)
+                void featuredQuery.fetchNextPage({ cancelRefetch: false });
+            }}
+            scrollEventThrottle={200}
           >
-            <Feather name="chevron-left" size={24} color={c.foreground} />
-          </Bouncy>
-          <Bouncy
-            testID="featured-next"
-            accessibilityLabel="Следующий хит"
-            disabled={activeFeaturedIndex === featured.length - 1}
-            onPress={() => moveFeatured(1)}
-            style={[styles.featuredArrow, styles.featuredArrowRight, { backgroundColor: c.glass, borderColor: c.glassEdge }]}
-          >
-            <Feather name="chevron-right" size={24} color={c.foreground} />
-          </Bouncy>
-        </>}
-      </View>
-      {featuredQuery.isError && <EmptyState icon="alert-circle" title="Хиты не загрузились" text="Попробуй ещё раз." action="Повторить" onAction={() => void featuredQuery.refetch()} />}
+            {featured.map((t, index) => (
+              <TemplateCard
+                key={t.id}
+                t={t}
+                width={featuredCardWidth}
+                height={340}
+                previewPlayer={index === activeFeaturedIndex && featuredInView && !reduced ? videoPlayer : undefined}
+                previewReady={featuredPreviewReady}
+                onPress={() => router.push(`/template/${t.id}`)}
+              />
+            ))}
+          </ScrollView>
+          {featured.length > 1 && <>
+            <Bouncy
+              testID="featured-previous"
+              accessibilityLabel="Предыдущий хит"
+              disabled={activeFeaturedIndex === 0}
+              onPress={() => moveFeatured(-1)}
+              style={[styles.featuredArrow, styles.featuredArrowLeft, { backgroundColor: c.glass, borderColor: c.glassEdge }]}
+            >
+              <Feather name="chevron-left" size={24} color={c.foreground} />
+            </Bouncy>
+            <Bouncy
+              testID="featured-next"
+              accessibilityLabel="Следующий хит"
+              disabled={activeFeaturedIndex === featured.length - 1}
+              onPress={() => moveFeatured(1)}
+              style={[styles.featuredArrow, styles.featuredArrowRight, { backgroundColor: c.glass, borderColor: c.glassEdge }]}
+            >
+              <Feather name="chevron-right" size={24} color={c.foreground} />
+            </Bouncy>
+          </>}
+        </View>
+        {featuredQuery.isError && <EmptyState icon="alert-circle" title="Хиты не загрузились" text="Попробуй ещё раз." action="Повторить" onAction={() => void featuredQuery.refetch()} />}
+        <View style={{ height: 28 }} />
+      </>}
 
-      <View style={{ height: 28 }} />
       <SectionTitle kicker="ВЫБРАЛИ ДЛЯ ТЕБЯ" title="Рекомендуем" />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 4, paddingBottom: 8 }}>
         {recommendations.items.map((t) => (
@@ -272,9 +268,6 @@ export default function Discover() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 5, paddingVertical: 4 }}>
         {CATEGORIES.map((k) => <Pill key={k.key} label={k.label} active={cat === k.key} onPress={() => setCat(k.key)} />)}
       </ScrollView>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 5, paddingVertical: 10 }}>
-        {SPEEDS.map((k) => <Pill key={k.key} color="secondary" label={k.label} active={speed === k.key} onPress={() => setSpeed(k.key)} />)}
-      </ScrollView>
 
       {catalogue.isError && !list.length ? (
         <EmptyState icon="alert-circle" title="Не удалось загрузить каталог" text="Проверь соединение и повтори загрузку." action="Повторить" onAction={() => void catalogue.refetch()} />
@@ -283,10 +276,10 @@ export default function Discover() {
       ) : list.length === 0 ? (
         <EmptyState
           icon="search"
-          title={!search.trim() && cat === 'all' && speed === 'any' ? 'Пока нет опубликованных танцев' : 'Ничего не найдено'}
-          text={!search.trim() && cat === 'all' && speed === 'any' ? 'Сохранённые черновики по-прежнему доступны в студии.' : 'Попробуй изменить запрос или сбросить поиск и фильтры.'}
-          action={!search.trim() && cat === 'all' && speed === 'any' ? 'В студию' : 'Очистить поиск и фильтры'}
-          onAction={() => { if (!search.trim() && cat === 'all' && speed === 'any') router.push('/studio'); else { setSearch(''); setCat('all'); setSpeed('any'); } }}
+          title={!search.trim() && cat === 'all' ? 'Пока нет опубликованных танцев' : 'Ничего не найдено'}
+          text={!search.trim() && cat === 'all' ? 'Сохранённые черновики по-прежнему доступны в студии.' : 'Попробуй изменить запрос или сбросить поиск и фильтры.'}
+          action={!search.trim() && cat === 'all' ? 'В студию' : 'Очистить поиск и фильтры'}
+          onAction={() => { if (!search.trim() && cat === 'all') router.push('/studio'); else { setSearch(''); setCat('all'); } }}
         />
       ) : (
         <View style={styles.grid}>
