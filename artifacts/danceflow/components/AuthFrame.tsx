@@ -6,46 +6,9 @@ import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollV
 import { BigButton, DemoBadge } from '@/components/ui';
 import { useColors } from '@/hooks/useColors';
 import { F } from '@/constants/fonts';
-import { useSSO } from '@clerk/expo';
-import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
-import { router } from 'expo-router';
 import { useDanceAuth } from '@/lib/dance-auth';
-
-WebBrowser.maybeCompleteAuthSession();
-
-function GoogleSignIn() {
-  const { startSSOFlow } = useSSO();
-  const [working, setWorking] = React.useState(false);
-  const [message, setMessage] = React.useState('');
-  const login = async () => {
-    setWorking(true);
-    setMessage('');
-    try {
-      const result = await startSSOFlow({
-        strategy: 'oauth_google',
-        redirectUrl: AuthSession.makeRedirectUri({ scheme: 'danceflow' }),
-      });
-      if (result.createdSessionId && result.setActive) {
-        await result.setActive({
-          session: result.createdSessionId,
-          navigate: ({ session }) => {
-            if (session?.currentTask) setMessage('Нужна дополнительная проверка аккаунта.');
-            else router.replace('/create');
-          },
-        });
-      } else setMessage('Вход не завершён. Попробуй войти по почте.');
-    } catch {
-      setMessage('Не удалось войти через Google. Используй почту или попробуй позже.');
-    } finally { setWorking(false); }
-  };
-  return (
-    <View style={{ gap: 8 }}>
-      <BigButton label={working ? 'Открываем Google...' : 'Продолжить с Google'} onPress={login} disabled={working} />
-      <AuthError message={message} />
-    </View>
-  );
-}
+import { Feather } from '@expo/vector-icons';
+import { router } from 'expo-router';
 
 export function AuthFrame({ title, subtitle, children, other, href, recovery = false }: {
   title: string; subtitle: string; children: React.ReactNode; other: string; href: '/sign-in' | '/sign-up'; recovery?: boolean;
@@ -55,15 +18,31 @@ export function AuthFrame({ title, subtitle, children, other, href, recovery = f
   const { logtoEnabled } = useDanceAuth();
   return (
     <KeyboardAwareScrollViewCompat bottomOffset={20} style={{ flex: 1, backgroundColor: c.background }} contentContainerStyle={{ paddingHorizontal: 24, paddingTop: (Platform.OS === 'web' ? 67 : insets.top) + 24, paddingBottom: (Platform.OS === 'web' ? 34 : insets.bottom) + 24, gap: 18 }}>
-      <DemoBadge label="DANCEFLOW · АККАУНТ" />
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <DemoBadge label="DANCEFLOW · АККАУНТ" />
+        <AuthClose />
+      </View>
       <Text style={{ fontFamily: F.display, fontSize: 33, color: c.foreground, lineHeight: 39 }}>{title}</Text>
       <Text style={{ fontFamily: F.body, color: c.mutedForeground, fontSize: 15 }}>{subtitle}</Text>
       {children}
-      {!recovery && <GoogleSignIn />}
       <Link href={logtoEnabled ? { pathname: href, params: { legacy: '1' } } : href} asChild>
         <Text accessibilityRole="link" style={{ fontFamily: F.body, color: c.primary, fontSize: 15, textAlign: 'center', paddingVertical: 15 }}>{other}</Text>
       </Link>
     </KeyboardAwareScrollViewCompat>
+  );
+}
+
+export function AuthClose() {
+  const c = useColors();
+  const close = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
+  };
+  return (
+    <Pressable testID="auth-close" accessibilityRole="button" accessibilityLabel="Закрыть окно авторизации" onPress={close}
+      hitSlop={8} style={{ width: 40, height: 40, borderRadius: 14, borderWidth: 1, borderColor: c.border, backgroundColor: c.card, alignItems: 'center', justifyContent: 'center' }}>
+      <Feather name="x" size={21} color={c.foreground} />
+    </Pressable>
   );
 }
 

@@ -3,7 +3,7 @@ import { Platform, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
-import { AuthAction, AuthError, BigButton } from '@/components/AuthFrame';
+import { AuthAction, AuthClose, AuthError, BigButton } from '@/components/AuthFrame';
 import { DemoBadge } from '@/components/ui';
 import { useDanceAuth } from '@/lib/dance-auth';
 import { useColors } from '@/hooks/useColors';
@@ -35,7 +35,10 @@ export function LogtoEntry({ mode }: { mode: keyof typeof copy }) {
   const legacyPath = mode === 'sign-in' ? '/sign-in' : mode === 'sign-up' ? '/sign-up' : '/forgot-password';
   return (
     <KeyboardAwareScrollViewCompat bottomOffset={20} style={{ flex: 1, backgroundColor: c.background }} contentContainerStyle={{ paddingHorizontal: 24, paddingTop: (Platform.OS === 'web' ? 67 : insets.top) + 24, paddingBottom: (Platform.OS === 'web' ? 34 : insets.bottom) + 24, gap: 18 }}>
-      <DemoBadge label="DANCEFLOW · АККАУНТ" />
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <DemoBadge label="DANCEFLOW · АККАУНТ" />
+        <AuthClose />
+      </View>
       <Text style={{ fontFamily: F.display, fontSize: 33, color: c.foreground, lineHeight: 39 }}>{t.title}</Text>
       <Text style={{ fontFamily: F.body, color: c.mutedForeground, fontSize: 15 }}>{t.subtitle}</Text>
       <BigButton testID={`logto-${mode}`} label={busy ? 'Открываем вход…' : t.cta} icon="log-in" disabled={busy} onPress={start} />
