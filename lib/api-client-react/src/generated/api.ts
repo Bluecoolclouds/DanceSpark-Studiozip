@@ -824,7 +824,7 @@ export const getRecordCatalogueOpenUrl = (id: string,) => {
 }
 
 /**
- * Records a unique published-template detail open for a rotating anonymous visitor token.
+ * Records a unique published-template detail open for a rotating anonymous visitor token. Reopens with the same token remain valid. To limit artificial ranking inflation, only one distinct token per network source and template is counted within seven days. The source address is used transiently in memory as a keyed digest and is not persisted.
  */
 export const recordCatalogueOpen = async (id: string,
     catalogueOpenInput: CatalogueOpenInput, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
@@ -2325,7 +2325,7 @@ export const getCreateLightSwapperGenerationUrl = () => {
 
 /**
  * Authenticated paid subscribers only. Uses the published template original MP4, never a preview. Photos are inline JPEG/PNG/WebP in selection order; maximum 12 MiB decoded in total and 18 MiB JSON. No local URI or remote input URL is accepted. Duration and audio controls are unsupported. Reuse clientRequestId for retries; a changed payload conflicts. No automatic paid retries.
- * @summary Submit the selected Genjutsu Light v1.0 model
+ * @summary Submit the selected Genjutsu or Genjutsu Light v1.0 model
  */
 export const createLightSwapperGeneration = async (lightSwapperInput: LightSwapperInput, options?: Parameters<typeof customFetch>[1]): Promise<VideoGenerationSubmission> => {
 
@@ -2391,7 +2391,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateLightSwapperGenerationMutationVariables = {data: BodyType<LightSwapperInput>}
 
     /**
- * @summary Submit the selected Genjutsu Light v1.0 model
+ * @summary Submit the selected Genjutsu or Genjutsu Light v1.0 model
  */
 export const useCreateLightSwapperGeneration = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLightSwapperGeneration>>, TError,CreateLightSwapperGenerationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}

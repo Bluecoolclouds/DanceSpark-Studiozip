@@ -6,7 +6,7 @@ import { Bouncy } from '@/components/ui';
 import { F } from '@/constants/fonts';
 import {
   GENERATION_MODELS, GENERATION_QUALITIES, GenerationModel, GenerationResolution,
-  MAX_OUTPUT_SECONDS, MAX_REFERENCE_IMAGES, estimateGenerationCost,
+  MAX_REFERENCE_IMAGES, estimateGenerationCost, GenerationFamily, outputLimit, getGenerationModel,
 } from '@/constants/generation';
 import { useColors } from '@/hooks/useColors';
 import { templatePreviewCandidates } from '@/lib/template-preview';
@@ -14,8 +14,8 @@ import { resolveDraftVideo } from '@/lib/draft-media';
 import { DraftImage } from '@/components/draft-image';
 
 export const fmtSec = (s: number) => `${Number(s.toFixed(2)).toString().replace('.', ',')} сек`;
-export const fmtUsd = (v: number) => `$${v.toFixed(2)}`;
-export const getModel = (id?: GenerationModel) => GENERATION_MODELS.find((m) => m.id === id);
+export const fmtUsd = (v: number, digits = 2) => `$${v.toFixed(digits)}`;
+export const getModel = getGenerationModel;
 
 export function SourcePreview({ uri, height = 300 }: { uri: string; height?: number }) {
   return <StoredPreview key={uri} uri={uri} height={height} />;
@@ -151,9 +151,10 @@ export function RefCounter({ n }: { n: number }) {
   return <Text style={[s.counter, { color: n >= MAX_REFERENCE_IMAGES ? c.primary : c.mutedForeground }]}>{n} / {MAX_REFERENCE_IMAGES}</Text>;
 }
 
-export function CostPreview({ resolution, seconds }: { resolution: GenerationResolution; seconds?: number | null }) {
+export function CostPreview({ resolution, seconds, family = 'light' }: { resolution: GenerationResolution; seconds?: number | null; family?: GenerationFamily }) {
   const c = useColors();
-  const e = estimateGenerationCost(resolution, seconds);
+  const e = estimateGenerationCost(resolution, seconds, family);
+  const limit = outputLimit(family);
   const [open, setOpen] = useState<boolean>(false);
   return (
     <View style={[s.cost, { borderColor: c.border, backgroundColor: c.card }]}>
@@ -168,11 +169,13 @@ export function CostPreview({ resolution, seconds }: { resolution: GenerationRes
       {open && (e ? (
         <>
           <Text style={[s.costLine, { color: c.foreground }]}>
-            вход {fmtSec(e.inputSeconds)} + результат {e.roundedOutputSeconds} сек = {fmtSec(e.billableSeconds)} × {fmtUsd(e.usdPerSecond)}/сек
+            {family === 'light'
+              ? `вход ${fmtSec(e.inputSeconds)} + результат ${e.roundedOutputSeconds} сек`
+              : `вход ${fmtSec(e.inputSeconds)}, округление вверх`} = {fmtSec(e.billableSeconds)} × {fmtUsd(e.usdPerSecond, family === 'standard' ? 3 : 2)}/сек
           </Text>
-          {e.inputSeconds > MAX_OUTPUT_SECONDS && (
+          {e.inputSeconds > limit && (
             <Text style={[s.costNote, { color: c.mutedForeground }]}>
-              Видео длиннее {MAX_OUTPUT_SECONDS} сек: модель возьмёт первые {MAX_OUTPUT_SECONDS} сек. Вход посчитан по всей длине — фактическую длительность входа определит провайдер.
+              Видео длиннее {limit} сек: модель возьмёт первые {limit} сек. Вход посчитан по всей длине — фактическую длительность входа определит провайдер.
             </Text>
           )}
         </>

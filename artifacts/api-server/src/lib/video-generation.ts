@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { isSwapperModel } from "./swapper-models";
 import type { VideoGenerationInput } from "@workspace/api-zod";
 
 // https://docs.higgsfield.ai/docs/models/pixverse-v6/image-to-video
@@ -190,7 +191,7 @@ export async function uploadGenerationMedia(bytes: Buffer, mimeType: string): Pr
 export async function submitLightSwapper(
   model: string, input: { video_url: string; image_urls: string[]; prompt: string; resolution: string },
 ): Promise<{ requestId: string }> {
-  if (!["higgsfield/genjutsu-light/motion-transfer/v1.0", "higgsfield/genjutsu-light/object-swap/v1.0"].includes(model)) {
+  if (!isSwapperModel(model)) {
     throw new VideoProviderError("Неподдерживаемая модель.");
   }
   const credentials = getCredentials();

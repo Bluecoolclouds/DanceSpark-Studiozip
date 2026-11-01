@@ -7,10 +7,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { NativeScrollEvent, NativeSyntheticEvent, Platform, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import Animated, { useReducedMotion, Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BigButton, Bouncy, Pill, SectionTitle, TemplateCard, EmptyState } from '@/components/ui';
+import { BigButton, Bouncy, SectionTitle, TemplateCard, EmptyState } from '@/components/ui';
 import { F } from '@/constants/fonts';
 import { StageBackdrop } from '@/components/stage-backdrop';
-import { CATEGORIES, Category, HERO_IMAGE } from '@/constants/templates';
+import { HERO_IMAGE } from '@/constants/templates';
 import { useCatalogue } from '@/hooks/useCatalogue';
 import { useColors } from '@/hooks/useColors';
 import { templatePreviewCandidates } from '@/lib/template-preview';
@@ -22,9 +22,8 @@ export default function Discover() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { height: viewportHeight } = useWindowDimensions();
-  const [cat, setCat] = useState<Category | 'all'>('all');
   const [search, setSearch] = useState('');
-  const catalogue = useCatalogue({ search, category: cat, limit: CATALOG_PAGE_SIZE });
+  const catalogue = useCatalogue({ search, limit: CATALOG_PAGE_SIZE });
   const featuredQuery = useCatalogue({ section: 'featured', limit: 12 });
   const recommendations = useCatalogue({ section: 'recommended', limit: 3 });
   const loadMore = useCallback(() => {
@@ -265,10 +264,6 @@ export default function Discover() {
           </Bouncy>
         )}
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 5, paddingVertical: 4 }}>
-        {CATEGORIES.map((k) => <Pill key={k.key} label={k.label} active={cat === k.key} onPress={() => setCat(k.key)} />)}
-      </ScrollView>
-
       {catalogue.isError && !list.length ? (
         <EmptyState icon="alert-circle" title="Не удалось загрузить каталог" text="Проверь соединение и повтори загрузку." action="Повторить" onAction={() => void catalogue.refetch()} />
       ) : catalogue.isPending ? (
@@ -276,10 +271,10 @@ export default function Discover() {
       ) : list.length === 0 ? (
         <EmptyState
           icon="search"
-          title={!search.trim() && cat === 'all' ? 'Пока нет опубликованных танцев' : 'Ничего не найдено'}
-          text={!search.trim() && cat === 'all' ? 'Сохранённые черновики по-прежнему доступны в студии.' : 'Попробуй изменить запрос или сбросить поиск и фильтры.'}
-          action={!search.trim() && cat === 'all' ? 'В студию' : 'Очистить поиск и фильтры'}
-          onAction={() => { if (!search.trim() && cat === 'all') router.push('/studio'); else { setSearch(''); setCat('all'); } }}
+          title={!search.trim() ? 'Пока нет опубликованных танцев' : 'Ничего не найдено'}
+          text={!search.trim() ? 'Сохранённые черновики по-прежнему доступны в студии.' : 'Попробуй изменить или очистить запрос.'}
+          action={!search.trim() ? 'В студию' : 'Очистить поиск'}
+          onAction={() => { if (!search.trim()) router.push('/studio'); else setSearch(''); }}
         />
       ) : (
         <View style={styles.grid}>

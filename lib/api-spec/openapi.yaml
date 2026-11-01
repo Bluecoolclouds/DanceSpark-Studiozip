@@ -389,7 +389,7 @@ paths:
     post:
       operationId: createLightSwapperGeneration
       tags: [video-generations]
-      summary: Submit the selected Genjutsu Light v1.0 model
+      summary: Submit the selected Genjutsu or Genjutsu Light v1.0 model
       description: Authenticated paid subscribers only. Uses the published template original MP4, never a preview. Photos are inline JPEG/PNG/WebP in selection order; maximum 12 MiB decoded in total and 18 MiB JSON. No local URI or remote input URL is accepted. Duration and audio controls are unsupported. Reuse clientRequestId for retries; a changed payload conflicts. No automatic paid retries.
       requestBody:
         required: true
@@ -630,7 +630,7 @@ components:
         clientRequestId: { type: string, pattern: "^[A-Za-z0-9_-]{8,150}$" }
         model:
           type: string
-          enum: [higgsfield/genjutsu-light/motion-transfer/v1.0, higgsfield/genjutsu-light/object-swap/v1.0]
+          enum: [higgsfield/genjutsu-light/motion-transfer/v1.0, higgsfield/genjutsu-light/object-swap/v1.0, higgsfield/genjutsu/motion-transfer/v1.0, higgsfield/genjutsu/object-swap/v1.0]
         templateId: { type: string, pattern: "^[a-z0-9][a-z0-9-]{0,79}$" }
         photos:
           type: array
@@ -647,7 +647,7 @@ components:
         clientRequestId: { type: string, pattern: "^[A-Za-z0-9_-]{8,150}$" }
         model:
           type: string
-          enum: [higgsfield/genjutsu-light/motion-transfer/v1.0, higgsfield/genjutsu-light/object-swap/v1.0]
+          enum: [higgsfield/genjutsu-light/motion-transfer/v1.0, higgsfield/genjutsu-light/object-swap/v1.0, higgsfield/genjutsu/motion-transfer/v1.0, higgsfield/genjutsu/object-swap/v1.0]
         sourceVideoId: { type: string, format: uuid }
         photos:
           type: array

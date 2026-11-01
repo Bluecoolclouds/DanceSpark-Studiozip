@@ -29,8 +29,9 @@ export function LightGeneration({ draft: d }: { draft: Draft }) {
   const mutation = useCreateLightSwapperGeneration({ mutation: { retry: false } });
   const customMutation = useCreateCustomVideoLightSwapperGeneration({ mutation: { retry: false } });
   const sourceUpload = useUploadLightSwapperSourceVideo({ mutation: { retry: false } });
-  const model = getModel(d.model)!;
-  const estimate = d.resolution ? estimateGenerationCost(d.resolution, d.sourceVideoDurationSeconds) : null;
+  const model = getModel(d.model, d.modelFamily)!;
+  const familyLabel = d.modelFamily === 'standard' ? 'Свапер' : 'Лёгкий Свапер';
+  const estimate = d.resolution ? estimateGenerationCost(d.resolution, d.sourceVideoDurationSeconds, d.modelFamily) : null;
   const blocker = lightDraftBlocker(d);
   const catalogueSource = !!d.templateSnapshot?.videoUri &&
     d.templateSnapshot.videoUri === d.sourceVideoUri;
@@ -100,7 +101,7 @@ export function LightGeneration({ draft: d }: { draft: Draft }) {
       const saved = await persistDraft(d.id, {
         lightSourceVideoId: result.sourceVideoId,
         sourceVideoDurationSeconds: result.durationSeconds,
-        duration: Math.min(result.durationSeconds, 15),
+        duration: Math.min(result.durationSeconds, d.modelFamily === 'standard' ? 30 : 15),
       });
       if (!saved) throw new Error('Не удалось сохранить результат проверки. Восстанови сохранение черновика.');
     } catch (error) {
@@ -115,7 +116,7 @@ export function LightGeneration({ draft: d }: { draft: Draft }) {
     ? 'Подготавливаем выбранные фото по порядку. Платный запрос ещё не отправлен.'
     : busy ? 'Отправляем материалы. Не запускай повторно.'
     : d.generationStatus === 'queued' ? 'Загрузка материалов на сервере или очередь. Экран можно закрыть — статус восстановится при открытии.'
-    : d.generationStatus === 'processing' ? 'Light Swapper создаёт видео. Экран можно закрыть.'
+    : d.generationStatus === 'processing' ? `${familyLabel} создаёт видео. Экран можно закрыть.`
     : d.generationStatus === 'completed' ? 'Обработка завершена, но ссылка на видео пока недоступна. Проверь статус позже.'
     : d.generationError ?? (attempted ? 'Проверяем ранее отправленный запрос. Повторного платного запуска не будет.' : 'Черновик сохранён. Генерация не запускалась.');
   return <View style={{ gap: 12, marginTop: 18 }}>
@@ -146,12 +147,12 @@ export function LightGeneration({ draft: d }: { draft: Draft }) {
         <Text style={{ color: c.mutedForeground }}>
           Собственное видео проверено: {d.sourceVideoDurationSeconds?.toFixed(1)} сек. Перед запуском будет отдельное подтверждение.
         </Text>}
-      {!confirm && <BigButton testID="light-review-launch" label={isSignedIn ? 'Запустить Light Swapper…' : 'Войти для запуска'}
+      {!confirm && <BigButton testID="light-review-launch" label={isSignedIn ? `Запустить: ${familyLabel}…` : 'Войти для запуска'}
         icon="play" disabled={!!blocker || !!draftStorageIssue || busy}
         onPress={() => isSignedIn ? setConfirm(true) : router.push('/sign-in')} />}
       {confirm && <View testID="light-paid-confirmation" style={{ backgroundColor: c.card, padding: 16, borderWidth: 1, borderColor: c.border, borderRadius: 16, gap: 12 }}>
         <Text style={{ color: c.foreground, fontFamily: F.display }}>Подтвердить платный запуск</Text>
-        <Text style={{ color: c.foreground }}>Модель: {model.title}{'\n'}{model.endpointId}{'\n'}
+        <Text style={{ color: c.foreground }}>Модель: {familyLabel} · {model.title}{'\n'}{model.endpointId}{'\n'}
           Качество: {d.resolution} · Фото: {d.referenceImageUris?.length}{'\n'}
           Видео: {catalogueSource ? `${d.templateSnapshot?.title} · оригинал каталога` : `Своё видео · ${d.sourceVideoDurationSeconds?.toFixed(1)} сек, проверено сервером`}</Text>
         <Text style={{ color: c.foreground }}>Предварительная себестоимость у Higgsfield: {estimate ? `≈ ${fmtUsd(estimate.estimatedUsd)}` : 'пока неизвестна'}.

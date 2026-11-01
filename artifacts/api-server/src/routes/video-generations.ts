@@ -51,7 +51,9 @@ router.post("/light-swapper/generations", requireAccount, protectAdminMutation, 
     res.status(202).json(CreateVideoGenerationResponse.parse({ requestId: result.requestId, status: "queued" }));
   } catch (error) {
     if (error instanceof GenerationPolicyError) {
-      res.status(error.status).json({ error: "Создание видео недоступно. Проверь подписку, лимиты, настройки и исходные материалы.", code: error.code });
+      res.status(error.status).json({ error: error.code === "invalid_source_video"
+        ? "Видео не подходит выбранной модели: минимум 4 секунды; для обычной замены объекта — от 409 600 пикселей в кадре."
+        : "Создание видео недоступно. Проверь подписку, лимиты, настройки и исходные материалы.", code: error.code });
       return;
     }
     if (error instanceof VideoProviderNotConfiguredError || error instanceof VideoProviderError) {
@@ -138,7 +140,7 @@ router.post("/light-swapper/custom-video-generations", requireAccount, protectAd
         budget_not_configured: "Администратор ещё не настроил бюджет.",
         provider_not_configured: "Сервис генерации пока не настроен.",
         light_pricing_not_configured: "Не настроена оценка расходов.",
-        invalid_source_video: "Собственное видео не найдено или больше недоступно.",
+        invalid_source_video: "Видео не найдено или не подходит модели: минимум 4 секунды; для обычной замены объекта — от 409 600 пикселей в кадре.",
         source_validation_unavailable: "Проверка видео временно недоступна.",
         source_storage_unavailable: "Приватное хранилище видео временно недоступно.",
         input_too_large: "Общий размер фото превышает 12 МБ.",

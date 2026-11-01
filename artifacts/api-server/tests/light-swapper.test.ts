@@ -11,7 +11,8 @@ import { S3Client, HeadObjectCommand, GetObjectCommand } from "@aws-sdk/client-s
 import type { AddressInfo } from "node:net";
 import { isolatedDatabase } from "./helpers/database";
 import { createOwnedCustomVideoLightSwapper, createOwnedLightSwapper } from "../src/lib/light-swapper";
-import { getOwnedGeneration, VideoNotFoundError } from "../src/lib/generation-access";
+import { getOwnedGeneration, findOwnedLightSwapperGeneration, VideoNotFoundError } from "../src/lib/generation-access";
+import { SWAPPER_MODELS } from "../src/lib/swapper-models";
 import { GenerationPolicyError } from "../src/lib/generation-governance";
 import { VideoSubmissionUnknownError } from "../src/lib/video-generation";
 import type { LightSwapperInput } from "@workspace/api-zod";
@@ -81,7 +82,7 @@ function boundaries(t: TestContext, options: {
       if (options.beforePaid && uploads === input.photos.length + 1) await options.beforePaid();
       return new Response(null, { status: options.uploadFails ? 403 : 200 });
     }
-    if (models.some(model => address === `https://api.higgsfield.ai/${model}`)) {
+    if (SWAPPER_MODELS.some(model => address === `https://api.higgsfield.ai/${model}`)) {
       if (options.paid === "timeout") throw new Error("sensitive upstream information");
       if (options.paid === "malformed") return new Response("not-json");
       if (options.paid === "server_error") return Response.json({ secret: "never expose" }, { status: 500 });
@@ -121,6 +122,77 @@ for (const model of models) for (const resolution of ["480p", "720p", "1080p"] a
     assert.ok(!JSON.stringify(row).includes(input.prompt));
   });
 }
+
+function standardFixture(t: TestContext, size = "640x640", seconds = 4) {
+  const directory = mkdtempSync(join(tmpdir(), "danceflow-standard-video-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const path = join(directory, "source.mp4");
+  execFileSync("ffmpeg", [
+    "-nostdin", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i",
+    `color=c=black:s=${size}:r=10:d=${seconds}`, "-c:v", "libx264", "-pix_fmt", "yuv420p",
+    "-movflags", "+faststart", "-y", path,
+  ]);
+  return readFileSync(path);
+}
+
+for (const model of SWAPPER_MODELS.slice(2)) for (const resolution of ["480p", "720p", "1080p"] as const) {
+  test(`${model}: ${resolution} validates the original, reserves the standard tariff and recovers without resubmitting`, async t => {
+    const video = standardFixture(t);
+    const { calls } = boundaries(t, { bytes: video, headSize: video.length });
+    await pool.query("UPDATE df_controls SET cost_per_generation_rub=0.01");
+    const request = { ...input, model, resolution };
+    const result = await createOwnedLightSwapper("u1", request);
+    const expectedCost = { "480p": "1.28", "720p": "2.73", "1080p": "6.53" }[resolution];
+    const row = (await pool.query("SELECT * FROM df_jobs WHERE id=$1", [result.requestId])).rows[0];
+    assert.equal(row.provider_model, model);
+    assert.equal(row.estimated_cost_rub, expectedCost);
+    assert.equal(calls.at(-1)!.url, `https://api.higgsfield.ai/${model}`);
+    assert.deepEqual(await createOwnedLightSwapper("u1", request), result);
+    assert.equal(calls.filter(c => c.url === `https://api.higgsfield.ai/${model}`).length, 1);
+    await assert.rejects(createOwnedLightSwapper("u1", { ...request, model: models[0] }),
+      (error: unknown) => error instanceof GenerationPolicyError && error.code === "idempotency_conflict");
+    assert.equal((await findOwnedLightSwapperGeneration("u1", input.clientRequestId))?.status, "completed");
+    assert.equal(await findOwnedLightSwapperGeneration("u2", input.clientRequestId), null);
+  });
+}
+
+test("standard object swap rejects undersized frames before reserving or uploading", async t => {
+  const video = standardFixture(t, "320x240");
+  const { calls } = boundaries(t, { bytes: video, headSize: video.length });
+  await assert.rejects(createOwnedLightSwapper("u1", { ...input, model: SWAPPER_MODELS[3] }),
+    (error: unknown) => error instanceof GenerationPolicyError && error.code === "invalid_source_video");
+  assert.equal(calls.length, 0);
+  assert.equal((await pool.query("SELECT count(*)::int n FROM df_jobs")).rows[0].n, 0);
+});
+
+test("standard motion transfer rejects a source shorter than four seconds", async t => {
+  const video = standardFixture(t, "640x640", 3);
+  const { calls } = boundaries(t, { bytes: video, headSize: video.length });
+  await assert.rejects(createOwnedLightSwapper("u1", { ...input, model: SWAPPER_MODELS[2] }),
+    (error: unknown) => error instanceof GenerationPolicyError && error.code === "invalid_source_video");
+  assert.equal(calls.length, 0);
+});
+
+test("standard pricing respects the existing daily spend guard", async t => {
+  const video = standardFixture(t);
+  const { calls } = boundaries(t, { bytes: video, headSize: video.length });
+  await pool.query("UPDATE df_controls SET cost_per_generation_rub=0.01,max_daily_spend_rub=1");
+  await assert.rejects(createOwnedLightSwapper("u1", { ...input, model: SWAPPER_MODELS[2] }),
+    (error: unknown) => error instanceof GenerationPolicyError && error.code === "daily_budget_reached");
+  assert.equal(calls.length, 0);
+});
+
+test("an uncertain standard submission keeps its reservation and never resubmits", async t => {
+  const video = standardFixture(t);
+  const { calls } = boundaries(t, { bytes: video, headSize: video.length, paid: "timeout" });
+  const request = { ...input, model: SWAPPER_MODELS[2] };
+  await assert.rejects(createOwnedLightSwapper("u1", request), VideoSubmissionUnknownError);
+  const row = (await pool.query("SELECT * FROM df_jobs")).rows[0];
+  assert.equal(row.error_code, "submission_unknown");
+  assert.equal(row.estimated_cost_rub, "10.00");
+  assert.deepEqual(await createOwnedLightSwapper("u1", request), { requestId: row.id });
+  assert.equal(calls.filter(c => c.url === `https://api.higgsfield.ai/${request.model}`).length, 1);
+});
 
 test("all parameter changes conflict; concurrent exact replays spend once", async t => {
   const { calls } = boundaries(t);
@@ -246,13 +318,14 @@ test("unconfigured conversion or unknown duration blocks spending; exact replay 
   assert.equal(calls.length, 7);
 });
 
-test("custom source uses server-inspected duration, is owner-scoped, and replays without a second paid request", async t => {
+for (const currentModel of SWAPPER_MODELS) test(`${currentModel}: custom source uses server-inspected duration, is owner-scoped, and replays once`, async t => {
+  const standard = currentModel.startsWith("higgsfield/genjutsu/");
   const directory = mkdtempSync(join(tmpdir(), "danceflow-custom-video-"));
   const path = join(directory, "source.mp4");
   try {
     execFileSync("ffmpeg", [
       "-nostdin", "-hide_banner", "-loglevel", "error",
-      "-f", "lavfi", "-i", "color=c=black:s=32x32:r=10:d=1.25",
+      "-f", "lavfi", "-i", standard ? "color=c=black:s=640x640:r=10:d=4" : "color=c=black:s=32x32:r=10:d=1.25",
       "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-y", path,
     ]);
     const video = readFileSync(path);
@@ -283,7 +356,7 @@ test("custom source uses server-inspected duration, is owner-scoped, and replays
         });
       }
       if (address.startsWith("https://storage.example.test/")) return new Response(null, { status: 200 });
-      if (address === `https://api.higgsfield.ai/${models[0]}`) {
+      if (address === `https://api.higgsfield.ai/${currentModel}`) {
         paidCalls++;
         const payload = JSON.parse(String(init?.body));
         assert.equal(payload.video_url, "https://cdn.example.test/input-1");
@@ -296,12 +369,12 @@ test("custom source uses server-inspected duration, is owner-scoped, and replays
     });
     await pool.query("UPDATE df_controls SET cost_per_generation_rub=0.01");
     const customInput = {
-      clientRequestId: "custom-source-request", model: models[0], sourceVideoId,
+      clientRequestId: "custom-source-request", model: currentModel, sourceVideoId,
       photos: [photo(1)], prompt: input.prompt, resolution: "480p" as const,
     };
     const first = await createOwnedCustomVideoLightSwapper("u1", customInput);
     assert.deepEqual(await createOwnedCustomVideoLightSwapper("u1", customInput), first);
-    assert.equal((await pool.query("SELECT estimated_cost_rub FROM df_jobs")).rows[0].estimated_cost_rub, "0.17");
+    assert.equal((await pool.query("SELECT estimated_cost_rub FROM df_jobs")).rows[0].estimated_cost_rub, standard ? "1.28" : "0.17");
     assert.equal(paidCalls, 1);
     assert.equal(s3Reads, 4, "valid replays read only the owning account's object");
     await assert.rejects(createOwnedCustomVideoLightSwapper("u2", customInput),

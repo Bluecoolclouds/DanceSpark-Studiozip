@@ -14,6 +14,7 @@ import { readTemplate, templateLimit, templateMetadata, validTemplateBytes } fro
 import { CustomVideoStorageError, readOwnedCustomVideo } from "./custom-video-storage";
 import { CustomVideoValidationError, inspectCustomVideo } from "./custom-video-validation";
 import type { Readable } from "node:stream";
+import { isStandardSwapper, swapperCostUsd, swapperSourceRequirements } from "./swapper-models";
 
 async function publishedTemplate(id: string) {
   const [template] = await db.select().from(danceCatalogue)
@@ -22,17 +23,17 @@ async function publishedTemplate(id: string) {
   return template;
 }
 
-function minimumCostRub(seconds: number, resolution: LightSwapperInput["resolution"]) {
+function minimumCostRub(seconds: number, resolution: LightSwapperInput["resolution"], model: string) {
   // An operator-provided conservative USD/RUB rate, not a customer tariff.
   // Never silently assume parity or use a client-supplied duration/quote.
   const usdRub = Number(process.env.DANCEFLOW_LIGHT_USD_RUB);
+  // The legacy variable is a USD/RUB exchange rate shared by both families.
+  const usd = swapperCostUsd(model, seconds, resolution);
   if (!Number.isFinite(usdRub) || usdRub <= 0 || typeof seconds !== "number" ||
-      !Number.isFinite(seconds) || seconds <= 0 || seconds > 300) {
+      !Number.isFinite(seconds) || seconds <= 0 || seconds > 300 || usd == null) {
     throw new GenerationPolicyError("light_pricing_not_configured", 503);
   }
-  const rate = { "480p": 0.05, "720p": 0.1, "1080p": 0.2 }[resolution];
-  // Full input duration is billable even though output uses only the first 15s.
-  return Math.ceil((seconds + Math.ceil(Math.min(seconds, 15))) * rate * usdRub * 100) / 100;
+  return Math.ceil(usd * usdRub * 100) / 100;
 }
 
 async function originalVideo(templateId: string) {
@@ -87,12 +88,13 @@ async function createOwnedLightSwapperForVideo(
   }
   const customInput = custom ? input as CustomVideoLightSwapperInput : null;
   let customVideo: Buffer | undefined;
+  let catalogueVideo: Buffer | undefined;
   let sourceDurationSeconds: number;
   let template: Awaited<ReturnType<typeof publishedTemplate>> | undefined;
   if (customInput) {
     try {
       customVideo = await readOwnedCustomVideo(ownerId, customInput.sourceVideoId);
-      sourceDurationSeconds = await inspectCustomVideo(customVideo);
+      sourceDurationSeconds = await inspectCustomVideo(customVideo, swapperSourceRequirements(input.model));
     } catch (error) {
       if (error instanceof CustomVideoValidationError) {
         throw new GenerationPolicyError(error.code, error.code === "source_validation_unavailable" ? 503 : 400);
@@ -111,6 +113,17 @@ async function createOwnedLightSwapperForVideo(
     const duration = template.metadata.sourceDurationSeconds;
     if (typeof duration !== "number") throw new GenerationPolicyError("light_pricing_not_configured", 503);
     sourceDurationSeconds = duration;
+    if (isStandardSwapper(input.model)) {
+      // Validate actual source duration and dimensions before any paid request.
+      catalogueVideo = await originalVideo(catalogInput.templateId);
+      try {
+        sourceDurationSeconds = await inspectCustomVideo(catalogueVideo, swapperSourceRequirements(input.model));
+      } catch (error) {
+        if (error instanceof CustomVideoValidationError)
+          throw new GenerationPolicyError(error.code, error.code === "source_validation_unavailable" ? 503 : 400);
+        throw error;
+      }
+    }
   }
   // Fingerprint every selected parameter and the ordered decoded photo contents,
   // never persist local URIs, prompts, photos or temporary upload URLs.
@@ -128,13 +141,13 @@ async function createOwnedLightSwapperForVideo(
     userId: ownerId, idempotencyKey: input.clientRequestId,
     templateId: customInput ? `custom-${customInput.sourceVideoId}` : (input as LightSwapperInput).templateId,
     fingerprint, model: input.model,
-    minimumCostRub: previous ? undefined : minimumCostRub(sourceDurationSeconds, input.resolution),
+    minimumCostRub: previous ? undefined : minimumCostRub(sourceDurationSeconds, input.resolution, input.model),
   });
   if (reservation.reused) return { requestId: reservation.id };
   let paidStarted = false;
   try {
     assertVideoProviderConfigured();
-    const video = customVideo ?? await originalVideo((input as LightSwapperInput).templateId);
+    const video = customVideo ?? catalogueVideo ?? await originalVideo((input as LightSwapperInput).templateId);
     const videoUrl = await uploadGenerationMedia(video, "video/mp4");
     const imageUrls: string[] = [];
     // Sequential upload preserves the caller's exact selection order.

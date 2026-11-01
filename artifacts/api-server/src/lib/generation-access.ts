@@ -3,6 +3,7 @@ import { db, danceJobs } from "@workspace/db";
 import { getDanceVideoStatus, submitDanceVideo, VideoSubmissionUnknownError } from "./video-generation";
 import { reserveGeneration, beginGeneration, finishGeneration, GenerationPolicyError } from "./generation-governance";
 import type { VideoGenerationInput } from "@workspace/api-zod";
+import { isSwapperModel } from "./swapper-models";
 
 export class VideoNotFoundError extends Error {
   constructor() {
@@ -42,7 +43,7 @@ export async function createOwnedGeneration(ownerId: string, input: VideoGenerat
 export async function findOwnedLightSwapperGeneration(ownerId: string, clientRequestId: string) {
   const [job] = await db.select({ id: danceJobs.id, model: danceJobs.providerModel }).from(danceJobs)
     .where(and(eq(danceJobs.userId, ownerId), eq(danceJobs.idempotencyKey, clientRequestId))).limit(1);
-  if (!job?.model?.startsWith("higgsfield/genjutsu-light/")) return null;
+  if (!job?.model || !isSwapperModel(job.model)) return null;
   return getOwnedGeneration(ownerId, job.id);
 }
 

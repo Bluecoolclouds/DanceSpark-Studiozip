@@ -84,7 +84,25 @@ The Create page and a selected trend use the same compact input workflow, but Cr
 
 **Why:** The user approved simplifying Create to distinguish starting with one's own video from remixing a chosen trend, rather than automatically attaching the first catalogue item.
 
-**How to apply:** Keep explicit source selection on Create, one trend chooser, and an editable prefilled workspace on trend pages. Preserve the separate PixVerse photo-to-video option and the distinction between saving a local draft and launching paid generation.
+**How to apply:** Keep explicit source selection on Create, one trend chooser, and an editable prefilled workspace on trend pages. Support both Swapper families and their modes, but keep PixVerse hidden until the user says it is ready. Preserve the distinction between saving a local draft and launching paid generation.
+
+The user says the app currently offers only Swapper; do not expose the PixVerse photo-to-dance option on Create yet.
+
+**Why:** The user explicitly asked to remove that mode switch for now.
+
+**How to apply:** Keep the existing PixVerse implementation separate, but do not show its Create tab or imply it is currently available unless the user reopens that scope.
+
+Genre filters on the dance catalogue should stay hidden while genre filtering is not reliable.
+
+**Why:** The user asked to remove the genre controls until they work.
+
+**How to apply:** Keep text search and the full catalogue available; restore genre controls only when the filters work correctly.
+
+The user requested a compact «Свапер / Лёгкий Свапер» selector above the two operation modes, selecting standard Genjutsu versus Genjutsu Light.
+
+**Why:** The family switch must change the actual Higgsfield model, not only the display label. The user specified that it should look smaller than the operation-mode selector.
+
+**How to apply:** Keep family and operation independent and preserve their selection in drafts. Default old drafts and new forms to Light because standard Genjutsu is more expensive and must be chosen explicitly; never silently upgrade an existing draft.
 
 For the Create header, match the supplied reference's composition, not just its purple palette and dancer character.
 

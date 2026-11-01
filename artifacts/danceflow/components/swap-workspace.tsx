@@ -8,7 +8,7 @@ import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, View
 import { CostPreview, QualityPicker, RefGrid, SourcePreview, fmtSec, getModel } from '@/components/generation-form';
 import { Bouncy } from '@/components/ui';
 import { F } from '@/constants/fonts';
-import { GENERATION_MODELS, GenerationModel, GenerationResolution, MAX_OUTPUT_SECONDS, MAX_REFERENCE_IMAGES } from '@/constants/generation';
+import { GENERATION_MODELS, GENERATION_FAMILIES, GenerationFamily, GenerationModel, GenerationResolution, outputLimit, MAX_REFERENCE_IMAGES } from '@/constants/generation';
 import { type DanceTemplate } from '@/constants/templates';
 import { useCatalogue } from '@/hooks/useCatalogue';
 import { useDance } from '@/context/DanceContext';
@@ -25,7 +25,7 @@ const trendSource = (t?: DanceTemplate | null): SourceVideo | null =>
   t?.videoUri && t.sourceDurationSeconds != null ? { uri: t.videoUri, seconds: t.sourceDurationSeconds } : null;
 
 /**
- * Shared Light Swapper input form for /create and /template/:id.
+ * Shared Swapper input form for /create and /template/:id.
  * Saving never starts a generation. Paid consent lives on the saved draft.
  */
 export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = 'object-swap', wide, variant = 'default' }: {
@@ -46,6 +46,8 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
   const [trend, setTrend] = useState<DanceTemplate | null>(initialTrend);
   const original = trendSource(trend);
   const [model, setModel] = useState<GenerationModel>(defaultModel);
+  const [family, setFamily] = useState<GenerationFamily>('light');
+  const maxOutput = outputLimit(family);
   const [source, setSource] = useState<SourceVideo | null>(() => trendSource(initialTrend));
   const [refs, setRefs] = useState<string[]>(() => initialTrend?.referenceImageUris ?? []);
   const [prompt, setPrompt] = useState<string>(() => initialTrend?.prompt ?? '');
@@ -54,7 +56,7 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
   const [saving, setSaving] = useState(false);
   const [choosing, setChoosing] = useState(false);
   const [expanded, setExpanded] = useState<Section | null>(() => initialTrend?.prompt ? 'prompt' : initialTrend ? null : 'video');
-  const m = getModel(model)!;
+  const m = getModel(model, family)!;
   const isOriginal = !!original && source?.uri === original.uri;
 
   const denied = (what: string) => {
@@ -120,13 +122,14 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
 
   const reset = () => {
     const t = allowTrendPicker ? null : initialTrend;
-    setTrend(t); setModel(defaultModel); setSource(trendSource(t)); setRefs(t?.referenceImageUris ?? []);
+    setTrend(t); setModel(defaultModel); setFamily('light'); setSource(trendSource(t)); setRefs(t?.referenceImageUris ?? []);
     setPrompt(t?.prompt ?? ''); setResolution('720p'); setError(null); setChoosing(false);
     setExpanded(t?.prompt ? 'prompt' : t ? null : 'video');
   };
 
   const blocker = !source ? 'Добавь видео'
     : source.seconds == null || !(source.seconds > 0) ? 'Выбери другое видео'
+    : source.seconds < 4 ? 'Видео должно быть не короче 4 секунд'
     : refs.length === 0 ? 'Добавь фото' : null;
 
   const save = async () => {
@@ -145,8 +148,8 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
       if (!active.current) return;
       const d = addDraft({
         // Own-source drafts never inherit a catalogue trend.
-        templateId: trend?.id ?? CUSTOM_VIDEO_ID, templateSnapshot: trend ?? undefined, photoUri: photos[0], duration: Math.min(source.seconds, MAX_OUTPUT_SECONDS),
-        model, resolution, sourceVideoUri: videoUri, sourceVideoDurationSeconds: source.seconds,
+        templateId: trend?.id ?? CUSTOM_VIDEO_ID, templateSnapshot: trend ?? undefined, photoUri: photos[0], duration: Math.min(source.seconds, maxOutput),
+        model, modelFamily: family, resolution, sourceVideoUri: videoUri, sourceVideoDurationSeconds: source.seconds,
         referenceImageUris: photos, prompt,
       });
       if (!await persistDraft(d.id, {})) throw new Error('Хранилище недоступно. Материалы остались на экране; восстанови сохранение.');
@@ -201,6 +204,19 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
 
   return (
     <View style={{ gap: 10 }}>
+      <View accessibilityRole="radiogroup" accessibilityLabel="Модель Свапера"
+        style={[s.family, { backgroundColor: c.muted, borderColor: c.border }]}>
+        {GENERATION_FAMILIES.map(x => {
+          const selected = x.id === family;
+          return <Bouncy key={x.id} testID={`family-${x.id}`} accessibilityRole="radio"
+            accessibilityState={{ selected }} accessibilityLabel={x.label}
+            onPress={() => setFamily(x.id)} scaleTo={0.98}
+            style={[s.familyItem, selected && { backgroundColor: c.violet }]}>
+            <Feather name={x.icon} size={13} color={selected ? c.primaryForeground : c.violet} />
+            <Text numberOfLines={1} style={[s.familyText, { color: selected ? c.primaryForeground : c.foreground }]}>{x.label}</Text>
+          </Bouncy>;
+        })}
+      </View>
       <View accessibilityRole="radiogroup" style={[s.seg, { backgroundColor: c.muted, borderColor: c.border }]}>
         {GENERATION_MODELS.map((x) => {
           const on = x.id === model;
@@ -217,7 +233,6 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
         <View style={s.head}>
           <View style={{ flex: 1, gap: 4 }}>
             <Text style={[s.panelTitle, { color: c.foreground }]}>Материалы</Text>
-            <Text style={[s.hint, { color: c.mutedForeground }]}>Видео, фото и детали твоего танца</Text>
           </View>
           <Bouncy testID="reset-form" accessibilityLabel="Сбросить настройки" onPress={reset} style={[s.resetIcon, { backgroundColor: c.secondary }]}>
             <Feather name="rotate-ccw" size={17} color={c.violet} />
@@ -230,7 +245,7 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
           {source ? <View style={{ gap: 8 }}>
             <SourcePreview key={source.uri} uri={source.uri} height={wide ? 220 : 190} />
             <View style={s.line}>
-              <Text style={[s.meta, { color: c.foreground }]} numberOfLines={2}>{isOriginal && trend ? `Тренд «${trend.title}» · ` : 'Твоё видео · '}{source.seconds == null ? 'длительность неизвестна' : `${fmtSec(source.seconds)} · в работу ${fmtSec(Math.min(source.seconds, MAX_OUTPUT_SECONDS))}`}</Text>
+              <Text style={[s.meta, { color: c.foreground }]} numberOfLines={2}>{isOriginal && trend ? `Тренд «${trend.title}» · ` : 'Твоё видео · '}{source.seconds == null ? 'длительность неизвестна' : `${fmtSec(source.seconds)} · в работу ${fmtSec(Math.min(source.seconds, maxOutput))}`}</Text>
               {!isOriginal && original && <Sq id="restore-video" icon="corner-up-left" label="Вернуть видео тренда" onPress={() => { setSource(original); setError(null); }} />}
               <Sq id="replace-video" icon="refresh-cw" label="Заменить видео" onPress={pickVideo} />
               <Sq id="remove-video" icon="x" label="Убрать видео" onPress={() => setSource(null)} />
@@ -264,8 +279,11 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
                 return (
                   <Bouncy key={x.id} testID={`trend-${x.id}`} accessibilityLabel={`Тренд ${x.title}${on ? ', выбран' : ''}`} onPress={() => selectTrend(x)}
                     style={[s.tpl, { backgroundColor: c.muted, borderColor: on ? c.primary : c.border }]}>
-                    <Image source={x.videoPoster ?? x.image} style={{ flex: 1 }} contentFit="cover" />
-                    <Text numberOfLines={1} style={[s.tplText, { color: c.foreground }]}>{x.title}</Text>
+                    <Image source={x.videoPoster ?? x.image} style={s.tplImage} contentFit="cover" />
+                    <View pointerEvents="none" style={[s.tplCaption, { backgroundColor: c.stage }]}>
+                      <Feather name="play" size={13} color={c.stageForeground} />
+                      <Text numberOfLines={1} ellipsizeMode="tail" style={[s.tplText, { color: c.stageForeground }]}>{x.title}</Text>
+                    </View>
                   </Bouncy>
                 );
               })}
@@ -278,7 +296,7 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
           )}
           <View style={s.sourceNote}>
             <Feather name="info" size={14} color={c.mutedForeground} />
-            <Text style={[s.hint, { color: c.mutedForeground, flex: 1 }]}>Берутся первые {MAX_OUTPUT_SECONDS} сек, звук сохраняется.</Text>
+            <Text style={[s.hint, { color: c.mutedForeground, flex: 1 }]}>Берутся первые {maxOutput} сек{family === 'light' ? ', звук сохраняется' : ''}.{family === 'standard' && model === 'object-swap' ? ' Исходное видео — от 409 600 пикселей в кадре.' : ''}</Text>
           </View>
         </View>}
         </View>
@@ -348,9 +366,9 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
       </Bouncy>
       <View style={[s.note, { borderColor: c.border }]}>
         <Feather name="shield" size={14} color={c.mutedForeground} />
-        <Text style={[s.hint, { color: c.mutedForeground, flex: 1 }]}>Только черновик на этом устройстве: ничего не списывается. На следующем экране можно отдельно подтвердить запуск Light Swapper для оригинала каталога. Свои видео пока только сохраняются.</Text>
+        <Text style={[s.hint, { color: c.mutedForeground, flex: 1 }]}>Только черновик на этом устройстве: ничего не списывается. На следующем экране можно отдельно подтвердить запуск выбранной модели. Своё видео сначала нужно бесплатно проверить.</Text>
       </View>
-      <CostPreview resolution={resolution} seconds={source?.seconds} />
+      <CostPreview resolution={resolution} seconds={source?.seconds} family={family} />
     </View>
   );
 }
@@ -365,6 +383,9 @@ function Sq({ id, icon, label, onPress }: { id: string; icon: React.ComponentPro
 }
 
 const s = StyleSheet.create({
+  family: { alignSelf: 'center', width: '88%', maxWidth: 320, flexDirection: 'row', borderWidth: 1, borderRadius: 999, padding: 3, gap: 3 },
+  familyItem: { flex: 1, minHeight: 38, paddingHorizontal: 7, borderRadius: 999, flexDirection: 'row', gap: 5, alignItems: 'center', justifyContent: 'center' },
+  familyText: { fontFamily: F.bodyBold, fontSize: 11, lineHeight: 14, flexShrink: 1 },
   seg: { flexDirection: 'row', borderWidth: 1, borderRadius: 999, padding: 3, gap: 3 },
   segItem: { flex: 1, minHeight: 46, paddingHorizontal: 6, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   segText: { fontFamily: F.display, fontSize: 12, lineHeight: 15, textAlign: 'center' },
@@ -394,8 +415,10 @@ const s = StyleSheet.create({
   pickText: { fontFamily: F.bodyHeavy, fontSize: 13, flexShrink: 1 },
   ghost: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, minHeight: 36, justifyContent: 'center' },
   ghostText: { fontFamily: F.bodyBold, fontSize: 12 },
-  tpl: { width: 96, height: 136, borderRadius: 12, borderWidth: 2, overflow: 'hidden' },
-  tplText: { fontFamily: F.bodyHeavy, fontSize: 11, paddingHorizontal: 6, paddingVertical: 5 },
+  tpl: { width: 120, height: 136, borderRadius: 12, borderWidth: 2, overflow: 'hidden', flexShrink: 0 },
+  tplImage: { flex: 1, width: '100%' },
+  tplCaption: { minHeight: 32, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 6 },
+  tplText: { flex: 1, minWidth: 0, fontFamily: F.bodyHeavy, fontSize: 11, lineHeight: 14 },
   input: { minHeight: 96, maxHeight: 200, borderWidth: 1, borderRadius: 16, padding: 12, fontFamily: F.bodyBold, fontSize: 14, textAlignVertical: 'top' },
   count: { fontFamily: F.bodyHeavy, fontSize: 12, textAlign: 'right' },
   label: { fontFamily: F.bodyHeavy, fontSize: 14, paddingLeft: 4 },

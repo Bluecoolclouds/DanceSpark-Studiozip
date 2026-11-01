@@ -32,10 +32,11 @@ export const tap = (style: 'light' | 'medium' | 'heavy' = 'light') => {
 };
 
 export function Bouncy({
-  children, onPress, style, disabled, haptic = 'light', testID, accessibilityLabel, scaleTo = 0.94,
+  children, onPress, style, disabled, haptic = 'light', testID, accessibilityLabel, accessibilityRole = 'button', accessibilityState, scaleTo = 0.94,
 }: {
   children: React.ReactNode; onPress?: () => void; style?: StyleProp<ViewStyle>; disabled?: boolean;
   haptic?: 'light' | 'medium' | 'heavy'; testID?: string; accessibilityLabel?: string; scaleTo?: number;
+  accessibilityRole?: 'button' | 'radio'; accessibilityState?: { selected?: boolean; disabled?: boolean };
 }) {
   const s = useSharedValue(1);
   const reduced = useReducedMotion();
@@ -45,8 +46,9 @@ export function Bouncy({
   return (
     <AnimatedPressable
       testID={testID}
-      accessibilityRole="button"
+      accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
+      accessibilityState={accessibilityState}
       disabled={disabled}
       style={[style, a, focused && focusRing, disabled && { opacity: 0.45 }]}
       onFocus={() => setFocused(true)}
@@ -115,7 +117,7 @@ export function TemplateCard({ t, onPress, width, height = 280, previewPlayer, p
         <LinearGradient colors={[c.clear, c.scrim]} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0.5 }} end={{ x: 0, y: 1 }} />
       </Bouncy>
       <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-        <View style={s.cardTop}>
+        <View style={[s.cardTop, (t.videoUri || t.badge) && { justifyContent: 'flex-end' }]}>
           {!t.videoUri && !t.badge && <View style={[s.tag, { backgroundColor: col, borderColor: 'transparent' }]}>
             <Text style={[s.tagText, { color: onTone(c, t.color) }]}>{categoryLabel(t.category)}</Text>
           </View>}
@@ -124,11 +126,10 @@ export function TemplateCard({ t, onPress, width, height = 280, previewPlayer, p
         <View pointerEvents="none" style={s.cardBottom}>
           {t.badge && <View style={[s.newChip, { backgroundColor: c.accent }]}><Text style={[s.newText, { color: c.foreground }]}>{t.badge === 'new' ? 'Новинка' : 'Тренд'}</Text></View>}
           <Text style={[s.cardTitle, { color: c.stageForeground }]} numberOfLines={1}>{t.title}</Text>
-          <View style={s.row}>
-            {t.videoUri
-              ? <Feather name="play-circle" size={22} color={c.stageForeground} />
-              : <><Text style={[s.meta, { color: c.stageForeground }]}>{t.bpm} BPM · {t.dancer}</Text>{t.energy != null && <EnergyBars level={t.energy} color={col} />}</>}
-          </View>
+          {!t.videoUri && <View style={s.row}>
+            <Text style={[s.meta, { color: c.stageForeground }]}>{t.bpm} BPM · {t.dancer}</Text>
+            {t.energy != null && <EnergyBars level={t.energy} color={col} />}
+          </View>}
         </View>
       </View>
     </View>

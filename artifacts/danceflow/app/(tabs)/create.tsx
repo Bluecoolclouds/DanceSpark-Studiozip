@@ -34,7 +34,6 @@ function CreateScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const params = useLocalSearchParams<{ template?: string }>();
-  const [mode, setMode] = useState<'swap' | 'photo'>('swap');
   const top = Platform.OS === 'web' ? 67 : insets.top;
   // Only an explicit ?template= link preselects a trend; otherwise Create starts empty.
   const linkedQuery = useCatalogueTemplate(params.template);
@@ -48,38 +47,17 @@ function CreateScreen() {
         <View style={styles.hero}>
           <View pointerEvents="none" style={[styles.glow, { backgroundColor: c.secondary, right: width < 360 ? -20 : 0 }]} />
           <Image source={require('@/assets/images/create-dancer.png')} accessibilityLabel="Танцующий персонаж" contentFit="contain"
-            style={[styles.dancer, { width: width < 360 ? 150 : width < 400 ? 172 : 190, height: (width < 360 ? 150 : width < 400 ? 172 : 190) * 1.95, right: 0 }]} />
+            style={[styles.dancer, { width: width < 360 ? 150 : width < 400 ? 172 : 190, height: (width < 360 ? 150 : width < 400 ? 172 : 190) * 1.95, right: 12 }]} />
           <Feather name="star" size={18} color={c.sun} style={[styles.spark, { right: width < 360 ? 118 : 150, top: 58 }]} />
           <Feather name="star" size={12} color={c.violet} style={[styles.spark, { right: 6, top: 96 }]} />
-          <View style={styles.brandRow}>
-            <View style={[styles.brandMark, { backgroundColor: c.violet }]}><Feather name="music" size={13} color={c.primaryForeground} /></View>
-            <Text style={[styles.brand, { color: c.foreground }]}>Danceflow</Text>
-          </View>
           <Text style={[styles.title, { color: c.foreground, fontSize: width < 360 ? 30 : 36, lineHeight: width < 360 ? 32 : 38 }]}>Создай{'\n'}свой{'\n'}танец!</Text>
           <View style={[styles.swoosh, { backgroundColor: c.sun }]} />
         </View>
-        <View accessibilityRole="tablist" style={[styles.tabs, { borderColor: c.border, backgroundColor: c.card }]}>
-          {([['swap', 'Light Swapper', 'layers'], ['photo', 'Фото в танец · PixVerse', 'image']] as const).map(([k, label, icon]) => {
-            const on = mode === k;
-            return (
-              <Bouncy key={k} testID={`mode-${k}`} accessibilityLabel={`${label}${on ? ', выбрано' : ''}`} onPress={() => setMode(k)} scaleTo={0.97}
-                style={[styles.tab, on && { backgroundColor: c.violet }]}>
-                <Feather name={icon} size={14} color={on ? c.primaryForeground : c.foreground} />
-                <Text numberOfLines={1} style={[styles.tabText, { color: on ? c.primaryForeground : c.foreground }]}>{label}</Text>
-              </Bouncy>
-            );
-          })}
-        </View>
-        <View style={mode === 'swap' ? undefined : { display: 'none' }}>
-          {params.template && !linked ? (
-            <EmptyState icon="info" title={linkedQuery.isPending ? 'Загружаем танец…' : 'Танец недоступен'}
-              text="Для нового черновика нужен опубликованный танец. Сохранённые черновики остаются в студии."
-              action="Повторить" onAction={() => void linkedQuery.refetch()} />
-          ) : <SwapWorkspace key={linked?.id ?? 'empty'} initialTrend={linked} allowTrendPicker defaultModel="motion-transfer" variant="create" />}
-        </View>
-        <View style={mode === 'photo' ? undefined : { display: 'none' }}>
-          <PhotoDance />
-        </View>
+        {params.template && !linked ? (
+          <EmptyState icon="info" title={linkedQuery.isPending ? 'Загружаем танец…' : 'Танец недоступен'}
+            text="Для нового черновика нужен опубликованный танец. Сохранённые черновики остаются в студии."
+            action="Повторить" onAction={() => void linkedQuery.refetch()} />
+        ) : <SwapWorkspace key={linked?.id ?? 'empty'} initialTrend={linked} allowTrendPicker defaultModel="motion-transfer" variant="create" />}
       </View>
     </ScrollView>
     </View>
@@ -213,14 +191,8 @@ const styles = StyleSheet.create({
   glow: { position: 'absolute', top: 40, width: 190, height: 190, borderRadius: 95, opacity: 0.55 },
   dancer: { position: 'absolute', top: 6 },
   spark: { position: 'absolute' },
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 18 },
-  brandMark: { width: 26, height: 26, borderRadius: 8, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-8deg' }] },
-  brand: { fontFamily: F.bodyHeavy, fontSize: 16 },
   swoosh: { width: 96, height: 6, borderRadius: 3, marginTop: 8, transform: [{ rotate: '-3deg' }] },
   title: { fontFamily: F.display, letterSpacing: -1, maxWidth: '58%' },
-  tabs: { flexDirection: 'row', borderWidth: 1, borderRadius: 999, padding: 3, gap: 3 },
-  tab: { flex: 1, minHeight: 46, borderRadius: 999, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 8 },
-  tabText: { fontFamily: F.bodyHeavy, fontSize: 12, flexShrink: 1 },
   panel: { borderWidth: 1, borderRadius: 26, padding: 14, gap: 12 },
   label: { fontFamily: F.bodyHeavy, fontSize: 14 },
   photoRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },

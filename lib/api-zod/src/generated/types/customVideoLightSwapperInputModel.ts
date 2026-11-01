@@ -12,4 +12,6 @@ export type CustomVideoLightSwapperInputModel = typeof CustomVideoLightSwapperIn
 export const CustomVideoLightSwapperInputModel = {
   'higgsfield/genjutsu-light/motion-transfer/v10': 'higgsfield/genjutsu-light/motion-transfer/v1.0',
   'higgsfield/genjutsu-light/object-swap/v10': 'higgsfield/genjutsu-light/object-swap/v1.0',
+  'higgsfield/genjutsu/motion-transfer/v10': 'higgsfield/genjutsu/motion-transfer/v1.0',
+  'higgsfield/genjutsu/object-swap/v10': 'higgsfield/genjutsu/object-swap/v1.0',
 } as const;

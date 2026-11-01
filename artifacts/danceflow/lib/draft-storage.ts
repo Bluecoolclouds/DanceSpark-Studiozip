@@ -30,7 +30,8 @@ export function parseDrafts(raw: string, key = 'danceflow:drafts'): Draft[] {
       typeof draft.templateId !== 'string' ||
       typeof draft.photoUri !== 'string' ||
       typeof draft.duration !== 'number' ||
-      typeof draft.createdAt !== 'number';
+      typeof draft.createdAt !== 'number' ||
+      (draft.modelFamily !== undefined && draft.modelFamily !== 'light' && draft.modelFamily !== 'standard');
   })) {
     throw new CorruptDraftStorageError(key);
   }

@@ -12,7 +12,7 @@ import { photoStyleId } from '@/constants/photo-styles';
 import { useDance } from '@/context/DanceContext';
 import { useColors } from '@/hooks/useColors';
 import { CostPreview, RefGrid, SourcePreview, fmtSec, getModel } from '@/components/generation-form';
-import { MAX_OUTPUT_SECONDS } from '@/constants/generation';
+import { outputLimit } from '@/constants/generation';
 import { LightGeneration } from '@/components/light-generation';
 import { deleteVideoFromLibrary, saveVideoToLibrary, shareVideo, VideoLibraryPermissionError } from '@/lib/draft-videos';
 import { photoToDataUrl, readableVideoError } from '@/lib/video-generation';
@@ -34,7 +34,8 @@ export default function DraftScreen() {
   const { isSignedIn } = useDanceAuth();
   const d = drafts.find((x) => x.id === id);
   const t = d ? d.templateSnapshot ?? resolveDraftTemplate(d.templateId) : undefined;
-  const m = getModel(d?.model);
+  const m = getModel(d?.model, d?.modelFamily);
+  const maxOutput = outputLimit(d?.modelFamily);
   const top = Platform.OS === 'web' ? 67 : insets.top;
   const bottom = Platform.OS === 'web' ? 34 : insets.bottom;
   const statusQuery = useGetVideoGeneration(d?.generationRequestId ?? '', {
@@ -241,6 +242,7 @@ export default function DraftScreen() {
       )}
 
       <View style={[styles.summary, { backgroundColor: c.card, borderColor: c.border }]}>
+        {m && <Row k="Модель" v={d.modelFamily === 'standard' ? 'Свапер' : 'Лёгкий Свапер'} />}
         {m && <Row k="Режим" v={m.title} />}
         {m && d.resolution && <Row k="Качество" v={d.resolution} />}
         <Row k={m ? (isCustomVideoId(t.id) ? 'Источник' : 'Тренд') : 'Танец'} v={t.title} />
@@ -256,14 +258,14 @@ export default function DraftScreen() {
           {d.sourceVideoUri ? <SourcePreview uri={d.sourceVideoUri} height={260} /> : <Text style={[styles.emptyText, { color: c.mutedForeground }]}>Не сохранено.</Text>}
           {d.sourceVideoDurationSeconds != null && (
             <Text style={[styles.small, { color: c.mutedForeground }]}>
-              {fmtSec(d.sourceVideoDurationSeconds)}{d.sourceVideoDurationSeconds > MAX_OUTPUT_SECONDS ? ` · будут использованы первые ${MAX_OUTPUT_SECONDS} сек` : ''} · звук сохраняется
+              {fmtSec(d.sourceVideoDurationSeconds)}{d.sourceVideoDurationSeconds > maxOutput ? ` · будут использованы первые ${maxOutput} сек` : ''}{d.modelFamily !== 'standard' ? ' · звук сохраняется' : ''}
             </Text>
           )}
           <Text style={[styles.h, { color: c.foreground }]}>{m.referenceLabel} · {d.referenceImageUris?.length ?? 0}</Text>
           <RefGrid uris={d.referenceImageUris ?? [d.photoUri]} />
           <Text style={[styles.h, { color: c.foreground }]}>Подсказка</Text>
           <Text style={[styles.small, { color: d.prompt ? c.foreground : c.mutedForeground }]}>{d.prompt || 'Без подсказки'}</Text>
-          {d.resolution && <CostPreview resolution={d.resolution} seconds={d.sourceVideoDurationSeconds} />}
+          {d.resolution && <CostPreview resolution={d.resolution} seconds={d.sourceVideoDurationSeconds} family={d.modelFamily} />}
           <Text style={[styles.small, { color: c.mutedForeground }]}>Модель: {m.endpointId}</Text>
         </View>
       )}

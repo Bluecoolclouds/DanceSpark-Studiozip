@@ -60,6 +60,7 @@ export function lightRejectionReason(error: unknown): string {
     light_pricing_not_configured: 'Не настроены оценка расходов или длительность оригинала.',
     invalid_template: 'Танец больше не опубликован или недоступен.',
     original_unavailable: 'Оригинал видео недоступен.',
+    invalid_source_video: 'Видео не подходит модели: минимум 4 секунды; для обычной замены объекта — минимум 409 600 пикселей в кадре.',
     input_too_large: 'Общий размер фото превышает 12 МБ.',
     idempotency_conflict: 'Этот черновик уже отправлялся с другими настройками.',
   };
