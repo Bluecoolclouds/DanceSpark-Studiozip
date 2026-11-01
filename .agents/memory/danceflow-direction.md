@@ -86,6 +86,12 @@ The Create page and a selected trend use the same compact input workflow, but Cr
 
 **How to apply:** Keep explicit source selection on Create, one trend chooser, and an editable prefilled workspace on trend pages. Preserve the separate PixVerse photo-to-video option and the distinction between saving a local draft and launching paid generation.
 
+For the Create header, match the supplied reference's composition, not just its purple palette and dancer character.
+
+**Why:** The user rejected the first loose interpretation with a full-body thumbnail and disconnected headline, then repeated the cropped header reference.
+
+**How to apply:** Keep the brand at the top, a compact left-aligned headline, and a large upper-body character crop on the right; avoid returning to the rejected full-body arrangement.
+
 Приоритет пользователя — выпустить Android-приложение Danceflow в RuStore.
 
 **Why:** Пользователь обозначил цель: «хотя бы приложение на ру стор выпустить».

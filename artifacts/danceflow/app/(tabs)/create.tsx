@@ -46,16 +46,17 @@ function CreateScreen() {
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingTop: top + 12, paddingBottom: 130 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={[styles.wrap, { maxWidth: width >= 900 ? 720 : 640 }]}>
         <View style={styles.hero}>
-          <View style={[styles.blob, { backgroundColor: c.secondary }]} />
-          <View style={[styles.blob2, { backgroundColor: c.accent }]} />
-          <View style={styles.heroCopy}>
-            <Text style={[styles.brand, { color: c.violet }]}>Danceflow</Text>
-            <Text style={[styles.title, { color: c.foreground, fontSize: width < 360 ? 27 : 32 }]}>Создай{'\n'}свой{'\n'}<Text style={{ color: c.tint }}>танец!</Text></Text>
-            <View style={[styles.swoosh, { backgroundColor: c.sun }]} />
+          <View pointerEvents="none" style={[styles.glow, { backgroundColor: c.secondary, right: width < 360 ? -20 : 0 }]} />
+          <Image source={require('@/assets/images/create-dancer.png')} accessibilityLabel="Танцующий персонаж" contentFit="contain"
+            style={[styles.dancer, { width: width < 360 ? 150 : width < 400 ? 172 : 190, height: (width < 360 ? 150 : width < 400 ? 172 : 190) * 1.95, right: 0 }]} />
+          <Feather name="star" size={18} color={c.sun} style={[styles.spark, { right: width < 360 ? 118 : 150, top: 58 }]} />
+          <Feather name="star" size={12} color={c.violet} style={[styles.spark, { right: 6, top: 96 }]} />
+          <View style={styles.brandRow}>
+            <View style={[styles.brandMark, { backgroundColor: c.violet }]}><Feather name="music" size={13} color={c.primaryForeground} /></View>
+            <Text style={[styles.brand, { color: c.foreground }]}>Danceflow</Text>
           </View>
-          <Image source={require('@/assets/images/create-dancer.png')} style={[styles.dancer, { width: width < 360 ? 130 : 160 }]} contentFit="contain" accessibilityLabel="Танцующий персонаж" />
-          <Feather name="star" size={22} color={c.sun} style={styles.star1} />
-          <Feather name="music" size={16} color={c.violet} style={styles.star2} />
+          <Text style={[styles.title, { color: c.foreground, fontSize: width < 360 ? 30 : 36, lineHeight: width < 360 ? 32 : 38 }]}>Создай{'\n'}свой{'\n'}танец!</Text>
+          <View style={[styles.swoosh, { backgroundColor: c.sun }]} />
         </View>
         <View accessibilityRole="tablist" style={[styles.tabs, { borderColor: c.border, backgroundColor: c.card }]}>
           {([['swap', 'Light Swapper', 'layers'], ['photo', 'Фото в танец · PixVerse', 'image']] as const).map(([k, label, icon]) => {
@@ -208,16 +209,15 @@ function PhotoDance() {
 
 const styles = StyleSheet.create({
   wrap: { width: '100%', alignSelf: 'center', paddingHorizontal: 16, gap: 12 },
-  hero: { minHeight: 210, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
-  heroCopy: { flex: 1, paddingBottom: 18, gap: 6, zIndex: 2 },
-  brand: { fontFamily: F.bodyHeavy, fontSize: 14 },
-  blob: { position: 'absolute', right: -10, top: 20, width: 180, height: 180, borderRadius: 90, opacity: 0.9 },
-  blob2: { position: 'absolute', right: 120, bottom: 10, width: 60, height: 60, borderRadius: 30, opacity: 0.8 },
-  swoosh: { width: 110, height: 7, borderRadius: 4, transform: [{ rotate: '-4deg' }] },
-  dancer: { height: 220, marginRight: -6 },
-  star1: { position: 'absolute', right: 150, top: 26 },
-  star2: { position: 'absolute', right: 8, top: 40 },
-  title: { fontFamily: F.display, fontSize: 32, lineHeight: 36, letterSpacing: -0.9, flexShrink: 1 },
+  hero: { height: 222, overflow: 'hidden', paddingTop: 4, marginHorizontal: -16, paddingHorizontal: 16, marginBottom: -4 },
+  glow: { position: 'absolute', top: 40, width: 190, height: 190, borderRadius: 95, opacity: 0.55 },
+  dancer: { position: 'absolute', top: 6 },
+  spark: { position: 'absolute' },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 18 },
+  brandMark: { width: 26, height: 26, borderRadius: 8, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-8deg' }] },
+  brand: { fontFamily: F.bodyHeavy, fontSize: 16 },
+  swoosh: { width: 96, height: 6, borderRadius: 3, marginTop: 8, transform: [{ rotate: '-3deg' }] },
+  title: { fontFamily: F.display, letterSpacing: -1, maxWidth: '58%' },
   tabs: { flexDirection: 'row', borderWidth: 1, borderRadius: 999, padding: 3, gap: 3 },
   tab: { flex: 1, minHeight: 46, borderRadius: 999, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 8 },
   tabText: { fontFamily: F.bodyHeavy, fontSize: 12, flexShrink: 1 },
