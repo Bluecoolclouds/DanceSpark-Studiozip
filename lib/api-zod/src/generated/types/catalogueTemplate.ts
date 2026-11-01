@@ -6,12 +6,17 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CatalogueInput } from './catalogueInput';
+import type { CatalogueTemplateBadge } from './catalogueTemplateBadge';
 
-export type CatalogueTemplate = CatalogueInput & {
+export type CatalogueTemplate = CatalogueInput & ({
   id: string;
   imageUri: string;
   videoUri: string;
   videoPosterUri?: string;
   exampleResultUri?: string;
   referenceImageUris: string[];
-};
+  /** @nullable */
+  publishedAt: Date | null;
+  /** @nullable */
+  badge: CatalogueTemplateBadge;
+});

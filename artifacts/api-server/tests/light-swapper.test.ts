@@ -36,7 +36,7 @@ beforeEach(async () => {
   process.env.CLOUDFLARE_R2_BUCKET_NAME = "test-media";
   process.env.CLOUDFLARE_R2_ACCESS_KEY_ID = "synthetic-id";
   process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY = "synthetic-secret";
-  await pool.query("TRUNCATE df_jobs,df_accounts,df_controls,df_admin_audit,dance_catalogue");
+  await pool.query("TRUNCATE df_jobs,df_accounts,df_controls,df_admin_audit,dance_catalogue_opens,dance_catalogue");
   await pool.query(`INSERT INTO df_controls(id,paused,max_concurrent,per_user_concurrent,max_daily_spend_rub,cost_per_generation_rub)
     VALUES(1,false,10,5,100,10)`);
   await pool.query(`INSERT INTO df_accounts(id,email,plan,subscription_until)

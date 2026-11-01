@@ -2,6 +2,7 @@
 
 export type Category = 'kpop' | 'street' | 'disco' | 'trend';
 export type ColorKey = 'primary' | 'secondary' | 'accent' | 'violet' | 'sun';
+export type DanceBadge = 'new' | 'trending' | null;
 
 export interface DanceTemplate {
   id: string;
@@ -22,7 +23,7 @@ export interface DanceTemplate {
   prompt?: string;
   exampleResultUri?: string;
   color: ColorKey;
-  isNew?: boolean;
+  badge?: DanceBadge;
 }
 
 const pop = require('@/assets/images/dance-pop.png');
@@ -48,7 +49,7 @@ const LEGACY_TEMPLATES: DanceTemplate[] = [
     description: 'Яркий K-pop припев с резкими акцентами рук и прыжком на финале. Подходит для фото в полный рост.',
     bpm: 128, energy: 5, durations: [5, 10, 15],
     moves: ['Кулак вверх на счёт раз', 'Волна плечами', 'Шаг-крест с разворотом', 'Финальная поза-звезда'],
-    image: pop, color: 'primary', isNew: true,
+    image: pop, color: 'primary',
   },
   {
     id: 'lime-voltage', title: 'Lime Voltage', dancer: 'Рэй', category: 'street',
@@ -64,7 +65,7 @@ const LEGACY_TEMPLATES: DanceTemplate[] = [
     description: 'Плавные руки, хай-кик и сияющий пол-шестиугольник. Танец для селфи и портретов.',
     bpm: 118, energy: 3, durations: [10, 15],
     moves: ['Руки-крылья', 'Хай-кик вправо', 'Диско-палец', 'Поворот на носке'],
-    image: hero, color: 'violet', isNew: true,
+    image: hero, color: 'violet',
   },
   {
     id: 'confetti-cannon', title: 'Confetti Cannon', dancer: 'Мика', category: 'trend',
@@ -144,7 +145,6 @@ const COMPATIBILITY_TEMPLATES: DanceTemplate[] = uploaded.map((item, index) => (
   prompt: 'prompt' in item ? item.prompt : undefined,
   exampleResultUri: 'exampleResultUri' in item ? item.exampleResultUri : undefined,
   color: item.color,
-  isNew: true,
 }));
 
 // Compatibility metadata is only for saved drafts, never a live catalogue fallback.

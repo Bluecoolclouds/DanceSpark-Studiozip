@@ -1,6 +1,7 @@
 import "./helpers/setup.mjs";
 import assert from "node:assert/strict";
 import { test, mock, afterEach } from "node:test";
+import { createHash, randomUUID } from "node:crypto";
 import express from "express";
 import type { AddressInfo } from "node:net";
 import { S3Client } from "@aws-sdk/client-s3";
@@ -14,6 +15,7 @@ import { CreateVideoGenerationBody } from "@workspace/api-zod";
 import { PHOTO_STYLE_IDS, photoStyleId } from "../../danceflow/constants/photo-styles";
 import app from "../src/app";
 import { logger } from "../src/lib/logger";
+import { CATALOGUE_FRESH_WINDOW_MS, catalogueBadge, trendingCatalogueIds } from "../src/lib/catalogue-badges";
 
 const pool = isolatedDatabase();
 const input: CatalogueInput = { ...initialCatalogue[0].metadata } as CatalogueInput;
@@ -40,6 +42,20 @@ test("editorial recommendations have exact unchanged order across pages, indepen
   shuffled.find(t => t.id === "trend-03")!.published = false;
   assert.deepEqual(cataloguePage(shuffled, { section: "recommended" }).items.map(t => t.id), ["trend-06", "trend-01"]);
 });
+test("computed badges enforce the seven-day window, trending top three, and new-first priority", () => {
+  const now = new Date("2026-11-01T12:00:00.000Z");
+  assert.equal(catalogueBadge(true, new Date(now.getTime() - CATALOGUE_FRESH_WINDOW_MS), true, now), "new");
+  assert.equal(catalogueBadge(true, new Date(now.getTime() - CATALOGUE_FRESH_WINDOW_MS - 1), true, now), "trending");
+  assert.equal(catalogueBadge(true, null, false, now), null);
+  assert.equal(catalogueBadge(false, now, true, now), null);
+  assert.deepEqual(trendingCatalogueIds([
+    { catalogueId: "delta", uniqueOpens: 4 },
+    { catalogueId: "charlie", uniqueOpens: 9 },
+    { catalogueId: "bravo", uniqueOpens: 12 },
+    { catalogueId: "alpha", uniqueOpens: 9 },
+    { catalogueId: "empty", uniqueOpens: 0 },
+  ]), ["bravo", "alpha", "charlie"]);
+});
 test("stable keyset pages, tied order, final page and stale cursor after removal", () => {
   const items = records.map(t => ({ ...t, sortOrder: 0 }));
   const first = cataloguePage(items, { limit: 4 });
@@ -64,7 +80,9 @@ test("search and category and BPM filters cover the whole catalogue before pagin
   assert.deepEqual(cataloguePage(items, { speed: "hype" }).items.map(t => t.id), ["trend-03", "trend-04", "trend-05", "trend-06"]);
   assert.deepEqual(cataloguePage([], {}), { items: [], total: 0, hasNextPage: false, nextCursor: null });
   assert.equal(cataloguePage(items.map(t => ({ ...t, published: false })), {}).total, 0);
-  assert.equal(cataloguePage(items.map(t => ({ ...t, isNew: false })), { section: "featured" }).total, 0);
+  assert.equal(cataloguePage(items, { section: "featured" }).total, 0);
+  const badges = items.map((t, i) => ({ ...t, badge: i === 1 ? "new" as const : i === 2 ? "trending" as const : null }));
+  assert.deepEqual(cataloguePage(badges, { section: "featured" }).items.map(t => t.id), ["trend-02"]);
 });
 async function serve(application: express.Express, work: (root: string) => Promise<void>) {
   const server = application.listen(0, "127.0.0.1");
@@ -140,11 +158,54 @@ test("create, edit, reject missing originals, publish and unpublish dynamic id; 
     mock.method(S3Client.prototype, "send", async () => ({ ETag: '"file"', ContentLength: 100 }));
     response = await send({ ...input, title: "Серверный танец", published: true });
     assert.equal(response.status, 200);
-    const detail = await (await fetch(`${root}/catalogue/${created.id}`)).json();
+    let detail = await (await fetch(`${root}/catalogue/${created.id}`)).json();
     assert.equal(detail.title, "Серверный танец");
+    assert.equal(detail.badge, "new");
+    assert.ok(detail.publishedAt);
+    const visitorToken = "77777777-7777-4777-8777-777777777777";
+    for (let i = 0; i < 2; i++) {
+      const open = await fetch(`${root}/catalogue/${created.id}/open`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visitorToken }),
+      });
+      assert.equal(open.status, 204);
+    }
+    const opens = await pool.query("SELECT visitor_hash FROM dance_catalogue_opens WHERE catalogue_id=$1", [created.id]);
+    assert.equal(opens.rowCount, 1);
+    assert.equal(opens.rows[0].visitor_hash, createHash("sha256").update(visitorToken).digest("hex"));
+    assert.notEqual(opens.rows[0].visitor_hash, visitorToken);
+    await pool.query("UPDATE dance_catalogue SET published_at=now()-interval '8 days' WHERE id=$1", [created.id]);
+    detail = await (await fetch(`${root}/catalogue/${created.id}`)).json();
+    assert.equal(detail.badge, "trending");
+    for (const [id, visitorCount] of [["trend-01", 3], ["trend-03", 2], ["trend-04", 2], ["trend-05", 1]] as const) {
+      for (let i = 0; i < visitorCount; i++) {
+        const open = await fetch(`${root}/catalogue/${id}/open`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ visitorToken: randomUUID() }),
+        });
+        assert.equal(open.status, 204);
+      }
+    }
+    await pool.query(`UPDATE dance_catalogue SET published_at=now()-interval '8 days'
+      WHERE id IN ('trend-01','trend-03','trend-04','trend-05')`);
+    const ranked = await (await fetch(`${root}/catalogue?limit=50`)).json();
+    assert.deepEqual(ranked.items.filter((item: any) => item.badge === "trending").map((item: any) => item.id).sort(),
+      ["trend-01", "trend-03", "trend-04"]);
+    assert.equal(ranked.items.find((item: any) => item.id === "trend-05").badge, null);
+    assert.equal(ranked.items.find((item: any) => item.id === created.id).badge, null);
+    assert.equal((await fetch(`${root}/catalogue/${created.id}/open`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visitorToken: "not-a-uuid" }),
+    })).status, 400);
     assert.equal((await send({ ...input, sourceDurationSeconds: null, published: true })).status, 400);
     assert.equal((await send({ ...input, published: false })).status, 200);
     assert.equal((await fetch(`${root}/catalogue/${created.id}`)).status, 404);
+    assert.equal((await fetch(`${root}/catalogue/${created.id}/open`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visitorToken }),
+    })).status, 404);
+    const unpublished = await pool.query("SELECT published_at FROM dance_catalogue WHERE id=$1", [created.id]);
+    assert.equal(unpublished.rows[0].published_at, null);
     assert.equal((await fetch(`${root}/dance-templates/${created.id}/video.mp4`)).status, 404);
     assert.equal((await send({ ...input, title: "" })).status, 400);
     assert.equal((await fetch(`${root}/catalogue?limit=0`)).status, 400);

@@ -116,13 +116,13 @@ export function TemplateCard({ t, onPress, width, height = 280, previewPlayer, p
       </Bouncy>
       <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
         <View style={s.cardTop}>
-          {!t.videoUri && <View style={[s.tag, { backgroundColor: col, borderColor: 'transparent' }]}>
+          {!t.videoUri && !t.badge && <View style={[s.tag, { backgroundColor: col, borderColor: 'transparent' }]}>
             <Text style={[s.tagText, { color: onTone(c, t.color) }]}>{categoryLabel(t.category)}</Text>
           </View>}
           <FavButton id={t.id} size={36} />
         </View>
         <View pointerEvents="none" style={s.cardBottom}>
-          {t.isNew && <View style={[s.newChip, { backgroundColor: c.accent }]}><Text style={[s.newText, { color: c.foreground }]}>Новинка</Text></View>}
+          {t.badge && <View style={[s.newChip, { backgroundColor: c.accent }]}><Text style={[s.newText, { color: c.foreground }]}>{t.badge === 'new' ? 'Новинка' : 'Тренд'}</Text></View>}
           <Text style={[s.cardTitle, { color: c.stageForeground }]} numberOfLines={1}>{t.title}</Text>
           <View style={s.row}>
             {t.videoUri

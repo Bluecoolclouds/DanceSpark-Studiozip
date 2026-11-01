@@ -41,21 +41,21 @@ const COLOR_LABEL: Record<string, string> = { primary: 'Основной', secon
 
 type Form = {
   title: string; dancer: string; category: CatalogueInput['category']; tagline: string; description: string;
-  bpm: string; energy: string; durations: string; moves: string; color: CatalogueInput['color']; isNew: boolean;
+  bpm: string; energy: string; durations: string; moves: string; color: CatalogueInput['color'];
   sourceDurationSeconds: string; published: boolean; sortOrder: string; referenceCount: string;
   hasVideoPoster: boolean; hasExample: boolean; prompt: string;
 };
 
 const EMPTY: Form = {
   title: '', dancer: '', category: 'trend', tagline: '', description: '', bpm: '', energy: '', durations: '5, 10',
-  moves: '', color: 'primary', isNew: true, sourceDurationSeconds: '', published: false, sortOrder: '0',
+  moves: '', color: 'primary', sourceDurationSeconds: '', published: false, sortOrder: '0',
   referenceCount: '0', hasVideoPoster: false, hasExample: false, prompt: '',
 };
 
 const toForm = (t: CatalogueTemplate): Form => ({
   title: t.title, dancer: t.dancer, category: t.category, tagline: t.tagline, description: t.description,
   bpm: t.bpm === null ? '' : String(t.bpm), energy: t.energy === null ? '' : String(t.energy),
-  durations: t.durations.join(', '), moves: t.moves.join('\n'), color: t.color, isNew: t.isNew,
+  durations: t.durations.join(', '), moves: t.moves.join('\n'), color: t.color,
   sourceDurationSeconds: t.sourceDurationSeconds === null ? '' : String(t.sourceDurationSeconds),
   published: t.published, sortOrder: String(t.sortOrder), referenceCount: String(t.referenceCount),
   hasVideoPoster: t.hasVideoPoster, hasExample: t.hasExample, prompt: t.prompt,
@@ -103,7 +103,7 @@ function validate(f: Form): { input?: CatalogueInput; errors: Partial<Record<key
     errors: e,
     input: {
       title, dancer: f.dancer.trim(), category: f.category, tagline: f.tagline.trim(), description: f.description.trim(),
-      bpm, energy, durations, moves, color: f.color, isNew: f.isNew, sourceDurationSeconds: src, published: f.published,
+      bpm, energy, durations, moves, color: f.color, sourceDurationSeconds: src, published: f.published,
       sortOrder, referenceCount, hasVideoPoster: f.hasVideoPoster, hasExample: f.hasExample, prompt: f.prompt,
     },
   };
@@ -347,7 +347,6 @@ export default function CataloguePage() {
                 <Field label="Промпт генерации" error={errors.prompt}><textarea rows={4} className={cn(inputCls, 'font-mono text-xs')} value={form.prompt} onChange={(e) => set('prompt', e.target.value)} data-testid="input-prompt" /></Field>
 
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <Toggle id="is-new" label="Метка «Новое»" checked={form.isNew} onChange={(v) => set('isNew', v)} />
                   <Toggle id="has-video-poster" label="Есть постер референса" checked={form.hasVideoPoster} onChange={(v) => set('hasVideoPoster', v)} />
                   <Toggle id="has-example" label="Есть пример результата" checked={form.hasExample} onChange={(v) => set('hasExample', v)} />
                   <Toggle id="published" label={selected === 'new' ? 'Опубликовать (после загрузки)' : 'Опубликовано'} checked={form.published} disabled={selected === 'new'} onChange={(v) => set('published', v)} />

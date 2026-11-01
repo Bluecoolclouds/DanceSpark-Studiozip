@@ -15,6 +15,7 @@ export function fromCatalogue(t: CatalogueTemplate): DanceTemplate {
     videoPoster: t.videoPosterUri ? { uri: absolute(t.videoPosterUri) } : undefined,
     referenceImageUris: t.referenceImageUris.map(absolute),
     exampleResultUri: t.exampleResultUri ? absolute(t.exampleResultUri) : undefined,
+    badge: t.badge,
   };
 }
 

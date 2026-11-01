@@ -23,4 +23,5 @@ export * from "./dance-jobs";
 export * from "./dance-audit";
 export * from "./dance-video-generations";
 export * from "./dance-catalogue";
+export * from "./dance-catalogue-opens";
 export * from "./dance-auth-identities";

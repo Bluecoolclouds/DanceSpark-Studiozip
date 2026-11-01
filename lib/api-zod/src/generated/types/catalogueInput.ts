@@ -46,7 +46,6 @@ export interface CatalogueInput {
      */
   moves: string[];
   color: CatalogueInputColor;
-  isNew: boolean;
   /**
      * @minimum 0.1
      * @maximum 300

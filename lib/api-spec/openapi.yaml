@@ -104,6 +104,20 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/CatalogueTemplate" }
         "404": { description: Not published }
+  /catalogue/{id}/open:
+    post:
+      operationId: recordCatalogueOpen
+      description: Records a unique published-template detail open for a rotating anonymous visitor token.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CatalogueOpenInput" }
+      responses:
+        "204": { description: Open recorded or already counted in the current window }
+        "404": { description: Not published }
   /admin/catalogue:
     get:
       operationId: listAdminCatalogue
@@ -648,7 +662,7 @@ components:
         sizeBytes: { type: integer, minimum: 1, maximum: 104857600 }
     CatalogueInput:
       type: object
-      required: [title, dancer, category, tagline, description, bpm, energy, durations, moves, color, isNew, sourceDurationSeconds, published, sortOrder, referenceCount, hasVideoPoster, hasExample, prompt]
+      required: [title, dancer, category, tagline, description, bpm, energy, durations, moves, color, sourceDurationSeconds, published, sortOrder, referenceCount, hasVideoPoster, hasExample, prompt]
       properties:
         title: { type: string, minLength: 1, maxLength: 200 }
         dancer: { type: string, maxLength: 200 }
@@ -660,7 +674,6 @@ components:
         durations: { type: array, minItems: 1, maxItems: 20, items: { type: integer, minimum: 1, maximum: 300 } }
         moves: { type: array, maxItems: 50, items: { type: string, maxLength: 500 } }
         color: { type: string, enum: [primary, secondary, accent, violet, sun] }
-        isNew: { type: boolean }
         sourceDurationSeconds: { type: [number, "null"], minimum: 0.1, maximum: 300 }
         published: { type: boolean }
         sortOrder: { type: integer, minimum: 0, maximum: 1000000 }
@@ -672,7 +685,7 @@ components:
       allOf:
         - { $ref: "#/components/schemas/CatalogueInput" }
         - type: object
-          required: [id, imageUri, videoUri, referenceImageUris]
+          required: [id, imageUri, videoUri, referenceImageUris, publishedAt, badge]
           properties:
             id: { type: string }
             imageUri: { type: string }
@@ -680,6 +693,14 @@ components:
             videoPosterUri: { type: string }
             exampleResultUri: { type: string }
             referenceImageUris: { type: array, items: { type: string } }
+            publishedAt: { type: ["string", "null"], format: date-time }
+            badge: { type: ["string", "null"], enum: [new, trending, null] }
+    CatalogueOpenInput:
+      type: object
+      additionalProperties: false
+      required: [visitorToken]
+      properties:
+        visitorToken: { type: string, format: uuid }
     CataloguePage:
       type: object
       required: [items, nextCursor, hasNextPage, total]

@@ -8,6 +8,7 @@ const template = {
   id: 'dance-server-only', title: 'Новый танец', category: 'trend', color: 'primary',
   bpm: null, energy: null, imageUri: '/api/dance-templates/dance-server-only/poster.jpg',
   videoUri: '/api/dance-templates/dance-server-only/video.mp4', referenceImageUris: [],
+  publishedAt: null, badge: 'trending',
   sourceDurationSeconds: 12, durations: [10], moves: [],
 };
 test('server-only dances and original video links survive page merging without duplicates', () => {
@@ -15,6 +16,7 @@ test('server-only dances and original video links survive page merging without d
   const items = mergeCataloguePages([{ items: [template] }, { items: [template, { ...template, id: 'next' }] }]);
   assert.deepEqual(items.map(t => t.id), ['dance-server-only', 'next']);
   assert.equal(items[0].videoUri, 'https://dance.example.invalid/api/dance-templates/dance-server-only/video.mp4');
+  assert.equal(items[0].badge, 'trending');
   assert.deepEqual(mergeCataloguePages([]), []);
   assert.deepEqual(mergeCataloguePages([{ items: [] }]), []);
 });

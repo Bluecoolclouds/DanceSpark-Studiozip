@@ -135,7 +135,6 @@ export const ListCatalogueResponse = zod.object({
   "durations": zod.array(zod.number().int().min(1).max(listCatalogueResponseItemsItemOneDurationsItemMax)).min(1).max(listCatalogueResponseItemsItemOneDurationsMax),
   "moves": zod.array(zod.string().max(listCatalogueResponseItemsItemOneMovesItemMax)).max(listCatalogueResponseItemsItemOneMovesMax),
   "color": zod.enum(['primary', 'secondary', 'accent', 'violet', 'sun']),
-  "isNew": zod.boolean(),
   "sourceDurationSeconds": zod.number().min(listCatalogueResponseItemsItemOneSourceDurationSecondsMin).max(listCatalogueResponseItemsItemOneSourceDurationSecondsMax).nullable(),
   "published": zod.boolean(),
   "sortOrder": zod.number().int().min(listCatalogueResponseItemsItemOneSortOrderMin).max(listCatalogueResponseItemsItemOneSortOrderMax),
@@ -149,7 +148,9 @@ export const ListCatalogueResponse = zod.object({
   "videoUri": zod.string(),
   "videoPosterUri": zod.string().optional(),
   "exampleResultUri": zod.string().optional(),
-  "referenceImageUris": zod.array(zod.string())
+  "referenceImageUris": zod.array(zod.string()),
+  "publishedAt": zod.coerce.date().nullable(),
+  "badge": zod.union([zod.literal('new'),zod.literal('trending'),zod.literal(null)]).nullable()
 }))),
   "nextCursor": zod.string().nullable(),
   "hasNextPage": zod.boolean(),
@@ -205,7 +206,6 @@ export const GetCatalogueTemplateResponse = zod.object({
   "durations": zod.array(zod.number().int().min(1).max(getCatalogueTemplateResponseOneDurationsItemMax)).min(1).max(getCatalogueTemplateResponseOneDurationsMax),
   "moves": zod.array(zod.string().max(getCatalogueTemplateResponseOneMovesItemMax)).max(getCatalogueTemplateResponseOneMovesMax),
   "color": zod.enum(['primary', 'secondary', 'accent', 'violet', 'sun']),
-  "isNew": zod.boolean(),
   "sourceDurationSeconds": zod.number().min(getCatalogueTemplateResponseOneSourceDurationSecondsMin).max(getCatalogueTemplateResponseOneSourceDurationSecondsMax).nullable(),
   "published": zod.boolean(),
   "sortOrder": zod.number().int().min(getCatalogueTemplateResponseOneSortOrderMin).max(getCatalogueTemplateResponseOneSortOrderMax),
@@ -219,8 +219,24 @@ export const GetCatalogueTemplateResponse = zod.object({
   "videoUri": zod.string(),
   "videoPosterUri": zod.string().optional(),
   "exampleResultUri": zod.string().optional(),
-  "referenceImageUris": zod.array(zod.string())
+  "referenceImageUris": zod.array(zod.string()),
+  "publishedAt": zod.coerce.date().nullable(),
+  "badge": zod.union([zod.literal('new'),zod.literal('trending'),zod.literal(null)]).nullable()
 }))
+
+
+/**
+ * Records a unique published-template detail open for a rotating anonymous visitor token.
+ */
+export const RecordCatalogueOpenParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const RecordCatalogueOpenBody = zod.object({
+  "visitorToken": zod.string().uuid()
+})
+
+export const RecordCatalogueOpenResponse = zod.void()
 
 
 export const listAdminCatalogueResponseOneTitleMax = 200;
@@ -267,7 +283,6 @@ export const ListAdminCatalogueResponseItem = zod.object({
   "durations": zod.array(zod.number().int().min(1).max(listAdminCatalogueResponseOneDurationsItemMax)).min(1).max(listAdminCatalogueResponseOneDurationsMax),
   "moves": zod.array(zod.string().max(listAdminCatalogueResponseOneMovesItemMax)).max(listAdminCatalogueResponseOneMovesMax),
   "color": zod.enum(['primary', 'secondary', 'accent', 'violet', 'sun']),
-  "isNew": zod.boolean(),
   "sourceDurationSeconds": zod.number().min(listAdminCatalogueResponseOneSourceDurationSecondsMin).max(listAdminCatalogueResponseOneSourceDurationSecondsMax).nullable(),
   "published": zod.boolean(),
   "sortOrder": zod.number().int().min(listAdminCatalogueResponseOneSortOrderMin).max(listAdminCatalogueResponseOneSortOrderMax),
@@ -281,7 +296,9 @@ export const ListAdminCatalogueResponseItem = zod.object({
   "videoUri": zod.string(),
   "videoPosterUri": zod.string().optional(),
   "exampleResultUri": zod.string().optional(),
-  "referenceImageUris": zod.array(zod.string())
+  "referenceImageUris": zod.array(zod.string()),
+  "publishedAt": zod.coerce.date().nullable(),
+  "badge": zod.union([zod.literal('new'),zod.literal('trending'),zod.literal(null)]).nullable()
 }))
 export const ListAdminCatalogueResponse = zod.array(ListAdminCatalogueResponseItem)
 
@@ -330,7 +347,6 @@ export const CreateCatalogueTemplateBody = zod.object({
   "durations": zod.array(zod.number().int().min(1).max(createCatalogueTemplateBodyDurationsItemMax)).min(1).max(createCatalogueTemplateBodyDurationsMax),
   "moves": zod.array(zod.string().max(createCatalogueTemplateBodyMovesItemMax)).max(createCatalogueTemplateBodyMovesMax),
   "color": zod.enum(['primary', 'secondary', 'accent', 'violet', 'sun']),
-  "isNew": zod.boolean(),
   "sourceDurationSeconds": zod.number().min(createCatalogueTemplateBodySourceDurationSecondsMin).max(createCatalogueTemplateBodySourceDurationSecondsMax).nullable(),
   "published": zod.boolean(),
   "sortOrder": zod.number().int().min(createCatalogueTemplateBodySortOrderMin).max(createCatalogueTemplateBodySortOrderMax),
@@ -384,7 +400,6 @@ export const CreateCatalogueTemplateResponse = zod.object({
   "durations": zod.array(zod.number().int().min(1).max(createCatalogueTemplateResponseOneDurationsItemMax)).min(1).max(createCatalogueTemplateResponseOneDurationsMax),
   "moves": zod.array(zod.string().max(createCatalogueTemplateResponseOneMovesItemMax)).max(createCatalogueTemplateResponseOneMovesMax),
   "color": zod.enum(['primary', 'secondary', 'accent', 'violet', 'sun']),
-  "isNew": zod.boolean(),
   "sourceDurationSeconds": zod.number().min(createCatalogueTemplateResponseOneSourceDurationSecondsMin).max(createCatalogueTemplateResponseOneSourceDurationSecondsMax).nullable(),
   "published": zod.boolean(),
   "sortOrder": zod.number().int().min(createCatalogueTemplateResponseOneSortOrderMin).max(createCatalogueTemplateResponseOneSortOrderMax),
@@ -398,7 +413,9 @@ export const CreateCatalogueTemplateResponse = zod.object({
   "videoUri": zod.string(),
   "videoPosterUri": zod.string().optional(),
   "exampleResultUri": zod.string().optional(),
-  "referenceImageUris": zod.array(zod.string())
+  "referenceImageUris": zod.array(zod.string()),
+  "publishedAt": zod.coerce.date().nullable(),
+  "badge": zod.union([zod.literal('new'),zod.literal('trending'),zod.literal(null)]).nullable()
 }))
 
 
@@ -450,7 +467,6 @@ export const UpdateCatalogueTemplateBody = zod.object({
   "durations": zod.array(zod.number().int().min(1).max(updateCatalogueTemplateBodyDurationsItemMax)).min(1).max(updateCatalogueTemplateBodyDurationsMax),
   "moves": zod.array(zod.string().max(updateCatalogueTemplateBodyMovesItemMax)).max(updateCatalogueTemplateBodyMovesMax),
   "color": zod.enum(['primary', 'secondary', 'accent', 'violet', 'sun']),
-  "isNew": zod.boolean(),
   "sourceDurationSeconds": zod.number().min(updateCatalogueTemplateBodySourceDurationSecondsMin).max(updateCatalogueTemplateBodySourceDurationSecondsMax).nullable(),
   "published": zod.boolean(),
   "sortOrder": zod.number().int().min(updateCatalogueTemplateBodySortOrderMin).max(updateCatalogueTemplateBodySortOrderMax),
@@ -504,7 +520,6 @@ export const UpdateCatalogueTemplateResponse = zod.object({
   "durations": zod.array(zod.number().int().min(1).max(updateCatalogueTemplateResponseOneDurationsItemMax)).min(1).max(updateCatalogueTemplateResponseOneDurationsMax),
   "moves": zod.array(zod.string().max(updateCatalogueTemplateResponseOneMovesItemMax)).max(updateCatalogueTemplateResponseOneMovesMax),
   "color": zod.enum(['primary', 'secondary', 'accent', 'violet', 'sun']),
-  "isNew": zod.boolean(),
   "sourceDurationSeconds": zod.number().min(updateCatalogueTemplateResponseOneSourceDurationSecondsMin).max(updateCatalogueTemplateResponseOneSourceDurationSecondsMax).nullable(),
   "published": zod.boolean(),
   "sortOrder": zod.number().int().min(updateCatalogueTemplateResponseOneSortOrderMin).max(updateCatalogueTemplateResponseOneSortOrderMax),
@@ -518,7 +533,9 @@ export const UpdateCatalogueTemplateResponse = zod.object({
   "videoUri": zod.string(),
   "videoPosterUri": zod.string().optional(),
   "exampleResultUri": zod.string().optional(),
-  "referenceImageUris": zod.array(zod.string())
+  "referenceImageUris": zod.array(zod.string()),
+  "publishedAt": zod.coerce.date().nullable(),
+  "badge": zod.union([zod.literal('new'),zod.literal('trending'),zod.literal(null)]).nullable()
 }))
 
 

@@ -2,9 +2,10 @@ import { Router, type IRouter } from "express";
 import { randomUUID } from "node:crypto";
 import { db, danceCatalogue } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { CreateCatalogueTemplateBody, UpdateCatalogueTemplateBody, ListCatalogueQueryParams, ListCatalogueResponse, GetCatalogueTemplateResponse } from "@workspace/api-zod";
+import { CreateCatalogueTemplateBody, UpdateCatalogueTemplateBody, ListCatalogueQueryParams, ListCatalogueResponse, GetCatalogueTemplateResponse, RecordCatalogueOpenBody } from "@workspace/api-zod";
 import { cataloguePage, catalogueTemplate, validCatalogueId } from "../lib/catalogue";
 import { findCatalogue, readCatalogue, seedCatalogue } from "../lib/catalogue-data";
+import { recordCatalogueOpen } from "../lib/catalogue-opens";
 import { verifyCatalogueMedia } from "../lib/template-storage";
 import { requireAccount, requireAdmin, protectAdminMutation } from "../middlewares/admin-auth";
 
@@ -23,6 +24,21 @@ router.get("/catalogue/:id", async (req, res) => {
   if (!template) { res.status(404).json({ error: "Танец не опубликован" }); return; }
   res.json(GetCatalogueTemplateResponse.parse(template));
 });
+router.post("/catalogue/:id/open", async (req, res): Promise<void> => {
+  const id = String(req.params.id);
+  const body = RecordCatalogueOpenBody.safeParse(req.body);
+  if (!body.success || !validCatalogueId(id)) {
+    res.status(400).json({ error: "Некорректный запрос" });
+    return;
+  }
+  const template = await findCatalogue(id);
+  if (!template?.published) {
+    res.status(404).json({ error: "Танец не опубликован" });
+    return;
+  }
+  await recordCatalogueOpen(id, body.data.visitorToken);
+  res.sendStatus(204);
+});
 router.use("/admin/catalogue", requireAccount, requireAdmin, protectAdminMutation);
 router.get("/admin/catalogue", async (_req, res) => {
   res.json((await readCatalogue(true)).sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)));
@@ -34,13 +50,14 @@ router.post("/admin/catalogue", async (req, res) => {
   const id = `dance-${randomUUID()}`;
   const metadata = { ...body.data, published: false, _importMediaChecked: true };
   await db.insert(danceCatalogue).values({ id, metadata, published: false, sortOrder: metadata.sortOrder });
-  res.status(201).json(catalogueTemplate(id, metadata));
+  res.status(201).json(GetCatalogueTemplateResponse.parse(catalogueTemplate(id, metadata)));
 });
 router.put("/admin/catalogue/:id", async (req, res) => {
   const id = String(req.params.id);
   const body = UpdateCatalogueTemplateBody.safeParse(req.body);
   if (!body.success || !validCatalogueId(id)) { res.status(400).json({ error: "Проверьте поля танца" }); return; }
-  if (!await findCatalogue(id)) { res.sendStatus(404); return; }
+  const existing = await findCatalogue(id);
+  if (!existing) { res.sendStatus(404); return; }
   const metadata = body.data;
   if (metadata.published) {
     if (metadata.sourceDurationSeconds == null || metadata.durations.some(d => d > metadata.sourceDurationSeconds!)) {
@@ -52,10 +69,15 @@ router.put("/admin/catalogue/:id", async (req, res) => {
       res.status(409).json({ error: "Публикация невозможна: загрузите исходное видео, постер и все указанные дополнительные файлы; проверьте доступ к R2" }); return;
     }
   }
+  const publishedAt = metadata.published
+    ? (existing.published ? existing.publishedAt : new Date())
+    : null;
   await db.update(danceCatalogue).set({
     metadata: { ...metadata, _importMediaChecked: true, _ownerUnpublished: !metadata.published },
-    published: metadata.published, sortOrder: metadata.sortOrder,
+    published: metadata.published, publishedAt, sortOrder: metadata.sortOrder,
   }).where(eq(danceCatalogue.id, id));
-  res.json(catalogueTemplate(id, metadata));
+  const updated = (await readCatalogue(true)).find(item => item.id === id)
+    ?? catalogueTemplate(id, metadata, publishedAt);
+  res.json(GetCatalogueTemplateResponse.parse(updated));
 });
 export default router;

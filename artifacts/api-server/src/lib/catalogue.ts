@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { CatalogueInput, CatalogueTemplate } from "@workspace/api-zod";
+import type { CatalogueBadge } from "./catalogue-badges";
 
 // Editorial selection, deliberately independent of favorites and viewing history.
 export const recommendedIds = ["trend-06", "trend-03", "trend-01"];
@@ -10,11 +11,18 @@ export const requiredCatalogueAssets = (data: CatalogueInput) => [
   ...(data.hasExample ? ["result.mp4"] : []),
   ...Array.from({ length: data.referenceCount }, (_, i) => `character-0${i + 1}.jpg`),
 ];
-export function catalogueTemplate(id: string, data: CatalogueInput): CatalogueTemplate {
+export function catalogueTemplate(
+  id: string,
+  data: CatalogueInput,
+  publishedAt: Date | null = null,
+  badge: CatalogueBadge = null,
+): CatalogueTemplate {
   const media = (asset: string) => `/api/dance-templates/${id}/${asset}`;
   return { ...data, id, imageUri: media("poster.jpg"), videoUri: media("video.mp4"),
     videoPosterUri: data.hasVideoPoster ? media("reference-poster.jpg") : undefined,
     referenceImageUris: Array.from({ length: data.referenceCount }, (_, i) => media(`character-0${i + 1}.jpg`)),
+    publishedAt,
+    badge,
     exampleResultUri: data.hasExample ? media("result.mp4") : undefined };
 }
 export interface CatalogueQuery {
@@ -29,7 +37,7 @@ export function cataloguePage(records: CatalogueTemplate[], query: CatalogueQuer
   const compare = (a: CatalogueTemplate, b: CatalogueTemplate) => order(a) - order(b) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
   const filtered = records.filter(t => t.published &&
     (section !== "recommended" || recommendedIds.includes(t.id)) &&
-    (section !== "featured" || t.isNew) &&
+    (section !== "featured" || t.badge === "new") &&
     (category === "all" || t.category === category) &&
     (speed === "any" || (t.bpm !== null && (speed === "chill" ? t.bpm < 110 : t.bpm >= 110))) &&
     (!search || [t.title, t.dancer, t.category, labels[t.category], t.tagline, t.description, ...t.moves]

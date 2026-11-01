@@ -190,7 +190,6 @@ export interface CatalogueInput {
      */
   moves: string[];
   color: CatalogueInputColor;
-  isNew: boolean;
   /**
      * @minimum 0.1
      * @maximum 300
@@ -214,14 +213,33 @@ export interface CatalogueInput {
   prompt: string;
 }
 
-export type CatalogueTemplate = CatalogueInput & {
+/**
+ * @nullable
+ */
+export type CatalogueTemplateBadge = typeof CatalogueTemplateBadge[keyof typeof CatalogueTemplateBadge] | null;
+
+
+export const CatalogueTemplateBadge = {
+  new: 'new',
+  trending: 'trending',
+} as const;
+
+export type CatalogueTemplate = CatalogueInput & ({
   id: string;
   imageUri: string;
   videoUri: string;
   videoPosterUri?: string;
   exampleResultUri?: string;
   referenceImageUris: string[];
-};
+  /** @nullable */
+  publishedAt: string | null;
+  /** @nullable */
+  badge: CatalogueTemplateBadge;
+});
+
+export interface CatalogueOpenInput {
+  visitorToken: string;
+}
 
 export interface CataloguePage {
   items: CatalogueTemplate[];
