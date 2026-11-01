@@ -27,7 +27,6 @@ export default function SubscriptionScreen() {
 
         <Text style={[styles.kicker, { color: c.primary }]}>ПОДПИСКА · ЕЖЕМЕСЯЧНО</Text>
         <Text style={[styles.title, { color: c.foreground }]}>Выбери свой <Text style={{ color: c.violet }}>ритм</Text></Text>
-        <Text style={[styles.lead, { color: c.mutedForeground }]}>Тарифы отличаются только дневным лимитом генераций.</Text>
         <AccountSubscription />
 
         <View style={[styles.notice, { backgroundColor: c.sun, borderColor: c.border }]} accessibilityRole="alert">
