@@ -242,7 +242,7 @@ export default function Discover() {
       {recommendations.isError && <EmptyState icon="alert-circle" title="Рекомендации не загрузились" text="Попробуй ещё раз." action="Повторить" onAction={() => void recommendations.refetch()} />}
 
       <View style={{ height: 24 }} />
-      <SectionTitle kicker="ВЕСЬ КАТАЛОГ" title="Выбери свой стиль" right={<Text style={[styles.count, { color: c.mutedForeground }]}>{catalogue.total}</Text>} />
+      <SectionTitle kicker="ВЕСЬ КАТАЛОГ" title="Выбери свой стиль" />
       <View style={[styles.searchBox, { backgroundColor: c.card, borderColor: c.border }]}>
         <Feather name="search" size={19} color={c.mutedForeground} />
         <TextInput
@@ -320,7 +320,6 @@ const styles = StyleSheet.create({
   heroSub: { fontFamily: F.bodyBold, fontSize: 15, lineHeight: 21, marginTop: 12, opacity: 0.92 },
   marquee: { borderTopWidth: 1, borderBottomWidth: 1, paddingVertical: 10, transform: [{ rotate: '-3deg' }], marginTop: -18, marginHorizontal: -10, marginBottom: 30 },
   marqueeText: { fontFamily: F.display, fontSize: 15 },
-  count: { fontFamily: F.display, fontSize: 22 },
   searchBox: { minHeight: 52, marginHorizontal: 12, marginTop: 2, marginBottom: 10, paddingHorizontal: 14, borderRadius: 16, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
   searchInput: { flex: 1, minWidth: 0, paddingVertical: 12, fontFamily: F.body, fontSize: 15 },
   searchClear: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
