@@ -107,16 +107,17 @@ export function ModelPicker({ value, onChange }: { value: GenerationModel; onCha
   );
 }
 
-export function QualityPicker({ value, onChange }: { value: GenerationResolution; onChange: (r: GenerationResolution) => void }) {
+export function QualityPicker({ value, onChange, variant = 'cards' }: { value: GenerationResolution; onChange: (r: GenerationResolution) => void; variant?: 'cards' | 'segmented' }) {
   const c = useColors();
+  const segmented = variant === 'segmented';
   return (
-    <View style={s.qRow}>
+    <View style={[s.qRow, segmented && { backgroundColor: c.muted, borderRadius: 15, padding: 4, gap: 4 }]}>
       {GENERATION_QUALITIES.map((q) => {
         const on = q === value;
         return (
-          <Bouncy key={q} testID={`quality-${q}`} onPress={() => onChange(q)}
-            style={[s.q, { borderColor: c.border, backgroundColor: on ? c.sun : c.card }]}>
-            <Text style={[s.qText, { color: c.foreground }]}>{q}</Text>
+          <Bouncy key={q} testID={`quality-${q}`} onPress={() => onChange(q)} accessibilityLabel={`Качество ${q}${on ? ', выбрано' : ''}`}
+            style={[s.q, segmented && { borderRadius: 11, borderWidth: 0 }, { borderColor: c.border, backgroundColor: on ? c.sun : segmented ? 'transparent' : c.card }]}>
+            <Text style={[s.qText, segmented && { fontFamily: F.bodyHeavy, fontSize: 14 }, { color: c.foreground }]}>{q}</Text>
           </Bouncy>
         );
       })}

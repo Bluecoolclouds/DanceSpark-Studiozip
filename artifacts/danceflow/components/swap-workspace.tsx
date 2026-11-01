@@ -174,18 +174,18 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
     const active = expanded === key;
     return (
       <Bouncy testID={`input-row-${key}`} accessibilityLabel={`${title}. ${subtitle}${active ? ', свернуть' : ', открыть'}`} scaleTo={0.98}
-        onPress={onPress ?? (() => toggle(key))} style={[s.row, key === 'prompt' && { minHeight: 52 }, { backgroundColor: c.muted, borderColor: active ? c.primary : c.border }]}>
-        {media ?? <View style={[s.rowIcon, { backgroundColor: c.card }]}><Feather name={icon} size={18} color={c.foreground} /></View>}
+        onPress={onPress ?? (() => toggle(key))} style={[s.row, { backgroundColor: c.card }]}>
+        {media ?? <View style={[s.rowIcon, { backgroundColor: c.secondary }]}><Feather name={icon} size={19} color={c.violet} /></View>}
         <View style={s.rowCopy}>
-          <Text style={[s.rowTitle, { color: c.foreground }]}>{title}</Text>
-          <Text numberOfLines={1} style={[s.rowSub, { color: c.mutedForeground }]}>{subtitle}</Text>
+          <Text style={[s.rowTitle, { color: c.foreground }]}>{key === 'video' ? '1' : key === 'images' ? '2' : '3'}. {title}</Text>
+          <Text numberOfLines={2} style={[s.rowSub, { color: c.mutedForeground }]}>{subtitle}</Text>
         </View>
         <Feather name={active ? 'chevron-up' : 'chevron-right'} size={19} color={c.mutedForeground} />
       </Bouncy>
     );
   };
 
-  const videoLabel = model === 'motion-transfer' ? 'Видео с движениями для переноса' : 'Видео, где заменить объект';
+  const videoLabel = model === 'motion-transfer' ? 'Видео с движениями' : 'Исходное видео';
   const videoSub = source
     ? `${isOriginal && trend ? `Тренд «${trend.title}»` : 'Твоё видео'} · ${source.seconds == null ? 'длина неизвестна' : fmtSec(source.seconds)}`
     : allowTrendPicker ? 'Своё видео или тренд из каталога' : 'До 1 видео';
@@ -210,16 +210,20 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
       </View>
       <Text style={[s.hint, { color: c.mutedForeground, marginTop: -4 }]}>{m.subtitle}</Text>
 
-      <View style={[s.panel, { backgroundColor: c.card, borderColor: c.glassEdge }]}>
+      <View style={s.panel}>
         <View style={s.head}>
-          <Text style={[s.panelTitle, { color: c.foreground }]}>Ввод</Text>
-          <Bouncy testID="reset-form" accessibilityLabel="Сбросить настройки" onPress={reset} style={s.resetIcon}>
-            <Feather name="rotate-ccw" size={15} color={c.mutedForeground} />
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={[s.panelTitle, { color: c.foreground }]}>Материалы</Text>
+            <Text style={[s.hint, { color: c.mutedForeground }]}>Видео, фото и детали твоего танца</Text>
+          </View>
+          <Bouncy testID="reset-form" accessibilityLabel="Сбросить настройки" onPress={reset} style={[s.resetIcon, { backgroundColor: c.secondary }]}>
+            <Feather name="rotate-ccw" size={17} color={c.violet} />
           </Bouncy>
         </View>
 
+        <View style={[s.stepCard, { backgroundColor: c.card, borderColor: c.border }]}>
         {row('video', 'video', videoLabel, videoSub, thumb)}
-        {expanded === 'video' && <View style={[s.expanded, { backgroundColor: c.card, borderColor: c.border }]}>
+        {expanded === 'video' && <View style={s.expanded}>
           {source ? <View style={{ gap: 8 }}>
             <SourcePreview key={source.uri} uri={source.uri} height={wide ? 220 : 190} />
             <View style={s.line}>
@@ -230,14 +234,14 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
             </View>
             {source.seconds == null && <Text style={[s.warn, { color: c.destructive }]}>Галерея не сообщила длину ролика — выбери другое видео.</Text>}
           </View> : <View style={s.pickRow}>
-            <Bouncy testID="pick-video" onPress={pickVideo} style={[s.pick, { borderColor: c.border, backgroundColor: c.muted }]}>
-              <Feather name="upload" size={17} color={c.foreground} /><Text style={[s.pickText, { color: c.foreground }]}>Своё видео</Text>
+            <Bouncy testID="pick-video" onPress={pickVideo} style={[s.sourceChoice, { borderColor: c.violet, backgroundColor: c.violet }]}>
+              <Feather name="upload" size={21} color={c.primaryForeground} /><Text numberOfLines={1} style={[s.sourceText, { color: c.primaryForeground }]}>Своё видео</Text>
             </Bouncy>
-            {original && <Bouncy testID="restore-video" onPress={() => setSource(original)} style={[s.pick, { borderColor: c.border, backgroundColor: c.muted }]}>
-              <Feather name="corner-up-left" size={17} color={c.foreground} /><Text style={[s.pickText, { color: c.foreground }]} numberOfLines={1}>Видео тренда</Text>
+            {original && <Bouncy testID="restore-video" onPress={() => setSource(original)} style={[s.sourceChoice, { borderColor: c.border, backgroundColor: c.background }]}>
+              <Feather name="corner-up-left" size={21} color={c.violet} /><Text style={[s.sourceText, { color: c.foreground }]} numberOfLines={1}>Видео тренда</Text>
             </Bouncy>}
-            {allowTrendPicker && !original && <Bouncy testID="choose-trend" onPress={() => setChoosing((v) => !v)} style={[s.pick, { borderColor: c.border, backgroundColor: choosing ? c.sun : c.muted }]}>
-              <Feather name="grid" size={17} color={c.foreground} /><Text style={[s.pickText, { color: c.foreground }]}>Из трендов</Text>
+            {allowTrendPicker && !original && <Bouncy testID="choose-trend" onPress={() => setChoosing((v) => !v)} style={[s.sourceChoice, { borderColor: c.border, backgroundColor: choosing ? c.sun : c.background }]}>
+              <Feather name="grid" size={21} color={c.violet} /><Text numberOfLines={1} style={[s.sourceText, { color: c.foreground }]}>Из трендов</Text>
             </Bouncy>}
           </View>}
           {allowTrendPicker && trend && <View style={s.line}>
@@ -268,16 +272,21 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
               {!catalogue.isPending && !catalogue.items.length && !catalogue.isError && <Text style={[s.hint, { color: c.mutedForeground }]}>Пока нет опубликованных танцев. Можно выбрать своё видео.</Text>}
             </ScrollView>
           )}
-          <Text style={[s.hint, { color: c.mutedForeground }]}>Берутся первые {MAX_OUTPUT_SECONDS} сек, звук сохраняется.</Text>
+          <View style={s.sourceNote}>
+            <Feather name="info" size={14} color={c.mutedForeground} />
+            <Text style={[s.hint, { color: c.mutedForeground, flex: 1 }]}>Берутся первые {MAX_OUTPUT_SECONDS} сек, звук сохраняется.</Text>
+          </View>
         </View>}
+        </View>
 
+        <View style={[s.stepCard, { backgroundColor: c.card, borderColor: c.border }]}>
         {row('images', 'image', m.referenceLabel, refs.length ? `${refs.length} из ${MAX_REFERENCE_IMAGES} добавлено` : `До ${MAX_REFERENCE_IMAGES} изображений`,
           refs.length > 0 ? (
             <View style={s.refThumbs}>
               {refs.slice(0, 2).map((uri, i) => <Image key={`${uri}-${i}`} source={{ uri }} style={{ flex: 1, height: '100%' }} contentFit="cover" />)}
             </View>
           ) : undefined, openImages)}
-        {expanded === 'images' && <View style={[s.expanded, { backgroundColor: c.card, borderColor: c.border }]}>
+        {expanded === 'images' && <View style={s.expanded}>
           {refs.length > 0 && <RefGrid uris={refs} onRemove={(i) => setRefs((p) => p.filter((_, j) => j !== i))} />}
           <View style={s.pickRow}>
             <Bouncy testID="pick-library" disabled={refs.length >= MAX_REFERENCE_IMAGES} onPress={pickImages} style={[s.pick, { borderColor: c.border, backgroundColor: c.muted }]}>
@@ -289,18 +298,21 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
           </View>
           <Text style={[s.hint, { color: c.mutedForeground }]}>До {MAX_REFERENCE_IMAGES} фото. Первое станет обложкой черновика.</Text>
         </View>}
+        </View>
 
+        <View style={[s.stepCard, { backgroundColor: c.card, borderColor: c.border }]}>
         {row('prompt', 'edit-3', 'Промпт', prompt.trim() ? prompt.trim() : 'Необязательно: опиши сцену')}
-        {expanded === 'prompt' && <View style={[s.expanded, { backgroundColor: c.card, borderColor: c.border, gap: 6 }]}>
+        {expanded === 'prompt' && <View style={[s.expanded, { gap: 6 }]}>
           <TextInput testID="prompt-input" value={prompt} onChangeText={setPrompt} maxLength={MAX_PROMPT} multiline
             placeholder={model === 'object-swap' ? 'Например: «заменить куртку на красную»' : 'Например: «танцует на крыше на закате»'}
             placeholderTextColor={c.mutedForeground} style={[s.input, { borderColor: c.border, backgroundColor: c.muted, color: c.foreground }]} />
           <Text style={[s.count, { color: c.mutedForeground }]}>{prompt.length} / {MAX_PROMPT}</Text>
         </View>}
+        </View>
 
-        <View style={{ gap: 6 }}>
+        <View style={[s.qualityCard, { backgroundColor: c.card, borderColor: c.border }]}>
           <Text style={[s.label, { color: c.foreground }]}>Качество</Text>
-          <QualityPicker value={resolution} onChange={setResolution} />
+          <QualityPicker value={resolution} onChange={setResolution} variant="segmented" />
         </View>
       </View>
 
@@ -340,25 +352,30 @@ const s = StyleSheet.create({
   seg: { flexDirection: 'row', borderWidth: 1, borderRadius: 999, padding: 3, gap: 3 },
   segItem: { flex: 1, minHeight: 46, paddingHorizontal: 6, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   segText: { fontFamily: F.display, fontSize: 12, lineHeight: 15, textAlign: 'center' },
-  panel: { borderWidth: 1, borderRadius: 22, padding: 10, gap: 8 },
+  panel: { gap: 10 },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  panelTitle: { fontFamily: F.display, fontSize: 18, paddingLeft: 4 },
-  resetIcon: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22 },
-  row: { minHeight: 64, borderRadius: 16, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 10, paddingVertical: 8 },
-  rowIcon: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
+  panelTitle: { fontFamily: F.display, fontSize: 20 },
+  resetIcon: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 14 },
+  stepCard: { borderWidth: 1, borderRadius: 20, overflow: 'hidden' },
+  qualityCard: { borderWidth: 1, borderRadius: 20, padding: 14, gap: 10 },
+  row: { minHeight: 78, flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14 },
+  rowIcon: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   rowCopy: { flex: 1, minWidth: 0, gap: 2 },
-  rowTitle: { fontFamily: F.bodyHeavy, fontSize: 13, lineHeight: 17 },
-  rowSub: { fontFamily: F.body, fontSize: 11, lineHeight: 14 },
+  rowTitle: { fontFamily: F.bodyHeavy, fontSize: 14, lineHeight: 19 },
+  rowSub: { fontFamily: F.body, fontSize: 12, lineHeight: 17 },
   thumb: { width: 64, height: 64, borderRadius: 12, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   play: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   refThumbs: { width: 64, height: 52, borderRadius: 10, overflow: 'hidden', flexDirection: 'row', gap: 2 },
-  expanded: { borderWidth: 1, borderRadius: 14, padding: 10, gap: 8 },
+  expanded: { paddingHorizontal: 14, paddingBottom: 14, gap: 12 },
   line: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   meta: { flex: 1, fontFamily: F.bodyHeavy, fontSize: 13 },
   sq: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  pickRow: { flexDirection: 'row', gap: 6 },
+  pickRow: { flexDirection: 'row', gap: 8 },
+  sourceChoice: { flex: 1, minWidth: 0, minHeight: 82, borderRadius: 15, borderWidth: 1, alignItems: 'center', justifyContent: 'center', gap: 8, padding: 8 },
+  sourceText: { fontFamily: F.bodyHeavy, fontSize: 13, textAlign: 'center' },
+  sourceNote: { flexDirection: 'row', alignItems: 'flex-start', gap: 7 },
   pick: { flex: 1, minHeight: 50, borderRadius: 16, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 8 },
-  pickText: { fontFamily: F.display, fontSize: 14, flexShrink: 1 },
+  pickText: { fontFamily: F.bodyHeavy, fontSize: 13, flexShrink: 1 },
   ghost: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, minHeight: 36, justifyContent: 'center' },
   ghostText: { fontFamily: F.bodyBold, fontSize: 12 },
   tpl: { width: 96, height: 136, borderRadius: 12, borderWidth: 2, overflow: 'hidden' },
