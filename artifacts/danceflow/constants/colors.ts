@@ -6,7 +6,7 @@ const colors = {
   light: {
     text: '#1A0F45',
     tint: '#FF2E93',
-    background: '#EFE9FF',
+    background: '#fbf9fd',
     foreground: '#1A0F45',
     card: '#FBF9FF',
     cardForeground: '#1A0F45',
@@ -36,7 +36,7 @@ const colors = {
   },
   // Scoped light palette for the template playground only (via ColorScope).
   neon: {
-    text: '#21134D', tint: '#D92C9B', background: '#F8F5FF', foreground: '#21134D',
+    text: '#21134D', tint: '#D92C9B', background: '#fbf9fd', foreground: '#21134D',
     card: '#FFFEFF', cardForeground: '#21134D', primary: '#7027D9', primaryForeground: '#FFFCFF',
     secondary: '#E8DFFF', secondaryForeground: '#21134D', muted: '#F0EBF9',
     mutedForeground: '#71658E', accent: '#FBE3F1', accentForeground: '#21134D',

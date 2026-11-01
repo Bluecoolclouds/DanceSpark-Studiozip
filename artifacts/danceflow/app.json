@@ -45,7 +45,7 @@
     "splash": {
       "image": "./assets/images/icon.png",
       "resizeMode": "cover",
-      "backgroundColor": "#7B2CFF"
+      "backgroundColor": "#fbf9fd"
     }
   }
 }

@@ -1,6 +1,5 @@
 import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
 import React from 'react';
@@ -122,14 +121,7 @@ function TemplatePlaygroundForm({ id, t }: { id: string; t: DanceTemplate }) {
 
 function Stage() {
   return (
-    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
-      <LinearGradient colors={[N.card, N.background, N.secondary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-      <View style={[styles.slab, { top: -70, left: -150, width: 340, backgroundColor: N.pink, opacity: 0.16 }]} />
-      <View style={[styles.slab, { top: 30, right: -170, width: 380, backgroundColor: N.yellow, opacity: 0.25 }]} />
-      <View style={[styles.slab, { top: 620, right: -140, width: 280, height: 70, backgroundColor: N.cyan, opacity: 0.12 }]} />
-      <View style={[styles.slab, { top: 760, left: -150, width: 300, height: 60, backgroundColor: N.pink, opacity: 0.12 }]} />
-      <View style={[styles.slab, { top: 300, left: -200, width: 280, height: 26, backgroundColor: N.violet, opacity: 0.12 }]} />
-    </View>
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: N.background }]} />
   );
 }
 
@@ -140,7 +132,6 @@ const styles = StyleSheet.create({
   brand: { fontFamily: F.display, fontSize: 24, letterSpacing: -0.6 },
   round: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   hero: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 4 },
-  slab: { position: 'absolute', height: 140, transform: [{ rotate: '-28deg' }] },
   go: { minHeight: 60, borderRadius: 30, overflow: 'hidden', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 20 },
   goText: { fontFamily: F.display, fontSize: 18, flexShrink: 1 },
   dropIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
