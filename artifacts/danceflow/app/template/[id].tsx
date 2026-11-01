@@ -14,7 +14,7 @@ import colors from '@/constants/colors';
 import { F } from '@/constants/fonts';
 import { categoryLabel, type DanceTemplate } from '@/constants/templates';
 import { useCatalogueTemplate } from '@/hooks/useCatalogue';
-import { getCatalogueVisitorToken } from '@/lib/catalogue-analytics';
+import { getCatalogueAnalyticsEnabled, getCatalogueVisitorToken } from '@/lib/catalogue-analytics';
 import { ColorScope, useColors } from '@/hooks/useColors';
 
 const N = colors.neon;
@@ -44,7 +44,11 @@ function TemplatePlaygroundForm({ id, t }: { id: string; t: DanceTemplate }) {
   useEffect(() => {
     let active = true;
     void getCatalogueVisitorToken().then((visitorToken) => {
-      if (active) recordOpen.mutate({ id, data: { visitorToken } });
+      if (active && visitorToken) {
+        void getCatalogueAnalyticsEnabled().then((enabled) => {
+          if (active && enabled) recordOpen.mutate({ id, data: { visitorToken } });
+        });
+      }
     }).catch(() => {});
     return () => { active = false; };
   }, [id, recordOpen.mutate]);
