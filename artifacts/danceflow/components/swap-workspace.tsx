@@ -310,9 +310,9 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
           ) : undefined, openImages)}
         {cv && refs.length === 0 && expanded !== 'images' && (
           <Bouncy testID="photo-dropzone" accessibilityLabel="Добавить фото" scaleTo={0.98} onPress={openImages}
-            style={[s.drop, { borderColor: c.violet, backgroundColor: c.muted }]}>
+            style={[s.drop, { borderColor: '#D4D4D8', backgroundColor: '#F4F4F5' }]}>
             <View style={[s.dropPlus, { backgroundColor: c.sun }]}><Feather name="plus" size={20} color={c.foreground} /></View>
-            <Text style={[s.pickText, { color: c.violet }]}>Добавить фото</Text>
+            <Text style={[s.pickText, { color: '#52525B' }]}>Добавить фото</Text>
             <Text style={[s.hint, { color: c.mutedForeground }]}>Галерея или камера · до {MAX_REFERENCE_IMAGES} шт.</Text>
           </Bouncy>
         )}
