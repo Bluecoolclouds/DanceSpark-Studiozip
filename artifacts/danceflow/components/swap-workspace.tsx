@@ -180,7 +180,7 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
     const active = expanded === key;
     return (
       <Bouncy testID={`input-row-${key}`} accessibilityLabel={`${title}. ${subtitle}${active ? ', свернуть' : ', открыть'}`} scaleTo={0.98}
-        onPress={onPress ?? (() => toggle(key))} style={[s.row, { backgroundColor: c.card }]}>
+        focusColor="#A1A1AA" onPress={onPress ?? (() => toggle(key))} style={[s.row, { backgroundColor: c.card }]}>
         {media ?? <View style={[s.rowIcon, { backgroundColor: c.secondary }]}><Feather name={icon} size={19} color={c.violet} /></View>}
         <View style={s.rowCopy}>
           <Text style={[s.rowTitle, { color: c.foreground }]}>{key === 'video' ? '1' : key === 'images' ? '2' : '3'}. {title}</Text>

@@ -20,7 +20,9 @@ export const onTone = (c: { foreground: string; primaryForeground: string }, k: 
 /** Sentence-case a legacy all-caps label (no tracked capitals, Hallmark 54/67). */
 export const sentence = (s: string) => (s ? s.charAt(0) + s.slice(1).toLowerCase() : s);
 
-const focusRing = Platform.OS === 'web' ? ({ outlineColor: colors.light.focus, outlineStyle: 'solid', outlineWidth: 3, outlineOffset: 2 } as unknown as ViewStyle) : null;
+const focusRing = (color: string) => Platform.OS === 'web'
+  ? ({ outlineColor: color, outlineStyle: 'solid', outlineWidth: 3, outlineOffset: 2 } as unknown as ViewStyle)
+  : null;
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export type Palette = ReturnType<typeof useColors>;
@@ -32,11 +34,12 @@ export const tap = (style: 'light' | 'medium' | 'heavy' = 'light') => {
 };
 
 export function Bouncy({
-  children, onPress, style, disabled, haptic = 'light', testID, accessibilityLabel, accessibilityRole = 'button', accessibilityState, scaleTo = 0.94,
+  children, onPress, style, disabled, haptic = 'light', testID, accessibilityLabel, accessibilityRole = 'button', accessibilityState, scaleTo = 0.94, focusColor = colors.light.focus,
 }: {
   children: React.ReactNode; onPress?: () => void; style?: StyleProp<ViewStyle>; disabled?: boolean;
   haptic?: 'light' | 'medium' | 'heavy'; testID?: string; accessibilityLabel?: string; scaleTo?: number;
   accessibilityRole?: 'button' | 'radio'; accessibilityState?: { selected?: boolean; disabled?: boolean };
+  focusColor?: string;
 }) {
   const s = useSharedValue(1);
   const reduced = useReducedMotion();
@@ -50,7 +53,7 @@ export function Bouncy({
       accessibilityLabel={accessibilityLabel}
       accessibilityState={accessibilityState}
       disabled={disabled}
-      style={[style, a, focused && focusRing, disabled && { opacity: 0.45 }]}
+      style={[style, a, focused && focusRing(focusColor), disabled && { opacity: 0.45 }]}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       onPressIn={() => { if (reduced) return; s.value = withSpring(scaleTo, { damping: 12, stiffness: 400 }); r.value = withSpring(-1.5); }}
