@@ -67,7 +67,11 @@ function TemplatePlaygroundForm({ id, t }: { id: string; t: DanceTemplate }) {
       </View>
       {t.exampleResultUri ? (
         <View style={{ gap: 8 }}>
-          <SourcePreview uri={t.exampleResultUri} height={Math.round(Math.min(wide ? 480 : 420, windowHeight * 0.5))} />
+          <SourcePreview
+            uri={t.exampleResultUri}
+            height={Math.round(Math.min(wide ? 480 : 420, windowHeight * 0.5))}
+            poster={t.id === 'trend-06' ? require('@/assets/images/trend-06-result-poster.jpg') : undefined}
+          />
           <Text style={[styles.hint, { color: c.mutedForeground }]}>Пример из каталога. Новая генерация не запускалась.</Text>
         </View>
       ) : (
