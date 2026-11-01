@@ -15,3 +15,4 @@
 - [Expo preview loading](expo-preview-loading.md) — A blank first capture can be an unfinished async route bundle, not an authentication restriction.
 - [Danceflow colour constraints](danceflow-page-background.md) — Preserve app-wide base and launch backgrounds `#fbf9fd`, and yellow accents `#FED93C`.
 - [Catalogue open privacy](catalogue-open-privacy.md) — Limit rating influence by transient network source without storing address or account identifiers.
+- [Web modal focus](web-modal-focus.md) — A backdrop button can capture programmatic focus even with tabIndex=-1; use a non-focusable backdrop.

@@ -1,33 +1,46 @@
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BigButton, Bouncy, tone } from '@/components/ui';
 import { F } from '@/constants/fonts';
 import { SUBSCRIPTION_PLANS, SubscriptionPlanId, formatRub, limitLabel } from '@/constants/subscriptions';
 import { useColors } from '@/hooks/useColors';
-import { AccountSubscription } from '@/components/AccountSubscription';
 
 export default function SubscriptionScreen() {
   const c = useColors();
   const insets = useSafeAreaInsets();
-  const top = Platform.OS === 'web' ? 67 : insets.top;
-  const bottom = Platform.OS === 'web' ? 34 : insets.bottom;
+  const { width, height } = useWindowDimensions();
+  const wide = width >= 768;
+  const top = Math.max(insets.top, wide ? 24 : 16);
   const [selectedId, setSelectedId] = useState<SubscriptionPlanId>('monthly_25');
   const selected = SUBSCRIPTION_PLANS.find((p) => p.id === selectedId) ?? SUBSCRIPTION_PLANS[0];
+  const close = () => router.canGoBack() ? router.back() : router.replace('/studio');
 
-  return (
-    <View style={{ flex: 1, backgroundColor: c.background }}>
-      <ScrollView contentContainerStyle={{ paddingTop: top + 10, paddingBottom: bottom + 40, paddingHorizontal: 20, maxWidth: 600, width: '100%', alignSelf: 'center' }} showsVerticalScrollIndicator={false}>
-        <Bouncy testID="sub-back" onPress={() => (router.canGoBack() ? router.back() : router.replace('/studio'))}
-          style={[styles.back, { borderColor: c.border, backgroundColor: c.card }]}>
-          <Feather name="arrow-left" size={20} color={c.foreground} accessibilityLabel="Назад" />
-        </Bouncy>
-
-        <Text style={[styles.kicker, { color: c.primary }]}>ПОДПИСКА · ЕЖЕМЕСЯЧНО</Text>
-        <Text style={[styles.title, { color: c.foreground }]}>Выбери свой <Text style={{ color: c.violet }}>ритм</Text></Text>
-        <AccountSubscription />
+  const content = (
+    <View style={[styles.overlay, {
+      backgroundColor: c.scrim, justifyContent: wide ? 'center' : 'flex-end',
+      paddingTop: top, paddingHorizontal: wide ? 24 : 0, paddingBottom: wide ? Math.max(insets.bottom, 24) : 0,
+    }]}>
+      <View testID="sub-backdrop" accessible={false} onStartShouldSetResponder={() => true}
+        onResponderRelease={close} style={StyleSheet.absoluteFill} />
+      <View testID="subscription-dialog" accessibilityViewIsModal
+        style={[styles.sheet, {
+          backgroundColor: c.background, maxHeight: height - top - (wide ? Math.max(insets.bottom, 24) : 0),
+          borderBottomLeftRadius: wide ? 28 : 0, borderBottomRightRadius: wide ? 28 : 0,
+        }]}>
+        <View style={[styles.header, { borderBottomColor: c.border }]}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[styles.kicker, { color: c.primary }]}>ПОДПИСКА · ЕЖЕМЕСЯЧНО</Text>
+            <Text accessibilityRole="header" style={[styles.title, { color: c.foreground }]}>Выбери свой <Text style={{ color: c.violet }}>ритм</Text></Text>
+          </View>
+          <Bouncy testID="sub-back" accessibilityLabel="Закрыть тарифы" onPress={close}
+            style={[styles.back, { borderColor: c.border, backgroundColor: c.card }]}>
+            <Feather name="x" size={20} color={c.foreground} />
+          </Bouncy>
+        </View>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
         <View style={[styles.notice, { backgroundColor: c.sun, borderColor: c.border }]} accessibilityRole="alert">
           <Feather name="alert-circle" size={20} color={c.foreground} />
@@ -68,38 +81,45 @@ export default function SubscriptionScreen() {
           })}
         </View>
 
-        <View style={[styles.summary, { backgroundColor: c.stage, borderColor: c.border }]}>
-          <Text style={[styles.sumKicker, { color: c.accent }]}>ВЫБРАННЫЙ ТАРИФ</Text>
-          <Text style={[styles.sumName, { color: c.stageForeground }]}>{selected.name}</Text>
-          <View style={[styles.sumLine, { borderColor: c.stageForeground }]}>
-            <Text style={[styles.sumLabel, { color: c.stageForeground }]}>Лимит</Text>
-            <Text style={[styles.sumVal, { color: c.stageForeground }]}>{limitLabel(selected)}</Text>
-          </View>
-          <View style={[styles.sumLine, { borderColor: c.stageForeground }]}>
-            <Text style={[styles.sumLabel, { color: c.stageForeground }]}>Цена</Text>
-            <Text style={[styles.sumVal, { color: c.stageForeground }]}>{formatRub(selected.monthlyPriceRub)} / мес</Text>
-          </View>
-          <Text style={[styles.sumNote, { color: c.stageForeground }]}>Это только просмотр предложения. Выбор не сохраняется и не даёт доступ к тарифу.</Text>
-        </View>
-
-        <View style={{ marginTop: 18 }}>
-          <BigButton testID="sub-buy" label="Оплата скоро" icon="lock" disabled />
-        </View>
+        <Text style={[styles.terms, { color: c.mutedForeground }]}>Сейчас это только просмотр тарифов: выбор не сохраняется и не даёт доступ к генерациям. Оплата и автопродление не включены. Статус действующей подписки доступен в разделе «Моё».</Text>
       </ScrollView>
+      <View style={[styles.footer, { borderTopColor: c.border, paddingBottom: Math.max(insets.bottom, 16) }]}>
+        <View style={styles.total}>
+          <Text style={[styles.totalName, { color: c.foreground }]}>{selected.name}</Text>
+          <Text style={[styles.price, { color: c.foreground }]}>{formatRub(selected.monthlyPriceRub)} / мес</Text>
+        </View>
+        <Text accessibilityLiveRegion="polite" style={[styles.terms, { color: c.mutedForeground, marginTop: 0 }]}>{limitLabel(selected)}</Text>
+        <BigButton testID="sub-buy" label="Оплата скоро" icon="lock" disabled />
+      </View>
+      </View>
     </View>
   );
+
+  // RN Web's Modal traps focus, handles Escape and restores focus on close.
+  // Native already has a transparent stack modal and Android back handling.
+  return Platform.OS === 'web'
+    ? <Modal visible transparent animationType={wide ? 'fade' : 'slide'} onRequestClose={close}>{content}</Modal>
+    : content;
 }
 
 const styles = StyleSheet.create({
-  back: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  overlay: { flex: 1, alignItems: 'center' },
+  sheet: { width: '100%', maxWidth: 560, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden', flexShrink: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 20, borderBottomWidth: 1 },
+  back: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  scroll: { flexShrink: 1 },
+  scrollContent: { padding: 20 },
+  footer: { padding: 20, gap: 10, borderTopWidth: 1 },
+  total: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
+  totalName: { fontFamily: F.bodyHeavy, fontSize: 16 },
+  terms: { fontFamily: F.body, fontSize: 12, lineHeight: 18, marginTop: 18 },
   kicker: { fontFamily: F.bodyHeavy, fontSize: 12 },
-  title: { fontFamily: F.display, fontSize: 30, letterSpacing: -1, marginTop: 4 },
-  lead: { fontFamily: F.body, fontSize: 14, lineHeight: 20, marginTop: 6 },
-  notice: { flexDirection: 'row', gap: 10, padding: 14, borderRadius: 8, borderWidth: 1, marginTop: 18 },
+  title: { fontFamily: F.display, fontSize: 24, letterSpacing: -1, marginTop: 4 },
+  notice: { flexDirection: 'row', gap: 10, padding: 14, borderRadius: 18, borderWidth: 1 },
   noticeTitle: { fontFamily: F.bodyHeavy, fontSize: 14 },
   noticeText: { fontFamily: F.body, fontSize: 13, lineHeight: 18 },
-  plan: { borderRadius: 8, borderWidth: 1, padding: 14, shadowOffset: { width: 2, height: 3 }, shadowOpacity: 0.35, shadowRadius: 14, elevation: 2 },
-  planOn: { borderWidth: 1, shadowOffset: { width: 4, height: 5 }, transform: [{ rotate: '-1deg' }] },
+  plan: { borderRadius: 18, borderWidth: 1, padding: 14 },
+  planOn: { borderWidth: 2, padding: 13 },
   planRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   radio: { width: 26, height: 26, borderRadius: 13, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   planName: { fontFamily: F.display, fontSize: 18 },
@@ -107,11 +127,4 @@ const styles = StyleSheet.create({
   limit: { fontFamily: F.bodyBold, fontSize: 13, flexShrink: 1 },
   price: { fontFamily: F.display, fontSize: 18 },
   per: { fontFamily: F.bodyBold, fontSize: 11, opacity: 0.8 },
-  summary: { marginTop: 22, borderRadius: 8, borderWidth: 1, padding: 16, gap: 8 },
-  sumKicker: { fontFamily: F.bodyHeavy, fontSize: 11 },
-  sumName: { fontFamily: F.display, fontSize: 24 },
-  sumLine: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, borderTopWidth: 1, paddingTop: 8 },
-  sumLabel: { fontFamily: F.bodyBold, fontSize: 13, opacity: 0.75 },
-  sumVal: { fontFamily: F.bodyHeavy, fontSize: 14, flexShrink: 1, textAlign: 'right' },
-  sumNote: { fontFamily: F.body, fontSize: 12, lineHeight: 17, opacity: 0.8, marginTop: 4 },
 });

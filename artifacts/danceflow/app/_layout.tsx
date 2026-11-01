@@ -29,6 +29,9 @@ if (!clerkKey) throw new Error('CLERK_PUBLISHABLE_KEY is required for account au
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
+// Give direct modal links a real app screen underneath them.
+export const unstable_settings = { anchor: '(tabs)' };
+
 function AuthBridge({ children }: { children: React.ReactNode }) {
   const { getToken, userId, isLoaded } = useDanceAuth();
   const [transportOwner, setTransportOwner] = useState<string | null | undefined>(undefined);
@@ -69,7 +72,11 @@ function RootLayoutNav() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="template/[id]" />
         <Stack.Screen name="draft/[id]" />
-        <Stack.Screen name="subscription" />
+        <Stack.Screen name="subscription" options={{
+          presentation: 'transparentModal',
+          contentStyle: { backgroundColor: 'transparent' },
+          animation: Platform.OS === 'web' ? 'none' : 'slide_from_bottom',
+        }} />
         <Stack.Screen name="privacy" />
         <Stack.Screen name="sign-in" />
         <Stack.Screen name="sign-up" />
