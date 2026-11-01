@@ -2,7 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bouncy, TemplateCard } from '@/components/ui';
 import { F } from '@/constants/fonts';
@@ -157,12 +157,47 @@ function StudioScreen() {
         <Bouncy testID="open-privacy-policy" accessibilityLabel="Политика конфиденциальности и поддержка" scaleTo={0.97} onPress={() => router.push('/privacy')}
           style={[styles.privacyLink, { backgroundColor: c.card, borderColor: c.border }]}>
           <View style={[styles.privIcon, { backgroundColor: c.muted }]}><Feather name="shield" size={15} color={c.violet} /></View>
-          <Text style={[styles.privacyText, { color: c.foreground }]}>Конфиденциальность и поддержка</Text>
+          <Text style={[styles.privacyText, { color: c.foreground }]}>Политика конфиденциальности</Text>
           <Feather name="chevron-right" size={17} color={c.mutedForeground} />
         </Bouncy>
       </View>
+
+      <View style={[styles.col, styles.legalFooter]}>
+        <Text style={[styles.section, { color: c.foreground }]}>Документы и поддержка</Text>
+        <Text style={[styles.legalIntro, { color: c.mutedForeground }]}>
+          Платежи пока отключены. Документы с пометкой «черновик» нужно заполнить до публикации и запуска оплаты.
+        </Text>
+        <View style={[styles.legalList, { backgroundColor: c.card, borderColor: c.border }]}>
+          <LegalLink icon="file-text" title="Пользовательское соглашение" subtitle="Правила использования Danceflow" onPress={() => router.push('/legal/terms')} />
+          <LegalLink icon="credit-card" title="Оферта и подписка" subtitle="Цены, ежемесячное продление и оплата" onPress={() => router.push('/legal/offer')} />
+          <LegalLink icon="rotate-ccw" title="Отмена и возвраты" subtitle="Как прекратить подписку и запросить возврат" onPress={() => router.push('/legal/refunds')} />
+          <LegalLink icon="briefcase" title="Реквизиты оператора" subtitle="Кто предоставляет услугу и принимает оплату" onPress={() => router.push('/legal/operator')} />
+          <LegalLink icon="mail" title="Поддержка" subtitle="danceflow@meduha.app" onPress={() => {
+            void Linking.openURL('mailto:danceflow@meduha.app').catch(() => Alert.alert('Не удалось открыть почту', 'Напиши на danceflow@meduha.app.'));
+          }} last />
+        </View>
+      </View>
     </ScrollView>
     </View>
+  );
+}
+
+function LegalLink({ icon, title, subtitle, onPress, last = false }: {
+  icon: keyof typeof Feather.glyphMap; title: string; subtitle: string; onPress: () => void; last?: boolean;
+}) {
+  const c = useColors();
+  return (
+    <Bouncy accessibilityLabel={`${title}. ${subtitle}`} scaleTo={0.99} onPress={onPress}
+      style={[styles.legalLink, !last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border }]}>
+      <View style={[styles.legalIcon, { backgroundColor: c.muted }]}>
+        <Feather name={icon} size={16} color={c.violet} />
+      </View>
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <Text style={[styles.legalTitle, { color: c.foreground }]}>{title}</Text>
+        <Text style={[styles.legalSubtitle, { color: c.mutedForeground }]}>{subtitle}</Text>
+      </View>
+      <Feather name="chevron-right" size={18} color={c.mutedForeground} />
+    </Bouncy>
   );
 }
 
@@ -263,4 +298,11 @@ const styles = StyleSheet.create({
   privacyLink: { minHeight: 54, borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
   privIcon: { width: 32, height: 32, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   privacyText: { flex: 1, fontFamily: F.bodyBold, fontSize: 13 },
+  legalFooter: { marginTop: 28, marginBottom: 24, gap: 10 },
+  legalIntro: { fontFamily: F.body, fontSize: 13, lineHeight: 19 },
+  legalList: { borderWidth: 1, borderRadius: 20, overflow: 'hidden', paddingHorizontal: 12 },
+  legalLink: { minHeight: 66, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9 },
+  legalIcon: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  legalTitle: { fontFamily: F.bodyBold, fontSize: 13 },
+  legalSubtitle: { fontFamily: F.body, fontSize: 11, lineHeight: 15 },
 });
