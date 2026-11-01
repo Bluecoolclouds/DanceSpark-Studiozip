@@ -45,29 +45,48 @@ export default function Discover() {
   const cardW = (Math.min(width, 600) - 12 * 2 - 2) / 2;
   const featured = featuredQuery.items;
   const featuredCardWidth = Math.min(width * 0.72, 300);
+  const recommendationCardWidth = Math.min(width * 0.58, 230);
   const [activeFeaturedIndex, setActiveFeaturedIndex] = useState(0);
+  const [activeRecommendationIndex, setActiveRecommendationIndex] = useState(0);
   const [featuredInView, setFeaturedInView] = useState(false);
-  const [featuredPreviewReady, setFeaturedPreviewReady] = useState(false);
+  const [recommendationsInView, setRecommendationsInView] = useState(false);
+  const [previewReady, setPreviewReady] = useState(false);
   const featuredFrame = useRef({ y: 0, height: 0 });
+  const recommendationsFrame = useRef({ y: 0, height: 0 });
   const pageScrollY = useRef(0);
 
-  const updateFeaturedVisibility = useCallback(() => {
-    const { y, height: sectionHeight } = featuredFrame.current;
-    const visible = y < pageScrollY.current + viewportHeight && y + sectionHeight > pageScrollY.current;
-    setFeaturedInView((current) => current === visible ? current : visible);
+  const updateSectionVisibility = useCallback(() => {
+    const isVisible = ({ y, height: sectionHeight }: { y: number; height: number }) =>
+      sectionHeight > 0 && y < pageScrollY.current + viewportHeight && y + sectionHeight > pageScrollY.current;
+    const featuredVisible = isVisible(featuredFrame.current);
+    const recommendationsVisible = isVisible(recommendationsFrame.current);
+    setFeaturedInView((current) => current === featuredVisible ? current : featuredVisible);
+    setRecommendationsInView((current) => current === recommendationsVisible ? current : recommendationsVisible);
   }, [viewportHeight]);
 
   const activeFeatured = featured[activeFeaturedIndex] ?? featured[0];
+  const activeRecommendation = recommendations.items[activeRecommendationIndex] ?? recommendations.items[0];
   const featuredScroll = useRef<React.ElementRef<typeof ScrollView>>(null);
+  const recommendationsScroll = useRef<React.ElementRef<typeof ScrollView>>(null);
   const moveFeatured = useCallback((direction: -1 | 1) => {
     const next = Math.max(0, Math.min(featured.length - 1, activeFeaturedIndex + direction));
     if (next === activeFeaturedIndex) return;
     setActiveFeaturedIndex(next);
     featuredScroll.current?.scrollTo({ x: next * (featuredCardWidth + 2), y: 0, animated: true });
   }, [activeFeaturedIndex, featured.length, featuredCardWidth]);
+  const selectRecommendationAtOffset = useCallback((offsetX: number) => {
+    const next = Math.max(0, Math.min(recommendations.items.length - 1, Math.round(offsetX / (recommendationCardWidth + 4))));
+    setActiveRecommendationIndex(next);
+  }, [recommendations.items.length, recommendationCardWidth]);
+  const activePreviewSection = featuredInView && activeFeatured?.videoUri
+    ? 'featured'
+    : recommendationsInView && activeRecommendation?.videoUri
+      ? 'recommendations'
+      : null;
+  const activePreview = activePreviewSection === 'featured' ? activeFeatured : activeRecommendation;
   const previewCandidates = useMemo(
-    () => activeFeatured?.videoUri ? templatePreviewCandidates(activeFeatured.videoUri) : [],
-    [activeFeatured?.videoUri],
+    () => activePreview?.videoUri ? templatePreviewCandidates(activePreview.videoUri) : [],
+    [activePreview?.videoUri],
   );
   const videoPlayer = useVideoPlayer(null, (player) => {
     player.loop = true;
@@ -78,10 +97,9 @@ export default function Discover() {
   useEffect(() => {
     // Web owns its HTML video lifecycle inside CardVideoPreview.web.
     if (Platform.OS === 'web') return;
-    if (!activeFeatured || previewCandidates.length === 0) return;
-    shouldPreviewRef.current = featuredInView && !reduced;
+    shouldPreviewRef.current = !!activePreview && previewCandidates.length > 0 && !reduced;
     if (!shouldPreviewRef.current) {
-      setFeaturedPreviewReady(false);
+      setPreviewReady(false);
       videoPlayer.pause();
       void videoPlayer.replaceAsync(null).catch(() => {});
       return;
@@ -89,17 +107,17 @@ export default function Discover() {
 
     let cancelled = false;
     let candidateIndex = -1;
-    setFeaturedPreviewReady(false);
+    setPreviewReady(false);
     videoPlayer.pause();
 
     const loadCandidate = (index: number) => {
       if (cancelled || index >= previewCandidates.length) {
         candidateIndex = previewCandidates.length;
-        setFeaturedPreviewReady(false);
+        setPreviewReady(false);
         return;
       }
       candidateIndex = index;
-      setFeaturedPreviewReady(false);
+      setPreviewReady(false);
       void videoPlayer.replaceAsync(previewCandidates[index]).then(() => {
         if (!cancelled && candidateIndex === index && shouldPreviewRef.current) videoPlayer.play();
       }).catch(() => {
@@ -109,12 +127,12 @@ export default function Discover() {
 
     const subscription = videoPlayer.addListener('statusChange', ({ status }) => {
       if (status === 'readyToPlay' && candidateIndex < previewCandidates.length && shouldPreviewRef.current) {
-        setFeaturedPreviewReady(true);
+        setPreviewReady(true);
         videoPlayer.play();
       } else if (status === 'error') {
         loadCandidate(candidateIndex + 1);
       } else if (status === 'loading' || status === 'idle') {
-        setFeaturedPreviewReady(false);
+        setPreviewReady(false);
       }
     });
     loadCandidate(0);
@@ -124,17 +142,17 @@ export default function Discover() {
       subscription.remove();
       videoPlayer.pause();
     };
-  }, [activeFeatured?.id, featuredInView, previewCandidates, reduced, videoPlayer]);
+  }, [activePreview?.id, previewCandidates, reduced, videoPlayer]);
 
   const handlePageScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
     pageScrollY.current = contentOffset.y;
-    updateFeaturedVisibility();
+    updateSectionVisibility();
     const distanceFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height);
     if (distanceFromBottom < layoutMeasurement.height * 0.7) {
       loadMore();
     }
-  }, [loadMore, updateFeaturedVisibility]);
+  }, [loadMore, updateSectionVisibility]);
 
   const selectFeaturedAtOffset = useCallback((offsetX: number) => {
     const next = Math.max(0, Math.min(featured.length - 1, Math.round(offsetX / (featuredCardWidth + 2))));
@@ -145,8 +163,9 @@ export default function Discover() {
     <View style={{ flex: 1, backgroundColor: c.background }}>
     <StageBackdrop />
     <ScrollView onScroll={handlePageScroll} onContentSizeChange={(_w, h) => {
+      updateSectionVisibility();
       if (h - pageScrollY.current - viewportHeight < viewportHeight * 0.7) loadMore();
-    }} onLayout={updateFeaturedVisibility} scrollEventThrottle={120} style={{ flex: 1, backgroundColor: 'transparent' }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+    }} onLayout={updateSectionVisibility} scrollEventThrottle={120} style={{ flex: 1, backgroundColor: 'transparent' }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
       <View style={[styles.hero, { paddingTop: top + 12, backgroundColor: c.stage }]}>
         <Image source={HERO_IMAGE} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="right" />
         <LinearGradient colors={[c.stage, c.clear]} start={{ x: 0, y: 0 }} end={{ x: 0.85, y: 0 }} style={StyleSheet.absoluteFill} />
@@ -173,7 +192,7 @@ export default function Discover() {
         <View
           onLayout={(event) => {
             featuredFrame.current = { y: event.nativeEvent.layout.y, height: event.nativeEvent.layout.height };
-            updateFeaturedVisibility();
+            updateSectionVisibility();
           }}
         >
           <ScrollView
@@ -200,8 +219,8 @@ export default function Discover() {
                 t={t}
                 width={featuredCardWidth}
                 height={340}
-                previewPlayer={index === activeFeaturedIndex && featuredInView && !reduced ? videoPlayer : undefined}
-                previewReady={featuredPreviewReady}
+                previewPlayer={index === activeFeaturedIndex && activePreviewSection === 'featured' && !reduced ? videoPlayer : undefined}
+                previewReady={previewReady}
                 onPress={() => router.push(`/template/${t.id}`)}
               />
             ))}
@@ -231,12 +250,35 @@ export default function Discover() {
         <View style={{ height: 28 }} />
       </>}
 
-      <SectionTitle kicker="ВЫБРАЛИ ДЛЯ ТЕБЯ" title="Рекомендуем" />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 4, paddingBottom: 8 }}>
-        {recommendations.items.map((t) => (
-          <TemplateCard key={t.id} t={t} width={Math.min(width * 0.58, 230)} height={250} onPress={() => router.push(`/template/${t.id}`)} />
-        ))}
-      </ScrollView>
+      <View onLayout={(event) => {
+        recommendationsFrame.current = { y: event.nativeEvent.layout.y, height: event.nativeEvent.layout.height };
+        updateSectionVisibility();
+      }}>
+        <SectionTitle kicker="ВЫБРАЛИ ДЛЯ ТЕБЯ" title="Рекомендуем" />
+        <ScrollView
+          ref={recommendationsScroll}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={recommendationCardWidth + 4}
+          decelerationRate="fast"
+          disableIntervalMomentum
+          contentContainerStyle={{ paddingHorizontal: 12, gap: 4, paddingBottom: 8 }}
+          onScrollEndDrag={(event) => selectRecommendationAtOffset(event.nativeEvent.contentOffset.x)}
+          onMomentumScrollEnd={(event) => selectRecommendationAtOffset(event.nativeEvent.contentOffset.x)}
+        >
+          {recommendations.items.map((t, index) => (
+            <TemplateCard
+              key={t.id}
+              t={t}
+              width={recommendationCardWidth}
+              height={250}
+              previewPlayer={index === activeRecommendationIndex && activePreviewSection === 'recommendations' && !reduced ? videoPlayer : undefined}
+              previewReady={previewReady}
+              onPress={() => router.push(`/template/${t.id}`)}
+            />
+          ))}
+        </ScrollView>
+      </View>
       {recommendations.isError && <EmptyState icon="alert-circle" title="Рекомендации не загрузились" text="Попробуй ещё раз." action="Повторить" onAction={() => void recommendations.refetch()} />}
 
       <View style={{ height: 24 }} />
