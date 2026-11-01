@@ -112,6 +112,24 @@ test("imported metadata with unavailable originals stays private, including old 
   await importCatalogue();
   assert.equal((await readCatalogue()).length, 0);
 });
+test("reimport never invents a publication date for an existing published card", async () => {
+  process.env.CLOUDFLARE_R2_ACCOUNT_ID = "a".repeat(32);
+  process.env.CLOUDFLARE_R2_BUCKET_NAME = "catalogue-test";
+  process.env.CLOUDFLARE_R2_ACCESS_KEY_ID = "synthetic";
+  process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY = "synthetic";
+  mock.method(S3Client.prototype, "send", async () => ({ ETag: '"file"', ContentLength: 100 }));
+  await seedCatalogue();
+  await pool.query(`UPDATE dance_catalogue
+    SET published=true, published_at=null, metadata=metadata - '_importMediaChecked'
+    WHERE id='trend-01'`);
+
+  await importCatalogue();
+
+  const { rows: [legacy] } = await pool.query("SELECT published, published_at FROM dance_catalogue WHERE id='trend-01'");
+  assert.equal(legacy.published, true);
+  assert.equal(legacy.published_at, null);
+  assert.equal((await readCatalogue()).find(item => item.id === "trend-01")?.badge, null);
+});
 test("restored seed media is returned by the public catalogue without restoring owner-unpublished cards", async () => {
   process.env.CLOUDFLARE_R2_ACCOUNT_ID = "a".repeat(32);
   process.env.CLOUDFLARE_R2_BUCKET_NAME = "catalogue-test";
