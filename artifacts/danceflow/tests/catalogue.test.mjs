@@ -18,6 +18,27 @@ test('server-only dances and original video links survive page merging without d
   assert.deepEqual(mergeCataloguePages([]), []);
   assert.deepEqual(mergeCataloguePages([{ items: [] }]), []);
 });
+test('browser media uses the current preview origin, not the native API host', () => {
+  const previousWindow = globalThis.window;
+  globalThis.window = { location: { origin: 'https://web-preview.example.invalid' } };
+  try {
+    process.env.EXPO_PUBLIC_DOMAIN = 'native-api.example.invalid';
+    const item = fromCatalogue({
+      ...template,
+      videoPosterUri: '/api/dance-templates/dance-server-only/reference.jpg',
+      referenceImageUris: ['/api/dance-templates/dance-server-only/character.jpg'],
+    });
+    assert.equal(item.image.uri, 'https://web-preview.example.invalid/api/dance-templates/dance-server-only/poster.jpg');
+    assert.equal(item.videoUri, 'https://web-preview.example.invalid/api/dance-templates/dance-server-only/video.mp4');
+    assert.equal(item.videoPoster.uri, 'https://web-preview.example.invalid/api/dance-templates/dance-server-only/reference.jpg');
+    assert.equal(item.referenceImageUris[0], 'https://web-preview.example.invalid/api/dance-templates/dance-server-only/character.jpg');
+    assert.equal(fromCatalogue({ ...template, videoUri: 'https://cdn.example.invalid/original.mp4' }).videoUri,
+      'https://cdn.example.invalid/original.mp4');
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
 test('new drafts keep catalogue metadata snapshot, old drafts require no migration', async () => {
   const old = { id: 'old', templateId: 'bubblegum-rush', photoUri: 'file:///old.jpg', duration: 5, createdAt: 123 };
   const current = { ...old, id: 'new', templateId: template.id, templateSnapshot: fromCatalogue(template) };

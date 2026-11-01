@@ -82,6 +82,8 @@ export default function Discover() {
   const shouldPreviewRef = useRef(false);
 
   useEffect(() => {
+    // Web owns its HTML video lifecycle inside CardVideoPreview.web.
+    if (Platform.OS === 'web') return;
     if (!activeFeatured || previewCandidates.length === 0) return;
     shouldPreviewRef.current = featuredInView && !reduced;
     if (!shouldPreviewRef.current) {
@@ -201,7 +203,8 @@ export default function Discover() {
               t={t}
               width={featuredCardWidth}
               height={340}
-              previewPlayer={index === activeFeaturedIndex && featuredInView && featuredPreviewReady ? videoPlayer : undefined}
+               previewPlayer={index === activeFeaturedIndex && featuredInView && !reduced ? videoPlayer : undefined}
+               previewReady={featuredPreviewReady}
               onPress={() => router.push(`/template/${t.id}`)}
             />
         ))}

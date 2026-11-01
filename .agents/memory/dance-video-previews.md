@@ -24,3 +24,9 @@ Expo image picker in the installed version returns video duration in seconds on 
 **Why:** Treating both as milliseconds turned a 13-second uploaded video into 0.013 seconds and understated the estimate.
 
 **How to apply:** Normalize picker durations by platform, verifying the installed web implementation when upgrading Expo. Do not automatically reinterpret previously saved draft durations.
+
+Browser media must have a single owner of source changes. Mixing imperative source replacement with React's declarative source updates can reset loaded media to paused without a new readiness transition.
+
+**Why:** Real browser checks found decoded, ready media stuck at time zero while loaded posters made screenshots look successful. Expo web's media lifecycle differs from native playback.
+
+**How to apply:** Keep browser source updates declarative and verify advancing playback time both after a fresh load and after switching clips. Mount the media element before waiting for readiness; hide its output while loading rather than withholding the element itself.

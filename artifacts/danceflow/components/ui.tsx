@@ -2,7 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { VideoView, type VideoPlayer } from 'expo-video';
+import type { VideoPlayer } from 'expo-video';
 import React, { useState } from 'react';
 import { Platform, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
@@ -11,6 +11,7 @@ import { F } from '@/constants/fonts';
 import { useColors } from '@/hooks/useColors';
 import { useDance } from '@/context/DanceContext';
 import colors from '@/constants/colors';
+import { CardVideoPreview } from './card-video-preview';
 
 /** Text colour that stays readable on a given fill token. */
 export const onTone = (c: { foreground: string; primaryForeground: string }, k: ColorKey) =>
@@ -103,14 +104,14 @@ export function FavButton({ id, size = 40 }: { id: string; size?: number }) {
   );
 }
 
-export function TemplateCard({ t, onPress, width, height = 280, previewPlayer }: { t: DanceTemplate; onPress: () => void; width?: number; height?: number; previewPlayer?: VideoPlayer }) {
+export function TemplateCard({ t, onPress, width, height = 280, previewPlayer, previewReady = true }: { t: DanceTemplate; onPress: () => void; width?: number; height?: number; previewPlayer?: VideoPlayer; previewReady?: boolean }) {
   const c = useColors();
   const col = tone(c, t.color);
   return (
     <View style={[s.card, { width, height, borderColor: c.glassEdge, backgroundColor: col, shadowColor: c.glow }]}>
       <Bouncy onPress={onPress} scaleTo={0.97} style={StyleSheet.absoluteFill}>
         <Image source={t.image} style={StyleSheet.absoluteFill} contentFit="cover" />
-        {previewPlayer && <VideoView player={previewPlayer} style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]} contentFit="cover" nativeControls={false} surfaceType={Platform.OS === 'android' ? 'textureView' : 'surfaceView'} />}
+        {previewPlayer && t.videoUri && <CardVideoPreview key={t.videoUri} uri={t.videoUri} player={previewPlayer} ready={previewReady} />}
         <LinearGradient colors={[c.clear, c.scrim]} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0.5 }} end={{ x: 0, y: 1 }} />
       </Bouncy>
       <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
