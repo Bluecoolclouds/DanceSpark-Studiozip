@@ -49,7 +49,7 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
   const [family, setFamily] = useState<GenerationFamily>('light');
   const maxOutput = outputLimit(family);
   const [source, setSource] = useState<SourceVideo | null>(() => trendSource(initialTrend));
-  const [refs, setRefs] = useState<string[]>([]);
+  const [refs, setRefs] = useState<string[]>(() => initialTrend?.referenceImageUris ?? []);
   const [prompt, setPrompt] = useState<string>(() => initialTrend?.prompt ?? '');
   const [resolution, setResolution] = useState<GenerationResolution>('720p');
   const [error, setError] = useState<string | null>(null);
@@ -110,6 +110,8 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
   const selectTrend = (t: DanceTemplate) => {
     setTrend(t);
     setSource(trendSource(t));
+    // Prefill only what the user has not filled in yet.
+    if (refs.length === 0 && t.referenceImageUris?.length) setRefs(t.referenceImageUris);
     if (!prompt.trim() && t.prompt) setPrompt(t.prompt);
     setChoosing(false); setError(null);
   };
@@ -120,7 +122,7 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
 
   const reset = () => {
     const t = allowTrendPicker ? null : initialTrend;
-    setTrend(t); setModel(defaultModel); setFamily('light'); setSource(trendSource(t)); setRefs([]);
+    setTrend(t); setModel(defaultModel); setFamily('light'); setSource(trendSource(t)); setRefs(t?.referenceImageUris ?? []);
     setPrompt(t?.prompt ?? ''); setResolution('720p'); setError(null); setChoosing(false);
     setExpanded(t?.prompt ? 'prompt' : t ? null : 'video');
   };

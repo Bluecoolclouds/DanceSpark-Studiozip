@@ -1,5 +1,4 @@
 import { Feather } from '@expo/vector-icons';
-import { Image as ExpoImage } from 'expo-image';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -18,13 +17,11 @@ export const fmtSec = (s: number) => `${Number(s.toFixed(2)).toString().replace(
 export const fmtUsd = (v: number, digits = 2) => `$${v.toFixed(digits)}`;
 export const getModel = getGenerationModel;
 
-type PreviewPoster = number | { uri: string };
-
-export function SourcePreview({ uri, height = 300, poster }: { uri: string; height?: number; poster?: PreviewPoster }) {
-  return <StoredPreview key={uri} uri={uri} height={height} poster={poster} />;
+export function SourcePreview({ uri, height = 300 }: { uri: string; height?: number }) {
+  return <StoredPreview key={uri} uri={uri} height={height} />;
 }
 
-function StoredPreview({ uri, height, poster }: { uri: string; height: number; poster?: PreviewPoster }) {
+function StoredPreview({ uri, height }: { uri: string; height: number }) {
   const c = useColors();
   const [source, setSource] = useState<string | null>(uri.startsWith('danceflow-media:') ? null : uri);
   const [error, setError] = useState<string | null>(null);
@@ -38,21 +35,21 @@ function StoredPreview({ uri, height, poster }: { uri: string; height: number; p
     }).catch(() => { if (active) setError('Не удалось открыть сохранённое видео. Возможно, хранилище браузера было очищено.'); });
     return () => { active = false; dispose(); };
   }, [uri]);
-  return source ? <PreviewSession uri={source} height={height} poster={poster} /> :
+  return source ? <PreviewSession uri={source} height={height} /> :
     <Text style={{ color: c.mutedForeground }}>{error ?? 'Загружаем сохранённое видео…'}</Text>;
 }
 
-function PreviewSession({ uri, height, poster }: { uri: string; height: number; poster?: PreviewPoster }) {
+function PreviewSession({ uri, height }: { uri: string; height: number }) {
   const candidates = useMemo(() => templatePreviewCandidates(uri), [uri]);
   const [attempt, setAttempt] = useState(0);
   const [retry, setRetry] = useState(0);
-  return <PreviewPlayer key={`${attempt}:${retry}`} playbackUri={candidates[attempt]} height={height} poster={poster}
+  return <PreviewPlayer key={`${attempt}:${retry}`} playbackUri={candidates[attempt]} height={height}
     onFallback={attempt + 1 < candidates.length ? () => setAttempt(attempt + 1) : undefined}
     onRetry={() => { setAttempt(0); setRetry((n) => n + 1); }} />;
 }
 
-function PreviewPlayer({ playbackUri, height, poster, onFallback, onRetry }: {
-  playbackUri: string; height: number; poster?: PreviewPoster; onFallback?: () => void; onRetry: () => void;
+function PreviewPlayer({ playbackUri, height, onFallback, onRetry }: {
+  playbackUri: string; height: number; onFallback?: () => void; onRetry: () => void;
 }) {
   const c = useColors();
   const player = useVideoPlayer(playbackUri, (p) => { p.loop = false; p.muted = false; });
@@ -72,7 +69,6 @@ function PreviewPlayer({ playbackUri, height, poster, onFallback, onRetry }: {
   return (
     <View style={[s.video, { height, borderColor: c.border, backgroundColor: c.stage }]}>
       <VideoView player={player} style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]} contentFit="contain" nativeControls />
-      {poster && !playing && !failed && <ExpoImage source={poster} style={StyleSheet.absoluteFill} contentFit="contain" pointerEvents="none" />}
       {!failed && <Bouncy testID="template-video-toggle" onPress={() => playing ? player.pause() : player.play()}
         style={{ position: 'absolute', top: 12, right: 12, minHeight: 44, backgroundColor: c.card, borderRadius: 22, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <Feather name={playing ? 'pause' : 'play'} size={18} color={c.foreground} />
