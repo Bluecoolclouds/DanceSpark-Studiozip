@@ -141,3 +141,13 @@ export function getCatalogueVisitorToken(): Promise<string | null> {
   })().finally(() => { pending = undefined; });
   return pending;
 }
+
+/** Records a catalogue open only if analytics consent is still enabled. */
+export async function recordCatalogueOpenIfEnabled(
+  id: string,
+  recordOpen: (id: string, visitorToken: string) => void,
+): Promise<void> {
+  const visitorToken = await getCatalogueVisitorToken();
+  if (!visitorToken || !(await getCatalogueAnalyticsEnabled())) return;
+  recordOpen(id, visitorToken);
+}
