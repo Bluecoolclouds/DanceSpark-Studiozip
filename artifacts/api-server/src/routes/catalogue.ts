@@ -36,7 +36,7 @@ router.post("/catalogue/:id/open", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Танец не опубликован" });
     return;
   }
-  await recordCatalogueOpen(id, body.data.visitorToken);
+  await recordCatalogueOpen(id, body.data.visitorToken, req.ip);
   res.sendStatus(204);
 });
 router.use("/admin/catalogue", requireAccount, requireAdmin, protectAdminMutation);

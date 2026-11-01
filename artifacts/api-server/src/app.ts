@@ -11,6 +11,10 @@ import { allowedWebOrigin } from "./lib/web-origins";
 
 const app: Express = express();
 
+// The API runs behind one trusted Replit edge proxy; req.ip resolves the
+// visitor address without logging or persisting it.
+app.set("trust proxy", 1);
+
 app.use(
   pinoHttp({
     logger,

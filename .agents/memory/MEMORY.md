@@ -14,3 +14,4 @@
 - [Expo API origins](expo-api-origins.md) — Use same-origin `/api` for Expo web and the explicit deployment host for native apps.
 - [Expo preview loading](expo-preview-loading.md) — A blank first capture can be an unfinished async route bundle, not an authentication restriction.
 - [Danceflow page background](danceflow-page-background.md) — Keep the app-wide base and launch backgrounds at `#fbf9fd`.
+- [Catalogue open privacy](catalogue-open-privacy.md) — Limit rating influence by transient network source without storing address or account identifiers.

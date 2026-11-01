@@ -92,6 +92,7 @@ async function serve(application: express.Express, work: (root: string) => Promi
 }
 function ownerApp() {
   const application = express();
+  application.set("trust proxy", 1);
   application.use(express.json(), (req, _res, next) => { req.log = logger; next(); });
   // Keep production authentication separate; exercise actual post-auth route handlers.
   for (const layer of (router as any).stack) {
@@ -181,24 +182,50 @@ test("create, edit, reject missing originals, publish and unpublish dynamic id; 
     assert.equal(detail.badge, "new");
     assert.ok(detail.publishedAt);
     const visitorToken = "77777777-7777-4777-8777-777777777777";
+    const abuseSource = "203.0.113.41";
     for (let i = 0; i < 2; i++) {
       const open = await fetch(`${root}/catalogue/${created.id}/open`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST", headers: {
+          "Content-Type": "application/json",
+          "X-Forwarded-For": abuseSource,
+        },
         body: JSON.stringify({ visitorToken }),
       });
       assert.equal(open.status, 204);
     }
+    for (let i = 0; i < 12; i++) {
+      const open = await fetch(`${root}/catalogue/${created.id}/open`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Forwarded-For": abuseSource },
+        body: JSON.stringify({ visitorToken: randomUUID() }),
+      });
+      assert.equal(open.status, 204);
+    }
+    assert.equal((await fetch(`${root}/catalogue/${created.id}/open`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Forwarded-For": abuseSource },
+      body: JSON.stringify({ visitorToken }),
+    })).status, 204);
     const opens = await pool.query("SELECT visitor_hash FROM dance_catalogue_opens WHERE catalogue_id=$1", [created.id]);
     assert.equal(opens.rowCount, 1);
     assert.equal(opens.rows[0].visitor_hash, createHash("sha256").update(visitorToken).digest("hex"));
     assert.notEqual(opens.rows[0].visitor_hash, visitorToken);
+    const openColumns = await pool.query(`SELECT column_name FROM information_schema.columns
+      WHERE table_schema=current_schema() AND table_name='dance_catalogue_opens'
+      ORDER BY ordinal_position`);
+    assert.deepEqual(openColumns.rows.map((row: { column_name: string }) => row.column_name),
+      ["catalogue_id", "visitor_hash", "last_opened_at"]);
     await pool.query("UPDATE dance_catalogue SET published_at=now()-interval '8 days' WHERE id=$1", [created.id]);
     detail = await (await fetch(`${root}/catalogue/${created.id}`)).json();
     assert.equal(detail.badge, "trending");
+    let addressSuffix = 1;
     for (const [id, visitorCount] of [["trend-01", 3], ["trend-03", 2], ["trend-04", 2], ["trend-05", 1]] as const) {
       for (let i = 0; i < visitorCount; i++) {
         const open = await fetch(`${root}/catalogue/${id}/open`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
+          method: "POST", headers: {
+            "Content-Type": "application/json",
+            "X-Forwarded-For": `198.51.100.${addressSuffix++}`,
+          },
           body: JSON.stringify({ visitorToken: randomUUID() }),
         });
         assert.equal(open.status, 204);

@@ -107,7 +107,11 @@ paths:
   /catalogue/{id}/open:
     post:
       operationId: recordCatalogueOpen
-      description: Records a unique published-template detail open for a rotating anonymous visitor token.
+      description: >-
+        Records a unique published-template detail open for a rotating anonymous visitor token.
+        Reopens with the same token remain valid. To limit artificial ranking inflation, only one
+        distinct token per network source and template is counted within seven days. The source
+        address is used transiently in memory as a keyed digest and is not persisted.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
       requestBody:
