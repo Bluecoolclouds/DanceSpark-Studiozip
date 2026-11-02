@@ -2,6 +2,7 @@
 - [Storage video cancellation](storage-video-cancellation.md) — Verify aborted media requests; early cloud-stream destruction can crash the SDK pipeline.
 - [Dance video previews](dance-video-previews.md) — Browser playback versions are separate from original provider inputs; HTTP success alone does not prove decoding.
 - [Danceflow payments](danceflow-payments.md) — Confirmed YooKassa scope: web and Android in Russia, with automatic monthly renewal.
+- [Danceflow free credits](danceflow-free-credits.md) — Daily free credits apply to every registered account, including paid subscribers; guests are excluded.
 - [Imported auth provisioning](imported-auth-provisioning.md) — Clerk still used the ZIP name after confirmed rename and refresh; avoid repeating that failed workaround.
 - [Server test failure signals](server-test-failure-signals.md) — Network-safety probes must verify process exit status, not just failed-hook output.
 - [Account transition isolation](account-transition-isolation.md) — Identity changes must isolate in-flight work as well as cached data, especially after admin sessions.
@@ -17,3 +18,4 @@
 - [Catalogue open privacy](catalogue-open-privacy.md) — Limit rating influence by transient network source without storing address or account identifiers.
 - [Web modal focus](web-modal-focus.md) — A backdrop button can capture programmatic focus even with tabIndex=-1; use a non-focusable backdrop.
 - [Release data policy](release-data-policy.md) — Approved: user source videos 7 days, completed jobs 30 days; protect active/uncertain jobs and shared catalogue.
+- [RuStore age category](rustore-age-category.md) — Owner selected 16+ as Danceflow’s working age category; keep it provisional until content safeguards are verified.

@@ -14,3 +14,59 @@ mtime_ms = 1793584369388
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:46e8fdf1-9990-476d-811d-ead6144893a0/f6c9d3dd-7560-48d2-9c32-d61a14edc30a/c2b7d7c9-ba88-484d-b6cb-44f40d556067"
 storage_version_token = "1793584435218617"
 content_type = "image/png"
+
+[[outputs]]
+id = "0q2aQsSL7L0kOmdxN4E5B"
+uri = "file://artifacts/danceflow/rustore/screenshots/01-home.jpg"
+type = "image"
+title = "RuStore draft — Home"
+description = "Current Expo preview. The first recommendation poster did not load; do not submit this frame as final."
+logical_id = "43480c88-6279-4afe-bb33-6e3f5fee6fb3"
+content_hash = "sha256:bb14d888c8d0ebc824bc3da64cede049417ff5baac9029df8c45c68d0a7cc68c"
+size = 60686
+mtime_ms = 1793617068235
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:46e8fdf1-9990-476d-811d-ead6144893a0/43480c88-6279-4afe-bb33-6e3f5fee6fb3/5cbdf49f-e092-4e92-a6cd-b23c7b04c983"
+storage_version_token = "1793617390193375"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "OgaAg47RBYEKjGdzf09Jj"
+uri = "file://artifacts/danceflow/rustore/screenshots/02-create.jpg"
+type = "image"
+title = "RuStore draft — Create"
+description = "Current Expo preview of model and source selection; not captured from signed Android release."
+logical_id = "03fef02c-a446-43af-bfcf-fe8b662f8638"
+content_hash = "sha256:f1857b75dafcc706c84439b911b97f6c87c35c1922e785895703af5f646c4917"
+size = 46635
+mtime_ms = 1793617073203
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:46e8fdf1-9990-476d-811d-ead6144893a0/03fef02c-a446-43af-bfcf-fe8b662f8638/e8dc25ed-76c4-449e-9f1d-19f242ec7a89"
+storage_version_token = "1793617391480721"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "DIvoImlBue0YQAgS8TExL"
+uri = "file://artifacts/danceflow/rustore/screenshots/03-template-example.jpg"
+type = "image"
+title = "RuStore draft — Trend 06"
+description = "Current template setup form, not the generated result; not a final store screenshot."
+logical_id = "e57e0db5-cb57-4bec-905e-3f767e26ac3b"
+content_hash = "sha256:0c8b4af721a82f8976d6c4f1ca77b8369d5a9acd90638a075a3be6d9fe7b4f52"
+size = 45545
+mtime_ms = 1793617079151
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:46e8fdf1-9990-476d-811d-ead6144893a0/e57e0db5-cb57-4bec-905e-3f767e26ac3b/b1f95c08-baaa-4137-ba4e-8fa96b381036"
+storage_version_token = "1793617392692260"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "EX0eR5QmKTlI0TWbbHIDN"
+uri = "file://artifacts/danceflow/rustore/screenshots/04-studio.jpg"
+type = "image"
+title = "RuStore draft — My"
+description = "Guest account screen; subscription purchase is not currently available."
+logical_id = "3ff16091-44af-4b85-98df-382290352a7c"
+content_hash = "sha256:072d7374d12f8bd3d98c7c6da0b8fe778de0e2c59e02a9d07ab7bf72b6948948"
+size = 48447
+mtime_ms = 1793617084603
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:46e8fdf1-9990-476d-811d-ead6144893a0/3ff16091-44af-4b85-98df-382290352a7c/1e83debc-80aa-4794-9fa5-c1372f600632"
+storage_version_token = "1793617393931214"
+content_type = "image/jpeg"
