@@ -18,4 +18,5 @@
 - [Catalogue open privacy](catalogue-open-privacy.md) — Limit rating influence by transient network source without storing address or account identifiers.
 - [Web modal focus](web-modal-focus.md) — A backdrop button can capture programmatic focus even with tabIndex=-1; use a non-focusable backdrop.
 - [Release data policy](release-data-policy.md) — Approved: user source videos 7 days, completed jobs 30 days; protect active/uncertain jobs and shared catalogue.
-- [RuStore age category](rustore-age-category.md) — Owner selected 16+ as Danceflow’s working age category; keep it provisional until content safeguards are verified.
+- [Danceflow legal position](danceflow-legal-position.md) — Owner-confirmed 18+ audience and catalogue/music rights; preserve vendor disclosures and launch blockers pending review.
+- [RuStore age category](rustore-age-category.md) — The 18+ audience decision does not by itself settle RuStore’s content rating; verify actual model outputs and safeguards.
