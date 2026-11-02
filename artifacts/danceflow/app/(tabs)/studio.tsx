@@ -45,7 +45,23 @@ function StudioScreen() {
     <View style={{ flex: 1, backgroundColor: c.background }}>
     <StageBackdrop />
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingTop: top + 14, paddingBottom: 130 }} showsVerticalScrollIndicator={false}>
-      <View style={styles.col}>
+      <View style={[styles.col, { gap: 12 }]}>
+        <Text style={[styles.section, { color: c.foreground }]}>Аккаунт</Text>
+        <AccountSubscription />
+        <Bouncy testID="open-subscription" accessibilityLabel="Тарифы подписки" scaleTo={0.97} onPress={() => router.push('/subscription')}
+          style={[styles.subEntry, { backgroundColor: c.violet, shadowColor: c.violet }]}>
+          <View style={[styles.subIcon, { backgroundColor: c.sun }]}>
+            <Feather name="star" size={18} color={c.foreground} />
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[styles.subTitle, { color: c.primaryForeground }]}>Тарифы подписки</Text>
+            <Text numberOfLines={2} style={[styles.subText, { color: c.primaryForeground }]}>Посмотреть цены · оплата скоро</Text>
+          </View>
+          <Feather name="arrow-right" size={20} color={c.primaryForeground} />
+        </Bouncy>
+      </View>
+
+      <View style={[styles.col, { marginTop: 28 }]}>
         <View style={styles.hero}>
           <Text style={[styles.kicker, { color: c.tint }]}>Твоя личная студия</Text>
           <Text style={[styles.title, { color: c.foreground }]}>Моя <Text style={{ color: c.violet }}>сцена</Text></Text>
@@ -140,34 +156,13 @@ function StudioScreen() {
       )}
       </View>
 
-      <View style={[styles.col, { marginTop: 32, gap: 12 }]}>
-        <Text style={[styles.section, { color: c.foreground }]}>Аккаунт</Text>
-        <AccountSubscription />
-        <Bouncy testID="open-subscription" accessibilityLabel="Тарифы подписки" scaleTo={0.97} onPress={() => router.push('/subscription')}
-          style={[styles.subEntry, { backgroundColor: c.violet, shadowColor: c.violet }]}>
-          <View style={[styles.subIcon, { backgroundColor: c.sun }]}>
-            <Feather name="star" size={18} color={c.foreground} />
-          </View>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={[styles.subTitle, { color: c.primaryForeground }]}>Тарифы подписки</Text>
-            <Text numberOfLines={2} style={[styles.subText, { color: c.primaryForeground }]}>Посмотреть цены · оплата скоро</Text>
-          </View>
-          <Feather name="arrow-right" size={20} color={c.primaryForeground} />
-        </Bouncy>
-        <Bouncy testID="open-privacy-policy" accessibilityLabel="Политика конфиденциальности и поддержка" scaleTo={0.97} onPress={() => router.push('/privacy')}
-          style={[styles.privacyLink, { backgroundColor: c.card, borderColor: c.border }]}>
-          <View style={[styles.privIcon, { backgroundColor: c.muted }]}><Feather name="shield" size={15} color={c.violet} /></View>
-          <Text style={[styles.privacyText, { color: c.foreground }]}>Политика конфиденциальности</Text>
-          <Feather name="chevron-right" size={17} color={c.mutedForeground} />
-        </Bouncy>
-      </View>
-
       <View style={[styles.col, styles.legalFooter]}>
         <Text style={[styles.section, { color: c.foreground }]}>Документы и поддержка</Text>
         <Text style={[styles.legalIntro, { color: c.mutedForeground }]}>
           Платежи пока отключены. Документы с пометкой «черновик» нужно заполнить до публикации и запуска оплаты.
         </Text>
         <View style={[styles.legalList, { backgroundColor: c.card, borderColor: c.border }]}>
+          <LegalLink testID="open-privacy-policy" icon="shield" title="Политика конфиденциальности" subtitle="Обработка и защита персональных данных" onPress={() => router.push('/privacy')} />
           <LegalLink icon="file-text" title="Пользовательское соглашение" subtitle="Правила использования Danceflow" onPress={() => router.push('/legal/terms')} />
           <LegalLink icon="credit-card" title="Оферта и подписка" subtitle="Цены, ежемесячное продление и оплата" onPress={() => router.push('/legal/offer')} />
           <LegalLink icon="rotate-ccw" title="Отмена и возвраты" subtitle="Как прекратить подписку и запросить возврат" onPress={() => router.push('/legal/refunds')} />
@@ -182,12 +177,12 @@ function StudioScreen() {
   );
 }
 
-function LegalLink({ icon, title, subtitle, onPress, last = false }: {
-  icon: keyof typeof Feather.glyphMap; title: string; subtitle: string; onPress: () => void; last?: boolean;
+function LegalLink({ icon, title, subtitle, onPress, last = false, testID }: {
+  icon: keyof typeof Feather.glyphMap; title: string; subtitle: string; onPress: () => void; last?: boolean; testID?: string;
 }) {
   const c = useColors();
   return (
-    <Bouncy accessibilityLabel={`${title}. ${subtitle}`} scaleTo={0.99} onPress={onPress}
+    <Bouncy testID={testID} accessibilityLabel={`${title}. ${subtitle}`} scaleTo={0.99} onPress={onPress}
       style={[styles.legalLink, !last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border }]}>
       <View style={[styles.legalIcon, { backgroundColor: c.muted }]}>
         <Feather name={icon} size={16} color={c.violet} />
@@ -295,9 +290,6 @@ const styles = StyleSheet.create({
   subIcon: { width: 44, height: 44, borderRadius: 16, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '8deg' }] },
   subTitle: { fontFamily: F.displayBold, fontSize: 15 },
   subText: { fontFamily: F.bodyBold, fontSize: 12, opacity: 0.9, marginTop: 2 },
-  privacyLink: { minHeight: 54, borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  privIcon: { width: 32, height: 32, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  privacyText: { flex: 1, fontFamily: F.bodyBold, fontSize: 13 },
   legalFooter: { marginTop: 28, marginBottom: 24, gap: 10 },
   legalIntro: { fontFamily: F.body, fontSize: 13, lineHeight: 19 },
   legalList: { borderWidth: 1, borderRadius: 20, overflow: 'hidden', paddingHorizontal: 12 },
