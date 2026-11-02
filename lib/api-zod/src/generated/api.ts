@@ -577,6 +577,23 @@ export const GetDanceTemplateMediaHeader = zod.object({
 export const GetDanceTemplateMediaResponse = zod.unknown()
 
 
+export const GetAccountDeletionResponse = zod.object({
+  "status": zod.enum(['not_requested', 'pending', 'retrying', 'completed'])
+})
+
+
+/**
+ * Irreversible self-service deletion. Never accepts a target account ID.
+ */
+export const RequestAccountDeletionBody = zod.object({
+  "confirmation": zod.enum(['УДАЛИТЬ'])
+})
+
+export const RequestAccountDeletionResponse = zod.object({
+  "status": zod.enum(['not_requested', 'pending', 'retrying', 'completed'])
+})
+
+
 export const GetAccountSubscriptionResponse = zod.object({
   "accountId": zod.string(),
   "plan": zod.enum(['none', 'warmup', 'dancefloor', 'stage']),

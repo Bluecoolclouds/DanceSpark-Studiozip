@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import {
-  S3Client, GetObjectCommand, HeadObjectCommand, PutObjectCommand,
+  S3Client, GetObjectCommand, HeadObjectCommand, PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand,
 } from "@aws-sdk/client-s3";
+import { pool } from "@workspace/db";
 import type { Readable } from "node:stream";
 import { MAX_CUSTOM_VIDEO_BYTES } from "./custom-video-validation";
 
@@ -35,20 +36,76 @@ function storage() {
   };
 }
 
+export function ownedVideoPrefix(ownerId: string) {
+  if (!ownerId) throw new Error("Owned video scope required");
+  return `danceflow-user-videos/${createHash("sha256").update(ownerId).digest("hex")}/`;
+}
+
+export function isOwnedSourceKey(ownerId: string, key: string) {
+  const prefix = ownedVideoPrefix(ownerId);
+  return key.startsWith(prefix) && /^[a-f0-9-]{36}\.mp4$/i.test(key.slice(prefix.length)) &&
+    validId(key.slice(prefix.length, -4));
+}
+
 function objectKey(ownerId: string, sourceVideoId: string) {
   if (!ownerId || !validId(sourceVideoId)) throw new Error("Invalid owned video identifier");
-  const ownerScope = createHash("sha256").update(ownerId).digest("hex");
-  return `danceflow-user-videos/${ownerScope}/${sourceVideoId}.mp4`;
+  return `${ownedVideoPrefix(ownerId)}${sourceVideoId}.mp4`;
 }
 
 export async function saveOwnedCustomVideo(ownerId: string, sourceVideoId: string, bytes: Buffer) {
   const Key = objectKey(ownerId, sourceVideoId);
   const { client, bucket } = storage();
+  const connection = await pool.connect();
   try {
+    await connection.query("BEGIN");
+    const account = (await connection.query(
+      "SELECT blocked,deletion_requested_at FROM df_accounts WHERE id=$1 FOR UPDATE", [ownerId],
+    )).rows[0];
+    if (!account || account.blocked || account.deletion_requested_at) throw new CustomVideoStorageError("source_storage_unavailable");
     await client.send(new PutObjectCommand({
       Bucket: bucket, Key, Body: bytes, ContentLength: bytes.length,
       ContentType: "video/mp4", CacheControl: "private, no-store",
     }));
+    await connection.query("COMMIT");
+  } catch (error) {
+    await connection.query("ROLLBACK");
+    throw error;
+  } finally { connection.release(); client.destroy(); }
+}
+
+/**
+ * Private namespace only. `before` is used by retention; absent means explicit
+ * account deletion. Verify every returned key before sending a delete batch.
+ * Do not add a bucket-wide lifecycle rule: catalogue media shares this bucket.
+ */
+export async function deleteOwnedCustomVideos(ownerId: string, before?: Date): Promise<void> {
+  const { client, bucket } = storage();
+  try {
+    let continuation: string | undefined;
+    do {
+      const page = await client.send(new ListObjectsV2Command({
+        Bucket: bucket, Prefix: ownedVideoPrefix(ownerId), MaxKeys: 500,
+        ContinuationToken: continuation,
+      }));
+      const objects = (page.Contents ?? []).filter(object => {
+        if (!object.Key || !isOwnedSourceKey(ownerId, object.Key)) throw new Error("Unexpected private media key");
+        return !before || (object.LastModified && object.LastModified < before);
+      });
+      if (objects.length) {
+        const response = await client.send(new DeleteObjectsCommand({
+          Bucket: bucket, Delete: { Objects: objects.map(object => ({ Key: object.Key! })), Quiet: true },
+        }));
+        if (response.Errors?.length) throw new Error("Private media cleanup incomplete");
+      }
+      continuation = page.IsTruncated ? page.NextContinuationToken : undefined;
+      if (page.IsTruncated && !continuation) throw new Error("Private media cleanup pagination incomplete");
+    } while (continuation);
+    if (!before) {
+      const remaining = await client.send(new ListObjectsV2Command({
+        Bucket: bucket, Prefix: ownedVideoPrefix(ownerId), MaxKeys: 1,
+      }));
+      if (remaining.Contents?.length) throw new Error("Private media cleanup not yet confirmed");
+    }
   } finally { client.destroy(); }
 }
 

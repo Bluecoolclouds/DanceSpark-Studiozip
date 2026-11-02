@@ -266,6 +266,34 @@ paths:
           description: Invalid or unsatisfiable byte range
         "503":
           description: Media storage is unavailable
+  /account/deletion:
+    get:
+      operationId: getAccountDeletion
+      responses:
+        "200":
+          description: Deletion status for the authenticated account only
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountDeletion" }
+        "401": { description: Sign in required or identity already removed }
+    post:
+      operationId: requestAccountDeletion
+      description: Irreversible self-service deletion. Never accepts a target account ID.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AccountDeletionInput" }
+      responses:
+        "200":
+          description: Deletion completed or durably queued for retry
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountDeletion" }
+        "400": { description: Explicit confirmation required }
+        "401": { description: Sign in required }
+        "409": { description: "Active or uncertain generation, last administrator, or linked identity prevents deletion" }
+        "503": { description: Deletion request could not be saved; do not report success }
   /account/subscription:
     get:
       operationId: getAccountSubscription
@@ -716,6 +744,17 @@ components:
     CatalogueMediaInput:
       type: string
       format: binary
+    AccountDeletionInput:
+      type: object
+      required: [confirmation]
+      additionalProperties: false
+      properties:
+        confirmation: { type: string, enum: ["УДАЛИТЬ"] }
+    AccountDeletion:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [not_requested, pending, retrying, completed] }
     AccountSubscription:
       type: object
       required: [accountId, plan, status, subscriptionUntil]

@@ -30,7 +30,7 @@ export async function reserveGeneration(input: {
     await client.query("BEGIN");
     const controls = (await client.query("SELECT * FROM df_controls WHERE id=1 FOR UPDATE")).rows[0];
     const user = (await client.query("SELECT * FROM df_accounts WHERE id=$1 FOR UPDATE", [input.userId])).rows[0];
-    if (!user || user.blocked) throw new GenerationPolicyError("account_blocked", 403);
+    if (!user || user.blocked || user.deletion_requested_at) throw new GenerationPolicyError("account_blocked", 403);
     const previous = (await client.query(
       "SELECT id,status,template_id,request_fingerprint FROM df_jobs WHERE user_id=$1 AND idempotency_key=$2",
       [input.userId, input.idempotencyKey],
@@ -69,7 +69,10 @@ export async function reserveGeneration(input: {
       throw new GenerationPolicyError("budget_not_configured", 503);
     }
     const cost = Math.max(Number(controls.cost_per_generation_rub), input.minimumCostRub ?? 0);
-    if (usage.spend + cost > Number(controls.max_daily_spend_rub)) {
+    const erasedSpend = Number((await client.query(
+      "SELECT COALESCE(sum(cost_rub),0) AS spend FROM df_erased_costs WHERE day=(now() AT TIME ZONE 'UTC')::date",
+    )).rows[0].spend);
+    if (usage.spend + erasedSpend + cost > Number(controls.max_daily_spend_rub)) {
       throw new GenerationPolicyError("daily_budget_reached", 429);
     }
     const id = randomUUID();
@@ -99,7 +102,7 @@ export async function beginGeneration(id: string, recheckAccount = false): Promi
       const { rows: [account] } = await client.query(
         "SELECT a.* FROM df_accounts a JOIN df_jobs j ON j.user_id=a.id WHERE j.id=$1 FOR UPDATE OF a", [id],
       );
-      if (!account || account.blocked) throw new GenerationPolicyError("account_blocked", 403);
+      if (!account || account.blocked || account.deletion_requested_at) throw new GenerationPolicyError("account_blocked", 403);
       if (!["warmup", "dancefloor", "stage"].includes(account.plan) ||
           !account.subscription_until || new Date(account.subscription_until) <= new Date()) {
         throw new GenerationPolicyError("subscription_required", 403);

@@ -16,3 +16,4 @@
 - [Danceflow colour constraints](danceflow-page-background.md) — Preserve app-wide base and launch backgrounds `#fbf9fd`, and yellow accents `#FED93C`.
 - [Catalogue open privacy](catalogue-open-privacy.md) — Limit rating influence by transient network source without storing address or account identifiers.
 - [Web modal focus](web-modal-focus.md) — A backdrop button can capture programmatic focus even with tabIndex=-1; use a non-focusable backdrop.
+- [Release data policy](release-data-policy.md) — Approved: user source videos 7 days, completed jobs 30 days; protect active/uncertain jobs and shared catalogue.

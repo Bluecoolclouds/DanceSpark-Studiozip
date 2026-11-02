@@ -27,8 +27,8 @@ export async function linkIdentity(principal: LogtoPrincipal, accountId: string)
     if (existing && existing.account_id !== accountId) {
       throw new AuthFailure(409, "identity_already_linked", "Этот вход Logto уже связан с другим аккаунтом. Автоматическое объединение запрещено.");
     }
-    const account = (await client.query("SELECT blocked FROM df_accounts WHERE id=$1 FOR UPDATE", [accountId])).rows[0];
-    if (!account || account.blocked) throw new AuthFailure(403, "account_unavailable", "Аккаунт недоступен.");
+    const account = (await client.query("SELECT blocked,deletion_requested_at FROM df_accounts WHERE id=$1 FOR UPDATE", [accountId])).rows[0];
+    if (!account || account.blocked || account.deletion_requested_at) throw new AuthFailure(403, "account_unavailable", "Аккаунт недоступен.");
     if (!existing) await client.query(
       "INSERT INTO df_auth_identities(issuer,subject,account_id) VALUES($1,$2,$3)",
       [principal.issuer, principal.subject, accountId],
@@ -53,8 +53,8 @@ export async function registerIdentity(principal: LogtoPrincipal, email: string 
       [principal.issuer, principal.subject],
     )).rows[0];
     if (existing) {
-      const account = (await client.query("SELECT blocked FROM df_accounts WHERE id=$1", [existing.account_id])).rows[0];
-      if (!account || account.blocked) throw new AuthFailure(403, "account_unavailable", "Аккаунт недоступен.");
+      const account = (await client.query("SELECT blocked,deletion_requested_at FROM df_accounts WHERE id=$1", [existing.account_id])).rows[0];
+      if (!account || account.blocked || account.deletion_requested_at) throw new AuthFailure(403, "account_unavailable", "Аккаунт недоступен.");
       await client.query("COMMIT");
       return existing.account_id;
     }

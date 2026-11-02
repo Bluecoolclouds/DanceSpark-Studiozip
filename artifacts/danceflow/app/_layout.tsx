@@ -12,6 +12,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { DraftStorageNotice } from '@/components/DraftStorageNotice';
+import { LocalDeletionRecovery } from '@/components/LocalDeletionRecovery';
 import { useFonts } from 'expo-font';
 import { Unbounded_700Bold, Unbounded_800ExtraBold } from '@expo-google-fonts/unbounded';
 import { Manrope_500Medium, Manrope_700Bold, Manrope_800ExtraBold } from '@expo-google-fonts/manrope';
@@ -19,10 +20,15 @@ import { StatusBar } from 'expo-status-bar';
 import { DanceProvider } from '@/context/DanceContext';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { nativeApiOrigin } from '@/lib/api-origin';
 
 // Expo web is mounted behind Replit's artifact proxy: /api is same-origin there,
 // while native builds run outside the proxy and need an absolute API origin.
-setBaseUrl(Platform.OS === 'web' ? null : `https://${process.env.EXPO_PUBLIC_DOMAIN}`);
+setBaseUrl(Platform.OS === 'web' ? null : nativeApiOrigin({
+  development: __DEV__,
+  productionOrigin: process.env.EXPO_PUBLIC_API_ORIGIN,
+  developmentDomain: process.env.EXPO_PUBLIC_DOMAIN,
+}));
 const clerkKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
 if (!clerkKey) throw new Error('CLERK_PUBLISHABLE_KEY is required for account authentication.');
 
@@ -78,6 +84,7 @@ function RootLayoutNav() {
           animation: Platform.OS === 'web' ? 'none' : 'slide_from_bottom',
         }} />
         <Stack.Screen name="privacy" />
+        <Stack.Screen name="account-deletion" />
         <Stack.Screen name="sign-in" />
         <Stack.Screen name="sign-up" />
         <Stack.Screen name="forgot-password" />
@@ -115,11 +122,13 @@ export default function RootLayout() {
           <ErrorBoundary>
               <GestureHandlerRootView>
                 <KeyboardProvider>
-                  <DanceAuthBoundary>
-                    <AuthBridge>
-                      <RootLayoutNav />
-                    </AuthBridge>
-                  </DanceAuthBoundary>
+                  <LocalDeletionRecovery>
+                    <DanceAuthBoundary>
+                      <AuthBridge>
+                        <RootLayoutNav />
+                      </AuthBridge>
+                    </DanceAuthBoundary>
+                  </LocalDeletionRecovery>
                 </KeyboardProvider>
               </GestureHandlerRootView>
           </ErrorBoundary>

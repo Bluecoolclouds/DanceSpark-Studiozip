@@ -8,6 +8,8 @@ export const danceAccounts = pgTable("df_accounts", {
   email: text("email").notNull(),
   role: danceRole("role").notNull().default("user"),
   blocked: boolean("blocked").notNull().default(false),
+  deletionRequestedAt: timestamp("deletion_requested_at", { withTimezone: true }),
+  deletionError: text("deletion_error"),
   plan: dancePlan("plan").notNull().default("none"),
   subscriptionUntil: timestamp("subscription_until", { withTimezone: true }),
   dailyLimitOverride: integer("daily_limit_override"),

@@ -3,6 +3,8 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import type { GenerationDraftSettings } from '@/constants/generation';
 import { getTemplate, type DanceTemplate } from '@/constants/templates';
 import { CorruptDraftStorageError, parseDrafts, readDrafts as readStoredDrafts, writeDrafts } from '@/lib/draft-storage';
+import { eraseLocalAccountData } from '@/lib/account-local-data';
+import { blockOwnerMediaWrites } from '@/lib/draft-media';
 
 export interface Draft extends GenerationDraftSettings {
   id: string;
@@ -37,6 +39,7 @@ interface Ctx {
   updateDraft: (id: string, updates: DraftUpdates) => void;
   persistDraft: (id: string, updates: DraftUpdates) => Promise<boolean>;
   removeDraft: (id: string) => void;
+  eraseAccountData: () => Promise<void>;
 }
 
 export type DraftUpdates = Partial<Pick<Draft,
@@ -67,6 +70,8 @@ export function DanceProvider({ children, ownerId }: { children: React.ReactNode
   const changedWhileUnavailableRef = useRef(false);
   const mountedRef = useRef(false);
   const writeQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const favoriteWritesRef = useRef<Promise<void>>(Promise.resolve());
+  const erasingRef = useRef(false);
 
   const setStorageIssue = useCallback((issue: DraftStorageIssue) => {
     issueRef.current = issue;
@@ -74,7 +79,7 @@ export function DanceProvider({ children, ownerId }: { children: React.ReactNode
   }, []);
 
   const persistDrafts = useCallback((snapshot: Draft[], targetKey = draftKey) => {
-    if (!canPersistDraftsRef.current) return Promise.resolve(false);
+    if (!canPersistDraftsRef.current || erasingRef.current) return Promise.resolve(false);
     const operation = writeQueueRef.current.then(() => writeDrafts(AsyncStorage, targetKey, snapshot));
     const handled = operation.then<boolean, boolean>(
       () => {
@@ -95,6 +100,7 @@ export function DanceProvider({ children, ownerId }: { children: React.ReactNode
   }, [draftKey, setStorageIssue]);
 
   const readDrafts = useCallback(async () => {
+    if (erasingRef.current) return;
     canPersistDraftsRef.current = false;
     try {
       let loadedDrafts = await readStoredDrafts(AsyncStorage, draftKey);
@@ -109,7 +115,7 @@ export function DanceProvider({ children, ownerId }: { children: React.ReactNode
         }
       }
 
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || erasingRef.current) return;
       const next = loadedDrafts ?? [];
       const hasLocalChanges = changedWhileUnavailableRef.current;
       const combined = hasLocalChanges ? mergeDrafts(next, draftsRef.current) : next;
@@ -162,6 +168,7 @@ export function DanceProvider({ children, ownerId }: { children: React.ReactNode
   }, [persistDrafts]);
 
   const replaceCorruptDrafts = useCallback(async () => {
+    if (erasingRef.current) return;
     if (issueRef.current !== 'corrupt' || !corruptKeyRef.current) return;
     const damagedKey = corruptKeyRef.current;
     canPersistDraftsRef.current = true;
@@ -181,7 +188,7 @@ export function DanceProvider({ children, ownerId }: { children: React.ReactNode
   }, [draftKey, persistDrafts, setStorageIssue]);
 
   const changeDrafts = useCallback((next: Draft[]) => {
-    if (!mountedRef.current) return;
+    if (!mountedRef.current || erasingRef.current) return;
     draftsRef.current = next;
     setDrafts(next);
     if (canPersistDraftsRef.current) {
@@ -192,9 +199,12 @@ export function DanceProvider({ children, ownerId }: { children: React.ReactNode
   }, [persistDrafts]);
 
   const toggleFavorite = useCallback((id: string) => {
+    if (erasingRef.current || !mountedRef.current) return;
     setFavorites((prev) => {
+      if (erasingRef.current) return prev;
       const next = prev.includes(id) ? prev.filter((x) => x !== id) : [id, ...prev];
-      AsyncStorage.setItem(favoriteKey, JSON.stringify(next)).catch(() => {});
+      favoriteWritesRef.current = favoriteWritesRef.current
+        .then(() => AsyncStorage.setItem(favoriteKey, JSON.stringify(next))).catch(() => {});
       return next;
     });
   }, [favoriteKey]);
@@ -221,11 +231,21 @@ export function DanceProvider({ children, ownerId }: { children: React.ReactNode
     changeDrafts(draftsRef.current.filter((draft) => draft.id !== id));
   }, [changeDrafts]);
 
+  const eraseAccountData = useCallback(async () => {
+    erasingRef.current = true;
+    canPersistDraftsRef.current = false;
+    blockOwnerMediaWrites(ownerId);
+    await Promise.all([writeQueueRef.current, favoriteWritesRef.current]);
+    await eraseLocalAccountData(ownerId);
+    draftsRef.current = [];
+    if (mountedRef.current) { setDrafts([]); setFavorites([]); }
+  }, [ownerId]);
+
   const value = useMemo<Ctx>(() => ({
     ownerId, ready, favorites, drafts, draftStorageIssue, retryDraftRead, retryDraftSave, replaceCorruptDrafts,
     isFavorite: (id) => favorites.includes(id),
-    toggleFavorite, addDraft, updateDraft, persistDraft, removeDraft,
-  }), [ownerId, ready, favorites, drafts, draftStorageIssue, retryDraftRead, retryDraftSave, replaceCorruptDrafts, toggleFavorite, addDraft, updateDraft, persistDraft, removeDraft]);
+    toggleFavorite, addDraft, updateDraft, persistDraft, removeDraft, eraseAccountData,
+  }), [ownerId, ready, favorites, drafts, draftStorageIssue, retryDraftRead, retryDraftSave, replaceCorruptDrafts, toggleFavorite, addDraft, updateDraft, persistDraft, removeDraft, eraseAccountData]);
 
   return <DanceContext.Provider value={value}>{children}</DanceContext.Provider>;
 }

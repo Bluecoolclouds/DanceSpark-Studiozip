@@ -34,9 +34,10 @@ router.get("/admin/overview", async (_req, res): Promise<void> => {
       count(*) FILTER (WHERE status='queued')::int AS queued,
       count(*) FILTER (WHERE status='running')::int AS running,
       count(*) FILTER (WHERE created_at >= date_trunc('day',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')::int AS "todayGenerations",
-      COALESCE(sum(estimated_cost_rub),0)::float AS "estimatedCostRub",
-      COALESCE(sum(estimated_cost_rub) FILTER (WHERE created_at >= date_trunc('day',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'),0)::float AS "todayEstimatedCostRub",
-      count(*) FILTER (WHERE estimated_cost_rub IS NULL)::int AS "unpricedGenerations"
+      (COALESCE(sum(estimated_cost_rub),0)+(SELECT COALESCE(sum(cost_rub),0) FROM df_erased_costs))::float AS "estimatedCostRub",
+      (COALESCE(sum(estimated_cost_rub) FILTER (WHERE created_at >= date_trunc('day',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'),0)+
+        (SELECT COALESCE(sum(cost_rub),0) FROM df_erased_costs WHERE day=(now() AT TIME ZONE 'UTC')::date))::float AS "todayEstimatedCostRub",
+      (count(*) FILTER (WHERE estimated_cost_rub IS NULL)+(SELECT COALESCE(sum(unpriced),0) FROM df_erased_costs))::int AS "unpricedGenerations"
     FROM df_jobs`);
   res.json(GetAdminOverviewResponse.parse({ ...rows[0], generatedAt: new Date().toISOString(), telemetryConnected: false }));
 });
@@ -66,7 +67,7 @@ router.patch("/admin/users/:id", async (req, res): Promise<void> => {
   try {
     await client.query("BEGIN");
     const updated = await client.query(
-      "UPDATE df_accounts SET blocked=$2,daily_limit_override=$3 WHERE id=$1 RETURNING id",
+      "UPDATE df_accounts SET blocked=$2,daily_limit_override=$3 WHERE id=$1 AND deletion_requested_at IS NULL RETURNING id",
       [params.data.id, body.data.blocked, body.data.dailyLimitOverride],
     );
     if (!updated.rowCount) { await client.query("ROLLBACK"); res.status(404).json({ error: "Пользователь не найден" }); return; }

@@ -148,6 +148,11 @@ export function AccountSubscription() {
               <Text numberOfLines={1} style={[styles.actionText, { color: c.foreground }]}>{connecting ? 'Открываем вход…' : 'Подключить вход Logto'}</Text>
             </Bouncy>
           )}
+          <Bouncy testID="account-delete-link" accessibilityLabel="Удалить аккаунт" disabled={leaving || connecting}
+            onPress={() => router.push('/account-deletion')} style={[styles.action, { borderWidth: 1, borderColor: c.border }]}>
+            <Feather name="trash-2" size={15} color={c.mutedForeground} />
+            <Text style={[styles.actionText, { color: c.mutedForeground }]}>Удалить аккаунт</Text>
+          </Bouncy>
         </>
       )}
     </View>

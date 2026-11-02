@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './accountDeletion';
+export * from './accountDeletionInput';
+export * from './accountDeletionInputConfirmation';
+export * from './accountDeletionStatus';
 export * from './accountSubscription';
 export * from './accountSubscriptionPlan';
 export * from './accountSubscriptionStatus';

@@ -255,6 +255,31 @@ export interface CataloguePage {
 
 export type CatalogueMediaInput = Blob;
 
+export type AccountDeletionInputConfirmation = typeof AccountDeletionInputConfirmation[keyof typeof AccountDeletionInputConfirmation];
+
+
+export const AccountDeletionInputConfirmation = {
+  УДАЛИТЬ: 'УДАЛИТЬ',
+} as const;
+
+export interface AccountDeletionInput {
+  confirmation: AccountDeletionInputConfirmation;
+}
+
+export type AccountDeletionStatus = typeof AccountDeletionStatus[keyof typeof AccountDeletionStatus];
+
+
+export const AccountDeletionStatus = {
+  not_requested: 'not_requested',
+  pending: 'pending',
+  retrying: 'retrying',
+  completed: 'completed',
+} as const;
+
+export interface AccountDeletion {
+  status: AccountDeletionStatus;
+}
+
 export type AccountSubscriptionPlan = typeof AccountSubscriptionPlan[keyof typeof AccountSubscriptionPlan];
 
 

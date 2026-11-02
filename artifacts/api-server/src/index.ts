@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { startSubmissionRecovery } from "./lib/generation-recovery";
+import { startAccountMaintenance } from "./lib/data-retention";
 
 const rawPort = process.env["PORT"];
 
@@ -25,4 +26,6 @@ const server = app.listen(port, (err) => {
   logger.info({ port }, "Server listening");
   const stopRecovery = startSubmissionRecovery();
   server.once("close", stopRecovery);
+  const stopMaintenance = startAccountMaintenance();
+  server.once("close", stopMaintenance);
 });

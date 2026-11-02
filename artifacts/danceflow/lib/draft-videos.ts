@@ -1,4 +1,5 @@
-import { File, Paths } from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system';
+import { withOwnerMediaWrite } from './draft-media';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
@@ -20,7 +21,7 @@ async function requestVideoLibraryPermission(writeOnly: boolean) {
   }
 }
 
-async function getLocalVideoUri(uri: string, draftId: string): Promise<{ uri: string; temporary: boolean }> {
+async function getLocalVideoUri(uri: string, draftId: string, ownerId: string): Promise<{ uri: string; temporary: boolean }> {
   if (uri.startsWith('file://') || uri.startsWith('content://')) {
     return { uri, temporary: false };
   }
@@ -28,26 +29,29 @@ async function getLocalVideoUri(uri: string, draftId: string): Promise<{ uri: st
     throw new Error('Не удалось открыть видео. Попробуй ещё раз.');
   }
 
-  const target = new File(Paths.cache, `danceflow-${draftId}.mp4`);
-  try {
-    const file = await File.downloadFileAsync(uri, target, { idempotent: true });
-    return { uri: file.uri, temporary: true };
-  } catch {
+  if (!ownerId || !/^[A-Za-z0-9_-]{1,200}$/.test(draftId)) throw new Error('Некорректный черновик.');
+  return withOwnerMediaWrite(ownerId, async () => {
+    const directory = new Directory(Paths.cache, 'danceflow-account-media', encodeURIComponent(ownerId));
+    directory.create({ intermediates: true, idempotent: true });
+    const target = new File(directory, `${draftId}.mp4`);
     try {
-      target.delete();
-    } catch {}
-    throw new Error('Не удалось скачать видео. Проверь подключение и попробуй ещё раз.');
-  }
+      const file = await File.downloadFileAsync(uri, target, { idempotent: true });
+      return { uri: file.uri, temporary: true };
+    } catch {
+      try { if (target.exists) target.delete(); } catch {}
+      throw new Error('Не удалось скачать видео. Проверь подключение и попробуй ещё раз.');
+    }
+  });
 }
 
-export async function saveVideoToLibrary(uri: string, draftId: string): Promise<string> {
+export async function saveVideoToLibrary(uri: string, draftId: string, ownerId: string): Promise<string> {
   if (Platform.OS === 'web') throw new Error('Сохранение в медиатеку доступно в мобильном приложении.');
   if (!(await MediaLibrary.isAvailableAsync())) {
     throw new Error('Медиатека недоступна на этом устройстве.');
   }
   await requestVideoLibraryPermission(true);
 
-  const localVideo = await getLocalVideoUri(uri, draftId);
+  const localVideo = await getLocalVideoUri(uri, draftId, ownerId);
   try {
     const asset = await MediaLibrary.createAssetAsync(localVideo.uri);
     return asset.id;
@@ -56,13 +60,13 @@ export async function saveVideoToLibrary(uri: string, draftId: string): Promise<
   }
 }
 
-export async function shareVideo(uri: string, draftId: string): Promise<void> {
+export async function shareVideo(uri: string, draftId: string, ownerId: string): Promise<void> {
   if (Platform.OS === 'web') throw new Error('Отправка видео доступна в мобильном приложении.');
   if (!(await Sharing.isAvailableAsync())) {
     throw new Error('Системное меню отправки недоступно на этом устройстве.');
   }
 
-  const localVideo = await getLocalVideoUri(uri, draftId);
+  const localVideo = await getLocalVideoUri(uri, draftId, ownerId);
   await Sharing.shareAsync(localVideo.uri, {
     mimeType: 'video/mp4',
     dialogTitle: 'Отправить танец',

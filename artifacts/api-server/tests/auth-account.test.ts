@@ -110,7 +110,17 @@ test("blocked owner cannot enter and existing account data survives sign-out and
 
 test("unavailable Clerk identity fails closed without provisioning or granting access", async (t) => {
   t.mock.method(clerkClient.users, "getUser", async () => { throw new Error("Identity unavailable"); });
-  await assert.rejects(account("unknown"), /Identity unavailable/);
+  const result = await account("unknown");
+  assert.equal(result.status, 503);
+  assert.equal(result.nextCalled, false);
+  assert.equal((await pool.query("SELECT count(*)::int n FROM df_accounts")).rows[0].n, 0);
+});
+
+test("a removed upstream identity cannot be reprovisioned from an old verified JWT", async (t) => {
+  t.mock.method(clerkClient.users, "getUser", async () => { throw Object.assign(new Error("removed"), { status: 404 }); });
+  const result = await account("deleted");
+  assert.equal(result.status, 401);
+  assert.equal(result.nextCalled, false);
   assert.equal((await pool.query("SELECT count(*)::int n FROM df_accounts")).rows[0].n, 0);
 });
 

@@ -9,7 +9,7 @@ export function isolatedDatabase(extraTables: "df_auth_identities"[] = []) {
   pool.options.options = `-c search_path=${schema}`;
   before(async () => {
     await pool.query(`CREATE SCHEMA ${schema}`);
-    for (const table of ["df_accounts", "df_jobs", "df_controls", "df_admin_audit", "dance_catalogue", "dance_catalogue_opens", ...extraTables]) {
+    for (const table of ["df_accounts", "df_jobs", "df_controls", "df_admin_audit", "dance_catalogue", "dance_catalogue_opens", "df_erased_costs", "dance_video_generations", ...extraTables]) {
       await pool.query(`CREATE TABLE ${schema}.${table} (LIKE public.${table} INCLUDING ALL)`);
     }
     // LIKE does not copy foreign keys.

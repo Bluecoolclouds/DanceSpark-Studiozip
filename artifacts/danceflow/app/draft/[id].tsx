@@ -28,7 +28,7 @@ export default function DraftScreen() {
   const c = useColors();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { drafts, removeDraft, updateDraft, ready } = useDance();
+  const { drafts, removeDraft, updateDraft, ready, ownerId } = useDance();
   const [busy, setBusy] = useState<'save' | 'share' | 'delete' | 'generate' | null>(null);
   const createGeneration = useCreateVideoGeneration();
   const { isSignedIn } = useDanceAuth();
@@ -109,7 +109,7 @@ export default function DraftScreen() {
     if (!d.videoUri || busy) return;
     setBusy('save');
     try {
-      const assetId = await saveVideoToLibrary(d.videoUri, d.id);
+      const assetId = await saveVideoToLibrary(d.videoUri, d.id, ownerId);
       updateDraft(d.id, { savedVideoAssetId: assetId });
       Alert.alert('Сохранено', 'Танец теперь в медиатеке устройства.');
     } catch (error) {
@@ -123,7 +123,7 @@ export default function DraftScreen() {
     if (!d.videoUri || busy) return;
     setBusy('share');
     try {
-      await shareVideo(d.videoUri, d.id);
+      await shareVideo(d.videoUri, d.id, ownerId);
     } catch (error) {
       reportVideoError('Не удалось отправить видео', error);
     } finally {

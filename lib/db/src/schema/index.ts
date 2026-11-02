@@ -25,3 +25,4 @@ export * from "./dance-video-generations";
 export * from "./dance-catalogue";
 export * from "./dance-catalogue-opens";
 export * from "./dance-auth-identities";
+export * from "./dance-erased-costs";
