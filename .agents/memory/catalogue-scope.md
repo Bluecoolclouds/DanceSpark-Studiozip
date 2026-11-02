@@ -7,4 +7,4 @@ Server-managed catalogue work must preserve the existing visual style and the co
 
 **Why:** The user explicitly excluded visual redesign, changing the editorial selection, and fictitious catalogue media from the catalogue-management scope.
 
-**How to apply:** Treat catalogue administration as publishing owner content. Keep examples clearly separate from user-generated results; generation integration is separate work.
+**How to apply:** Treat catalogue administration as publishing owner content. Keep examples clearly separate from user-generated results; use a template's example output video for its catalogue-card preview while keeping its source clip for generation.

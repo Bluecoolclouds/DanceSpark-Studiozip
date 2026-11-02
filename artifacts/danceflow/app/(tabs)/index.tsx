@@ -10,7 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BigButton, Bouncy, SectionTitle, TemplateCard, EmptyState } from '@/components/ui';
 import { F } from '@/constants/fonts';
 import { StageBackdrop } from '@/components/stage-backdrop';
-import { HERO_IMAGE } from '@/constants/templates';
+import { HERO_IMAGE, templateCardPreviewUri } from '@/constants/templates';
 import { useCatalogue } from '@/hooks/useCatalogue';
 import { useColors } from '@/hooks/useColors';
 import { templatePreviewCandidates } from '@/lib/template-preview';
@@ -78,15 +78,16 @@ export default function Discover() {
     const next = Math.max(0, Math.min(recommendations.items.length - 1, Math.round(offsetX / (recommendationCardWidth + 4))));
     setActiveRecommendationIndex(next);
   }, [recommendations.items.length, recommendationCardWidth]);
-  const activePreviewSection = featuredInView && activeFeatured?.videoUri
+  const activePreviewSection = featuredInView && activeFeatured && templateCardPreviewUri(activeFeatured)
     ? 'featured'
-    : recommendationsInView && activeRecommendation?.videoUri
+    : recommendationsInView && activeRecommendation && templateCardPreviewUri(activeRecommendation)
       ? 'recommendations'
       : null;
   const activePreview = activePreviewSection === 'featured' ? activeFeatured : activeRecommendation;
+  const activePreviewUri = activePreview ? templateCardPreviewUri(activePreview) : undefined;
   const previewCandidates = useMemo(
-    () => activePreview?.videoUri ? templatePreviewCandidates(activePreview.videoUri) : [],
-    [activePreview?.videoUri],
+    () => activePreviewUri ? templatePreviewCandidates(activePreviewUri) : [],
+    [activePreviewUri],
   );
   const videoPlayer = useVideoPlayer(null, (player) => {
     player.loop = true;

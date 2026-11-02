@@ -6,7 +6,7 @@ import type { VideoPlayer } from 'expo-video';
 import React, { useState } from 'react';
 import { Platform, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
-import { ColorKey, DanceTemplate, categoryLabel } from '@/constants/templates';
+import { ColorKey, DanceTemplate, categoryLabel, templateCardPreviewUri } from '@/constants/templates';
 import { F } from '@/constants/fonts';
 import { useColors } from '@/hooks/useColors';
 import { useDance } from '@/context/DanceContext';
@@ -112,11 +112,12 @@ export function FavButton({ id, size = 40 }: { id: string; size?: number }) {
 export function TemplateCard({ t, onPress, width, height = 280, previewPlayer, previewReady = true }: { t: DanceTemplate; onPress: () => void; width?: number; height?: number; previewPlayer?: VideoPlayer; previewReady?: boolean }) {
   const c = useColors();
   const col = tone(c, t.color);
+  const previewUri = templateCardPreviewUri(t);
   return (
     <View style={[s.card, { width, height, borderColor: c.glassEdge, backgroundColor: col, shadowColor: c.glow }]}>
       <Bouncy onPress={onPress} scaleTo={0.97} style={StyleSheet.absoluteFill}>
         <Image source={t.image} style={StyleSheet.absoluteFill} contentFit="cover" />
-        {previewPlayer && t.videoUri && <CardVideoPreview key={t.videoUri} uri={t.videoUri} player={previewPlayer} ready={previewReady} />}
+        {previewPlayer && previewUri && <CardVideoPreview key={previewUri} uri={previewUri} player={previewPlayer} ready={previewReady} />}
         <LinearGradient colors={[c.clear, c.scrim]} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0.5 }} end={{ x: 0, y: 1 }} />
       </Bouncy>
       <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>

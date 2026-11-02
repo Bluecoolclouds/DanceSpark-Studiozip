@@ -26,6 +26,10 @@ export interface DanceTemplate {
   badge?: DanceBadge;
 }
 
+export function templateCardPreviewUri(template: DanceTemplate) {
+  return template.exampleResultUri ?? template.videoUri;
+}
+
 const pop = require('@/assets/images/dance-pop.png');
 const street = require('@/assets/images/dance-street.png');
 const hero = require('@/assets/images/dance-hero.png');
