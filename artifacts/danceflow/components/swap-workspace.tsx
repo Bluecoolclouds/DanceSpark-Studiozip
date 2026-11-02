@@ -3,17 +3,21 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import { useVideoPlayer } from 'expo-video';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useReducedMotion } from 'react-native-reanimated';
+import { CardVideoPreview } from '@/components/card-video-preview';
 import { CostPreview, QualityPicker, RefGrid, SourcePreview, fmtSec, getModel } from '@/components/generation-form';
 import { Bouncy } from '@/components/ui';
 import { F } from '@/constants/fonts';
 import { GENERATION_MODELS, GENERATION_FAMILIES, GenerationFamily, GenerationModel, GenerationResolution, outputLimit, MAX_REFERENCE_IMAGES } from '@/constants/generation';
-import { type DanceTemplate } from '@/constants/templates';
+import { type DanceTemplate, templateCardPreviewUri } from '@/constants/templates';
 import { useCatalogue } from '@/hooks/useCatalogue';
 import { useDance } from '@/context/DanceContext';
 import { useColors } from '@/hooks/useColors';
 import { CUSTOM_VIDEO_ID } from '@/lib/draft-meta';
+import { templatePreviewCandidates } from '@/lib/template-preview';
 import { photoToDataUrl } from '@/lib/video-generation';
 import { persistDraftPhoto, persistDraftVideo } from '@/lib/draft-media';
 
@@ -34,8 +38,14 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
   variant?: 'default' | 'create';
 }) {
   const cv = variant === 'create';
-  const catalogue = useCatalogue({ limit: 12 });
+  const [trendSearch, setTrendSearch] = useState('');
+  const catalogue = useCatalogue({ category: 'trend', limit: 12, search: trendSearch.trim() || undefined });
   const c = useColors();
+  const reduced = useReducedMotion();
+  const trendPreviewPlayer = useVideoPlayer(null, (player) => {
+    player.loop = true;
+    player.muted = true;
+  });
   const { addDraft, persistDraft, ownerId, draftStorageIssue } = useDance();
   const active = useRef(true);
   const savingRef = useRef(false);
@@ -58,6 +68,57 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
   const [expanded, setExpanded] = useState<Section | null>(() => initialTrend?.prompt ? 'prompt' : initialTrend ? null : 'video');
   const m = getModel(model, family)!;
   const isOriginal = !!original && source?.uri === original.uri;
+  const trendPreviewTemplate = choosing ? catalogue.items.find((item) => item.exampleResultUri) : undefined;
+  const trendPreviewUri = trendPreviewTemplate ? templateCardPreviewUri(trendPreviewTemplate) : undefined;
+  const trendPreviewCandidates = useMemo(
+    () => trendPreviewUri ? templatePreviewCandidates(trendPreviewUri) : [],
+    [trendPreviewUri],
+  );
+  const [trendPreviewReady, setTrendPreviewReady] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    let cancelled = false;
+    let candidateIndex = -1;
+    const loadCandidate = (index: number) => {
+      if (cancelled || index >= trendPreviewCandidates.length) {
+        candidateIndex = trendPreviewCandidates.length;
+        setTrendPreviewReady(false);
+        return;
+      }
+      candidateIndex = index;
+      setTrendPreviewReady(false);
+      void trendPreviewPlayer.replaceAsync(trendPreviewCandidates[index]).then(() => {
+        if (!cancelled && candidateIndex === index) trendPreviewPlayer.play();
+      }).catch(() => {
+        if (!cancelled && candidateIndex === index) loadCandidate(index + 1);
+      });
+    };
+
+    if (!choosing || reduced || !trendPreviewCandidates.length) {
+      setTrendPreviewReady(false);
+      trendPreviewPlayer.pause();
+      void trendPreviewPlayer.replaceAsync(null).catch(() => {});
+      return () => { cancelled = true; };
+    }
+
+    const subscription = trendPreviewPlayer.addListener('statusChange', ({ status }) => {
+      if (status === 'readyToPlay' && candidateIndex < trendPreviewCandidates.length) {
+        setTrendPreviewReady(true);
+        trendPreviewPlayer.play();
+      } else if (status === 'error') {
+        loadCandidate(candidateIndex + 1);
+      } else if (status === 'loading' || status === 'idle') {
+        setTrendPreviewReady(false);
+      }
+    });
+    loadCandidate(0);
+    return () => {
+      cancelled = true;
+      subscription.remove();
+      trendPreviewPlayer.pause();
+    };
+  }, [choosing, reduced, trendPreviewCandidates, trendPreviewPlayer]);
 
   const denied = (what: string) => {
     const msg = `Нет доступа к ${what}. Разреши его в ${Platform.OS === 'web' ? 'браузере' : 'настройках'}.`;
@@ -123,7 +184,7 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
   const reset = () => {
     const t = allowTrendPicker ? null : initialTrend;
     setTrend(t); setModel(defaultModel); setFamily('light'); setSource(trendSource(t)); setRefs(t?.referenceImageUris ?? []);
-    setPrompt(t?.prompt ?? ''); setResolution('720p'); setError(null); setChoosing(false);
+    setPrompt(t?.prompt ?? ''); setResolution('720p'); setError(null); setChoosing(false); setTrendSearch('');
     setExpanded(t?.prompt ? 'prompt' : t ? null : 'video');
   };
 
@@ -273,26 +334,54 @@ export function SwapWorkspace({ initialTrend, allowTrendPicker, defaultModel = '
             </Bouncy>
           </View>}
           {allowTrendPicker && choosing && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-              {catalogue.items.map((x) => {
-                const on = x.id === trend?.id;
-                return (
-                  <Bouncy key={x.id} testID={`trend-${x.id}`} accessibilityLabel={`Тренд ${x.title}${on ? ', выбран' : ''}`} onPress={() => selectTrend(x)}
-                    style={[s.tpl, { backgroundColor: c.muted, borderColor: on ? c.primary : c.border }]}>
-                    <Image source={x.videoPoster ?? x.image} style={s.tplImage} contentFit="cover" />
-                    <View pointerEvents="none" style={[s.tplCaption, { backgroundColor: c.stage }]}>
-                      <Feather name="play" size={13} color={c.stageForeground} />
-                      <Text numberOfLines={1} ellipsizeMode="tail" style={[s.tplText, { color: c.stageForeground }]}>{x.title}</Text>
-                    </View>
-                  </Bouncy>
-                );
-              })}
-              {catalogue.hasNextPage && <Bouncy disabled={catalogue.isFetching} onPress={() => void catalogue.fetchNextPage({ cancelRefetch: false })} style={[s.ghost, { borderColor: c.border }]}>
-                <Text style={[s.ghostText, { color: c.foreground }]}>{catalogue.isFetching ? 'Загружаем…' : 'Ещё танцы'}</Text>
-              </Bouncy>}
-              {catalogue.isError && <Bouncy onPress={() => void catalogue.refetch()}><Text style={[s.hint, { color: c.destructive }]}>Не удалось загрузить танцы. Повторить</Text></Bouncy>}
-              {!catalogue.isPending && !catalogue.items.length && !catalogue.isError && <Text style={[s.hint, { color: c.mutedForeground }]}>Пока нет опубликованных танцев. Можно выбрать своё видео.</Text>}
-            </ScrollView>
+            <View style={{ gap: 8 }}>
+              <View style={[s.trendSearch, { backgroundColor: c.card, borderColor: c.border }]}>
+                <Feather name="search" size={17} color={c.mutedForeground} />
+                <TextInput
+                  value={trendSearch}
+                  onChangeText={setTrendSearch}
+                  placeholder="Найти тренд"
+                  placeholderTextColor={c.mutedForeground}
+                  accessibilityLabel="Поиск по трендам"
+                  returnKeyType="search"
+                  style={[s.trendSearchInput, { color: c.foreground }]}
+                />
+                {!!trendSearch && <Bouncy
+                  accessibilityLabel="Очистить поиск трендов"
+                  onPress={() => setTrendSearch('')}
+                  style={s.trendSearchClear}
+                >
+                  <Feather name="x" size={16} color={c.mutedForeground} />
+                </Bouncy>}
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                {catalogue.items.map((x) => {
+                  const on = x.id === trend?.id;
+                  const previewUri = templateCardPreviewUri(x);
+                  return (
+                    <Bouncy key={x.id} testID={`trend-${x.id}`} accessibilityLabel={`Тренд ${x.title}${on ? ', выбран' : ''}`} onPress={() => selectTrend(x)}
+                      style={[s.tpl, { backgroundColor: c.muted, borderColor: on ? c.primary : c.border }]}>
+                      <Image source={x.videoPoster ?? x.image} style={s.tplImage} contentFit="cover" />
+                      {previewUri && trendPreviewTemplate?.id === x.id && !reduced && <CardVideoPreview
+                        uri={previewUri}
+                        player={trendPreviewPlayer}
+                        ready={trendPreviewReady}
+                      />}
+                      <View pointerEvents="none" style={[s.tplCaption, { backgroundColor: c.stage }]}>
+                        <Feather name="play" size={13} color={c.stageForeground} />
+                        <Text numberOfLines={1} ellipsizeMode="tail" style={[s.tplText, { color: c.stageForeground }]}>{x.title}</Text>
+                      </View>
+                    </Bouncy>
+                  );
+                })}
+                {catalogue.hasNextPage && <Bouncy disabled={catalogue.isFetching} onPress={() => void catalogue.fetchNextPage({ cancelRefetch: false })} style={[s.ghost, { borderColor: c.border }]}>
+                  <Text style={[s.ghostText, { color: c.foreground }]}>{catalogue.isFetching ? 'Загружаем…' : 'Ещё тренды'}</Text>
+                </Bouncy>}
+                {catalogue.isError && <Bouncy onPress={() => void catalogue.refetch()}><Text style={[s.hint, { color: c.destructive }]}>Не удалось загрузить тренды. Повторить</Text></Bouncy>}
+                {catalogue.isPending && !catalogue.items.length && <Text style={[s.hint, { color: c.mutedForeground }]}>Загружаем тренды…</Text>}
+                {!catalogue.isPending && !catalogue.items.length && !catalogue.isError && <Text style={[s.hint, { color: c.mutedForeground }]}>{trendSearch.trim() ? 'Ничего не найдено.' : 'Пока нет опубликованных трендов. Можно выбрать своё видео.'}</Text>}
+              </ScrollView>
+            </View>
           )}
           <View style={s.sourceNote}>
             <Feather name="info" size={14} color={c.mutedForeground} />
@@ -419,6 +508,9 @@ const s = StyleSheet.create({
   tplImage: { flex: 1, width: '100%' },
   tplCaption: { minHeight: 32, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 6 },
   tplText: { flex: 1, minWidth: 0, fontFamily: F.bodyHeavy, fontSize: 11, lineHeight: 14 },
+  trendSearch: { minHeight: 44, borderWidth: 1, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12 },
+  trendSearchInput: { flex: 1, minWidth: 0, fontFamily: F.body, fontSize: 14, paddingVertical: 8 },
+  trendSearchClear: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16 },
   input: { minHeight: 96, maxHeight: 200, borderWidth: 1, borderRadius: 16, padding: 12, fontFamily: F.bodyBold, fontSize: 14, textAlignVertical: 'top' },
   count: { fontFamily: F.bodyHeavy, fontSize: 12, textAlign: 'right' },
   label: { fontFamily: F.bodyHeavy, fontSize: 14, paddingLeft: 4 },
