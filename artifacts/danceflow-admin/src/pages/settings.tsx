@@ -243,7 +243,7 @@ export default function SettingsPage() {
                     <tbody>
                       {economy.data.rows.map((row) => (
                         <tr key={`${row.model}-${row.resolution}`} className="border-t border-border">
-                          <td className="p-2"><span className="font-medium">{row.modelName}</span><br />{row.resolution}</td>
+                          <td className="p-2"><a href={row.pricingSource} target="_blank" rel="noreferrer" className="font-medium underline underline-offset-2">{row.modelName}</a><br />{row.resolution}</td>
                           <td className="p-2">{row.billableSeconds}</td>
                           <td className="p-2">{row.providerCostRub.toLocaleString('ru-RU', { minimumFractionDigits: 2 })}</td>
                           <td className="p-2">{row.customerPriceRub.toLocaleString('ru-RU', { minimumFractionDigits: 2 })}</td>

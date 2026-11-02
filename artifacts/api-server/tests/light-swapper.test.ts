@@ -32,14 +32,13 @@ const input: LightSwapperInput = {
 };
 beforeEach(async () => {
   process.env.higgs_api = "unit-test-id:unit-test-secret";
-  process.env.DANCEFLOW_LIGHT_USD_RUB = "1";
   process.env.CLOUDFLARE_R2_ACCOUNT_ID = "a".repeat(32);
   process.env.CLOUDFLARE_R2_BUCKET_NAME = "test-media";
   process.env.CLOUDFLARE_R2_ACCESS_KEY_ID = "synthetic-id";
   process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY = "synthetic-secret";
-  await pool.query("TRUNCATE df_jobs,df_accounts,df_controls,df_admin_audit,dance_catalogue_opens,dance_catalogue");
-  await pool.query(`INSERT INTO df_controls(id,paused,max_concurrent,per_user_concurrent,max_daily_spend_rub,cost_per_generation_rub)
-    VALUES(1,false,10,5,100,10)`);
+  await pool.query("TRUNCATE df_jobs,df_accounts,df_controls,df_admin_audit,dance_catalogue_opens,dance_catalogue CASCADE");
+  await pool.query(`INSERT INTO df_controls(id,paused,max_concurrent,per_user_concurrent,max_daily_spend_rub,cost_per_generation_rub,usd_rub_rate)
+    VALUES(1,false,10,5,100,10,1)`);
   await pool.query(`INSERT INTO df_accounts(id,email,plan,subscription_until)
     VALUES('u1','one@example.invalid','stage',now()+interval '1 day'),
     ('u2','two@example.invalid','none',null)`);
@@ -117,7 +116,7 @@ for (const model of models) for (const resolution of ["480p", "720p", "1080p"] a
     const row = (await pool.query("SELECT * FROM df_jobs WHERE id=$1", [result.requestId])).rows[0];
     assert.equal(row.provider_model, model);
     assert.equal(row.provider_request_id, "light-provider-id");
-    assert.equal(row.estimated_cost_rub, "10.00");
+    assert.equal(row.estimated_cost_rub, { "480p": "1.30", "720p": "2.60", "1080p": "5.20" }[resolution]);
     assert.match(row.request_fingerprint, /^[a-f0-9]{64}$/);
     assert.ok(!JSON.stringify(row).includes(input.prompt));
   });
@@ -134,6 +133,14 @@ function standardFixture(t: TestContext, size = "640x640", seconds = 4) {
   ]);
   return readFileSync(path);
 }
+
+test("a price above the client-approved credit maximum rejects before reservation or provider uploads", async t => {
+  const boundary = boundaries(t);
+  await assert.rejects(createOwnedLightSwapper("u1", { ...input, maxCredits: 1 }),
+    (error: unknown) => error instanceof GenerationPolicyError && error.code === "price_changed");
+  assert.equal(boundary.calls.length, 0);
+  assert.equal((await pool.query("SELECT count(*)::int n FROM df_jobs")).rows[0].n, 0);
+});
 
 for (const model of SWAPPER_MODELS.slice(2)) for (const resolution of ["480p", "720p", "1080p"] as const) {
   test(`${model}: ${resolution} validates the original, reserves the standard tariff and recovers without resubmitting`, async t => {
@@ -189,7 +196,7 @@ test("an uncertain standard submission keeps its reservation and never resubmits
   await assert.rejects(createOwnedLightSwapper("u1", request), VideoSubmissionUnknownError);
   const row = (await pool.query("SELECT * FROM df_jobs")).rows[0];
   assert.equal(row.error_code, "submission_unknown");
-  assert.equal(row.estimated_cost_rub, "10.00");
+  assert.equal(row.estimated_cost_rub, "2.73");
   assert.deepEqual(await createOwnedLightSwapper("u1", request), { requestId: row.id });
   assert.equal(calls.filter(c => c.url === `https://api.higgsfield.ai/${request.model}`).length, 1);
 });
@@ -236,11 +243,11 @@ test("draft and deleted templates never cause uploads or reservations", async t 
 
 for (const [sql, owner, code] of [
   ["UPDATE df_accounts SET blocked=true WHERE id='u1'", "u1", "account_blocked"],
-  ["SELECT 1", "u2", "subscription_required"],
-  ["UPDATE df_accounts SET subscription_until=now()-interval '1 second' WHERE id='u1'", "u1", "subscription_required"],
+  ["SELECT 1", "u2", "insufficient_credits"],
+  ["UPDATE df_accounts SET subscription_until=now()-interval '1 second' WHERE id='u1'", "u1", "insufficient_credits"],
   ["UPDATE df_controls SET paused=true", "u1", "generation_paused"],
   ["UPDATE df_controls SET max_daily_spend_rub=null", "u1", "budget_not_configured"],
-  ["UPDATE df_controls SET max_daily_spend_rub=9", "u1", "daily_budget_reached"],
+  ["UPDATE df_controls SET max_daily_spend_rub=2", "u1", "daily_budget_reached"],
   ["UPDATE df_accounts SET daily_limit_override=0 WHERE id='u1'", "u1", "daily_limit_reached"],
   ["UPDATE df_controls SET max_concurrent=0", "u1", "concurrency_limit_reached"],
 ] as const) test(`access guard ${code} prevents any upload`, async t => {
@@ -266,7 +273,7 @@ for (const sql of [
 
 test("budget races reserve once before any uploads", async t => {
   const { calls } = boundaries(t);
-  await pool.query("UPDATE df_controls SET max_daily_spend_rub=10");
+  await pool.query("UPDATE df_controls SET max_daily_spend_rub=2.6");
   const results = await Promise.allSettled(Array.from({ length: 5 }, (_, i) =>
     createOwnedLightSwapper("u1", { ...input, clientRequestId: `race-light-${i}` })));
   assert.equal(results.filter(result => result.status === "fulfilled").length, 1);
@@ -292,7 +299,7 @@ test("nine sequential media uploads have sufficient recovery time without permit
 test("resolution and full source duration set a conservative RUB reservation floor", async t => {
   const { calls } = boundaries(t);
   await pool.query(`UPDATE dance_catalogue SET metadata='{"sourceDurationSeconds":32.5}'`);
-  process.env.DANCEFLOW_LIGHT_USD_RUB = "100";
+  await pool.query("UPDATE df_controls SET usd_rub_rate=100");
   await pool.query("UPDATE df_controls SET max_daily_spend_rub=949");
   await assert.rejects(createOwnedLightSwapper("u1", { ...input, resolution: "1080p" }),
     (e: unknown) => e instanceof GenerationPolicyError && e.code === "daily_budget_reached");
@@ -304,16 +311,16 @@ test("resolution and full source duration set a conservative RUB reservation flo
 
 test("unconfigured conversion or unknown duration blocks spending; exact replay does not require a new quote", async t => {
   const { calls } = boundaries(t);
-  delete process.env.DANCEFLOW_LIGHT_USD_RUB;
+  await pool.query("UPDATE df_controls SET usd_rub_rate=0");
   await assert.rejects(createOwnedLightSwapper("u1", input),
-    (e: unknown) => e instanceof GenerationPolicyError && e.code === "light_pricing_not_configured");
-  process.env.DANCEFLOW_LIGHT_USD_RUB = "1";
+    (e: unknown) => e instanceof GenerationPolicyError && e.code === "pricing_not_configured");
+  await pool.query("UPDATE df_controls SET usd_rub_rate=1");
   await pool.query("UPDATE dance_catalogue SET metadata='{}'");
   await assert.rejects(createOwnedLightSwapper("u1", input));
   assert.equal(calls.length, 0);
   await pool.query(`UPDATE dance_catalogue SET metadata='{"sourceDurationSeconds":13}'`);
   const result = await createOwnedLightSwapper("u1", input);
-  delete process.env.DANCEFLOW_LIGHT_USD_RUB;
+  await pool.query("UPDATE df_controls SET usd_rub_rate=0");
   assert.deepEqual(await createOwnedLightSwapper("u1", input), result);
   assert.equal(calls.length, 7);
 });
@@ -429,7 +436,7 @@ for (const paid of ["timeout", "malformed", "server_error"] as const) {
     }
     assert.equal(calls.length, 14);
     const rows = (await pool.query("SELECT error_code,estimated_cost_rub FROM df_jobs")).rows;
-    assert.ok(rows.every(row => row.error_code === "submission_unknown" && row.estimated_cost_rub === "10.00"));
+    assert.ok(rows.every(row => row.error_code === "submission_unknown" && row.estimated_cost_rub === "2.60"));
   });
 }
 

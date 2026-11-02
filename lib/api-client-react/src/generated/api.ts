@@ -2816,7 +2816,7 @@ export const getCreateLightSwapperGenerationUrl = () => {
 }
 
 /**
- * Authenticated paid subscribers only. Uses the published template original MP4, never a preview. Photos are inline JPEG/PNG/WebP in selection order; maximum 12 MiB decoded in total and 18 MiB JSON. No local URI or remote input URL is accepted. Duration and audio controls are unsupported. Reuse clientRequestId for retries; a changed payload conflicts. No automatic paid retries.
+ * Authenticated accounts with sufficient daily credits or available subscription quota. Uses the published template original MP4, never a preview. Photos are inline JPEG/PNG/WebP in selection order; maximum 12 MiB decoded in total and 18 MiB JSON. No local URI or remote input URL is accepted. Duration and audio controls are unsupported. Reuse clientRequestId for retries; a changed payload conflicts. No automatic paid retries.
  * @summary Submit the selected Genjutsu or Genjutsu Light v1.0 model
  */
 export const createLightSwapperGeneration = async (lightSwapperInput: LightSwapperInput, options?: Parameters<typeof customFetch>[1]): Promise<VideoGenerationSubmission> => {
@@ -2994,7 +2994,7 @@ export const getCreateCustomVideoLightSwapperGenerationUrl = () => {
 }
 
 /**
- * Authenticated paid subscribers only. The sourceVideoId must belong to the authenticated owner and refer to a video previously validated by the server. The server determines duration and minimum estimated cost; local URIs, remote URLs and client-supplied durations are not accepted. Reuse clientRequestId for retries; a changed payload conflicts. No automatic paid retries.
+ * Authenticated accounts with sufficient daily credits or available subscription quota. The sourceVideoId must belong to the authenticated owner and refer to a video previously validated by the server. The server determines duration and price; local URIs, remote URLs and client-supplied durations are not accepted. Reuse clientRequestId for retries; a changed payload conflicts. No automatic paid retries.
  * @summary Submit Light Swapper using an owned, validated video
  */
 export const createCustomVideoLightSwapperGeneration = async (customVideoLightSwapperInput: CustomVideoLightSwapperInput, options?: Parameters<typeof customFetch>[1]): Promise<VideoGenerationSubmission> => {

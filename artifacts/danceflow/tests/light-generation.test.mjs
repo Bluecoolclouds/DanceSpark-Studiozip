@@ -79,6 +79,40 @@ test('missing acknowledgement is unknown, and reopening cannot re-submit', async
   assert.equal(reopened.submissions.length, 0);
 });
 
+test('an explicit price-change rejection unlocks review of the same draft but never automatically retries', async () => {
+  let calls = 0;
+  const s = setup({ submit: async () => {
+    calls++;
+    throw { status: 409, data: { code: 'price_changed' } };
+  } });
+  await launchLightGeneration(s.options);
+  assert.equal(calls, 1);
+  const saved = Object.assign({}, ...s.updates);
+  assert.equal(saved.generationStatus, 'failed');
+  assert.equal(saved.lightSubmissionStarted, false);
+  assert.equal(saved.generationRequestId, undefined);
+  assert.match(saved.generationError, /Проверь обновлённую цену/);
+  const reviewed = setup({ draft: { ...draft, ...saved }, prepare: async () => ({ ...input, maxCredits: 278 }) });
+  assert.equal(reviewed.submissions.length, 0, 'fresh review alone never submits');
+  await launchLightGeneration(reviewed.options);
+  assert.equal(reviewed.submissions.length, 1, 'only a new explicit consent submits');
+  assert.equal(reviewed.submissions[0].clientRequestId, draft.id);
+  assert.equal(reviewed.submissions[0].maxCredits, 278);
+});
+
+test('an unconfirmed price-like failure cannot unlock an ambiguous request', async () => {
+  for (const error of [
+    { status: 500, data: { code: 'price_changed' } },
+    { data: { code: 'price_changed' } },
+    { status: 409, data: { code: 'submission_unknown' } },
+  ]) {
+    const s = setup({ submit: async () => { throw error; } });
+    await launchLightGeneration(s.options);
+    assert.equal(s.updates.at(-1).generationStatus, 'unknown');
+    assert.equal(s.updates.some(u => u.lightSubmissionStarted === false), false);
+  }
+});
+
 test('account transition while preparing prevents any paid request', async () => {
   const wait = deferred();
   let active = true;

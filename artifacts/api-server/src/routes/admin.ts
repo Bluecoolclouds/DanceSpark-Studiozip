@@ -158,10 +158,11 @@ router.get("/admin/credit-economy", async (req, res): Promise<void> => {
     `),
     pool.query(`
       SELECT
-        COALESCE(sum(estimated_cost_rub) FILTER (WHERE status!='failed' OR error_code IN ('submission_unknown','timeout')),0)::float
+        (COALESCE(sum(estimated_cost_rub) FILTER (WHERE status!='failed' OR error_code IN ('submission_unknown','timeout','billing_unconfirmed')),0)
+          + (SELECT COALESCE(sum(cost_rub),0) FROM df_erased_costs WHERE day=(now() AT TIME ZONE 'UTC')::date))::float
           AS today_estimated_api_cost_rub,
         COALESCE(sum(estimated_cost_rub) FILTER (WHERE access_source='credits' AND
-          (status!='failed' OR error_code IN ('submission_unknown','timeout'))),0)::float
+          (status!='failed' OR error_code IN ('submission_unknown','timeout','billing_unconfirmed'))),0)::float
           AS today_credit_api_cost_rub
       FROM df_jobs
       WHERE created_at >= date_trunc('day',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'

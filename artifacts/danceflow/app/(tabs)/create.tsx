@@ -11,6 +11,7 @@ import { F } from '@/constants/fonts';
 import { StageBackdrop } from '@/components/stage-backdrop';
 import { getTemplate, type DanceTemplate } from '@/constants/templates';
 import { photoStyleId } from '@/constants/photo-styles';
+import { PIXVERSE_GENERATION_ENABLED, PIXVERSE_UNAVAILABLE_MESSAGE } from '@/constants/launch-scope';
 import { useCatalogueTemplate } from '@/hooks/useCatalogue';
 import { useDance } from '@/context/DanceContext';
 import { ColorScope, useColors } from '@/hooks/useColors';
@@ -111,9 +112,11 @@ function PhotoDance() {
     }
   };
 
-  const blocker = !photo ? 'Сначала выбери фото' : !styleId || !dur ? 'Выбери стиль' : null;
+  const blocker = !PIXVERSE_GENERATION_ENABLED ? 'PixVerse пока недоступен'
+    : !photo ? 'Сначала выбери фото' : !styleId || !dur ? 'Выбери стиль' : null;
 
   const generate = async () => {
+    if (!PIXVERSE_GENERATION_ENABLED) return;
     if (blocker || generating || !photo || !styleId || !dur) return;
     if (!isSignedIn) { router.push('/sign-in'); return; }
     setGenerating(true); setError(null);
@@ -189,7 +192,7 @@ function PhotoDance() {
         icon={generating ? 'loader' : isSignedIn ? 'play' : 'log-in'} disabled={!!blocker || generating} onPress={generate} />
       <View style={[styles.note, { borderColor: c.border }]}>
         <Feather name="credit-card" size={14} color={c.mutedForeground} />
-        <Text style={[styles.hint, { color: c.mutedForeground, flex: 1 }]}>Платное действие: фото уйдёт в Higgsfield (PixVerse V6), нужна оплаченная подписка. Движения из видео здесь не переносятся.</Text>
+        <Text style={[styles.hint, { color: c.mutedForeground, flex: 1 }]}>{PIXVERSE_UNAVAILABLE_MESSAGE}</Text>
       </View>
     </View>
   );

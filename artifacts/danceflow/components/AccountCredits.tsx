@@ -75,6 +75,9 @@ export function AccountCredits() {
             {credits.reservedCredits > 0 ? `${credits.reservedCredits.toLocaleString('ru-RU')} кр. зарезервировано за незавершённые запросы. ` : ''}
             Неиспользованный остаток сгорит {new Date(credits.resetAt).toLocaleString('ru-RU')}. Подписчикам дневные кредиты тоже начисляются.
           </Text>
+          <Text style={{ color: c.mutedForeground, fontFamily: F.body, fontSize: 11, lineHeight: 16 }}>
+            Бесплатные единицы для генераций: не продаются, не передаются и не выводятся в деньги.
+          </Text>
         </>
       )}
     </View>

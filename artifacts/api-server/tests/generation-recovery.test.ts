@@ -11,7 +11,7 @@ import {
 
 const pool = isolatedDatabase();
 beforeEach(async () => {
-  await pool.query("TRUNCATE df_jobs,df_accounts,df_controls");
+  await pool.query("TRUNCATE df_jobs,df_accounts,df_controls CASCADE");
   await pool.query("INSERT INTO df_accounts(id,email) VALUES('u1','one@example.invalid')");
   await pool.query("INSERT INTO df_controls(id,paused) VALUES(1,false)");
 });

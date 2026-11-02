@@ -9,6 +9,12 @@ import type { LightSwapperInputModel } from './lightSwapperInputModel';
 import type { LightSwapperInputResolution } from './lightSwapperInputResolution';
 
 export interface LightSwapperInput {
+  /**
+     * Maximum server-calculated credit price approved by this client. Reject a changed higher price without reserving.
+     * @minimum 1
+     * @maximum 1000000000
+     */
+  maxCredits?: number;
   /** @pattern ^[A-Za-z0-9_-]{8,150}$ */
   clientRequestId: string;
   model: LightSwapperInputModel;

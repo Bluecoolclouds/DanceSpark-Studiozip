@@ -8,18 +8,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BigButton, Bouncy, DemoBadge, EmptyState, tone } from '@/components/ui';
 import { F } from '@/constants/fonts';
 import { resolveDraftTemplate, isCustomVideoId } from '@/lib/draft-meta';
-import { photoStyleId } from '@/constants/photo-styles';
+import { PIXVERSE_UNAVAILABLE_MESSAGE } from '@/constants/launch-scope';
 import { useDance } from '@/context/DanceContext';
 import { useColors } from '@/hooks/useColors';
 import { CostPreview, RefGrid, SourcePreview, fmtSec, getModel } from '@/components/generation-form';
 import { outputLimit } from '@/constants/generation';
 import { LightGeneration } from '@/components/light-generation';
 import { deleteVideoFromLibrary, saveVideoToLibrary, shareVideo, VideoLibraryPermissionError } from '@/lib/draft-videos';
-import { photoToDataUrl, readableVideoError } from '@/lib/video-generation';
+import { readableVideoError } from '@/lib/video-generation';
 import {
-  useCreateVideoGeneration,
   useGetVideoGeneration,
-  type VideoGenerationInput,
 } from '@workspace/api-client-react';
 
 import { useDanceAuth } from '@/lib/dance-auth';
@@ -30,7 +28,6 @@ export default function DraftScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { drafts, removeDraft, updateDraft, ready, ownerId } = useDance();
   const [busy, setBusy] = useState<'save' | 'share' | 'delete' | 'generate' | null>(null);
-  const createGeneration = useCreateVideoGeneration();
   const { isSignedIn } = useDanceAuth();
   const d = drafts.find((x) => x.id === id);
   const t = d ? d.templateSnapshot ?? resolveDraftTemplate(d.templateId) : undefined;
@@ -61,7 +58,7 @@ export default function DraftScreen() {
     if (!m && !busy && d?.generationStatus === 'submitting' && !d.generationRequestId) {
       updateDraft(d.id, {
         generationStatus: 'failed',
-        generationError: 'Запуск генерации прервался. Попробуй отправить фото ещё раз.',
+        generationError: 'Старый запуск прервался. Новые запросы PixVerse сейчас отключены; проверь ранее принятые задания в Higgsfield.',
       });
     }
   }, [m, busy, d?.id, d?.generationRequestId, d?.generationStatus, updateDraft]);
@@ -156,40 +153,9 @@ export default function DraftScreen() {
       router.push('/sign-in');
       return;
     }
-    if (d.generationRequestId) {
-      // Recheck the accepted job rather than silently charging for another one.
-      await statusQuery.refetch();
-      return;
-    }
-    setBusy('generate');
-    updateDraft(d.id, {
-      generationStatus: 'submitting',
-      generationRequestId: undefined,
-      generationError: undefined,
-    });
-    try {
-      const imageDataUrl = await photoToDataUrl(d.photoUri);
-      const result = await createGeneration.mutateAsync({
-        data: {
-          clientRequestId: d.id,
-          imageDataUrl,
-          styleId: photoStyleId(d.templateId),
-          duration: d.duration as VideoGenerationInput['duration'],
-        },
-      });
-      updateDraft(d.id, {
-        generationStatus: 'queued',
-        generationRequestId: result.requestId,
-        generationError: undefined,
-      });
-    } catch (error) {
-      updateDraft(d.id, {
-        generationStatus: 'failed',
-        generationError: readableVideoError(error),
-      });
-    } finally {
-      setBusy(null);
-    }
+    // Archived PixVerse drafts are read-only: existing jobs can be checked,
+    // but this screen has no paid POST path while its tariff is unconfigured.
+    if (d.generationRequestId) await statusQuery.refetch();
   };
 
   const isGenerating = d.generationStatus === 'uploading' || d.generationStatus === 'unknown' || d.generationStatus === 'submitting' ||
@@ -287,7 +253,7 @@ export default function DraftScreen() {
                   ? 'Провайдер создаёт видео. Это может занять несколько минут — экран можно закрыть.'
                   : d.generationStatus === 'failed'
                     ? d.generationError ?? 'Не удалось создать видео. Попробуй ещё раз.'
-                    : 'Фото будет отправлено в Higgsfield (PixVerse V6). Генерация расходует баланс Higgsfield.'}
+                    : PIXVERSE_UNAVAILABLE_MESSAGE}
           </Text>
         </View>
       )}
@@ -305,14 +271,15 @@ export default function DraftScreen() {
       <View style={{ gap: 12, marginTop: 20 }}>
         {!d.videoUri && !isGenerating && !m && (
           <BigButton
-            label={busy === 'generate' ? 'Отправляем фото…' : d.generationRequestId ? 'Проверить запрос' : d.generationStatus === 'failed' ? 'Повторить отправку' : 'Создать танцевальное видео'}
-            icon={busy === 'generate' ? 'loader' : d.generationStatus === 'failed' ? 'refresh-cw' : 'play'}
+            label={d.generationRequestId ? 'Проверить существующий запрос' : 'Запуск PixVerse недоступен'}
+            icon={d.generationRequestId ? 'refresh-cw' : 'info'}
             color="primary"
             onPress={generateVideo}
-            disabled={!!busy}
+            disabled={!!busy || !d.generationRequestId}
             testID="generate-video"
           />
         )}
+        {!d.videoUri && !m && <Text accessibilityRole="alert" style={[styles.noteText, { color: c.mutedForeground }]}>{PIXVERSE_UNAVAILABLE_MESSAGE}</Text>}
         {d.videoUri && (
           <>
             {d.savedVideoAssetId ? (

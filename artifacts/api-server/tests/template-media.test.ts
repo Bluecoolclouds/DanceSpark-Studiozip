@@ -23,7 +23,7 @@ beforeEach(async () => {
   process.env.CLOUDFLARE_R2_ACCESS_KEY_ID = "synthetic-id";
   process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY = "synthetic-secret";
   data = original; version = 1; calls.length = 0;
-  await pool.query("TRUNCATE df_admin_audit,df_jobs,df_accounts,df_controls");
+  await pool.query("TRUNCATE df_admin_audit,df_jobs,df_accounts,df_controls CASCADE");
   await pool.query("INSERT INTO df_accounts(id,email,role) VALUES('owner','owner@example.invalid','admin')");
   mock.method(S3Client.prototype, "send", async (command: any) => {
     calls.push({ name: command.constructor.name, input: command.input });

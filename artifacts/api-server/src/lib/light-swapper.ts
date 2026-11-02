@@ -200,6 +200,9 @@ async function createOwnedLightSwapperForVideo(
   const [previous] = await db.select({ fingerprint: danceJobs.requestFingerprint }).from(danceJobs)
     .where(and(eq(danceJobs.userId, ownerId), eq(danceJobs.idempotencyKey, input.clientRequestId))).limit(1);
   const price = previous ? undefined : await pricedGeneration(input.model, sourceDurationSeconds, input.resolution);
+  if (price && input.maxCredits != null && price.credits > input.maxCredits) {
+    throw new GenerationPolicyError("price_changed", 409);
+  }
   const reservation = await reserveGeneration({
     userId: ownerId, idempotencyKey: input.clientRequestId,
     templateId: customInput ? `custom-${customInput.sourceVideoId}` : (input as LightSwapperInput).templateId,

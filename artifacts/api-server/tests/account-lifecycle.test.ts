@@ -2,6 +2,7 @@ import "./helpers/setup.mjs";
 import assert from "node:assert/strict";
 import { beforeEach, test } from "node:test";
 import { isolatedDatabase } from "./helpers/database";
+import { testPricing } from "./helpers/pricing";
 import { requestDeletion, processAccountDeletion, deletionStatus, hasUnsettledWork } from "../src/lib/account-lifecycle";
 import { retentionBatch } from "../src/lib/data-retention";
 import { ownedVideoPrefix, isOwnedSourceKey } from "../src/lib/custom-video-storage";
@@ -10,7 +11,7 @@ import { RequestAccountDeletionBody } from "@workspace/api-zod";
 
 const pool = isolatedDatabase(["df_auth_identities"]);
 beforeEach(async () => {
-  await pool.query("TRUNCATE df_auth_identities,df_jobs,df_accounts,df_controls,df_admin_audit,df_erased_costs,dance_video_generations");
+  await pool.query("TRUNCATE df_auth_identities,df_jobs,df_accounts,df_controls,df_admin_audit,df_erased_costs,dance_video_generations CASCADE");
   await pool.query(`INSERT INTO df_accounts(id,email,plan,subscription_until)
     VALUES ('erase-a','a@example.invalid','stage',now()+interval '1 day'),
            ('keep-b','b@example.invalid','stage',now()+interval '1 day')`);
@@ -87,7 +88,7 @@ test("partial media/provider failures retain durable state and retry without tou
   assert.equal((await pool.query("SELECT count(*)::int n FROM df_jobs WHERE user_id='erase-a'")).rows[0].n, 0);
   assert.equal((await pool.query("SELECT email FROM df_accounts WHERE id='keep-b'")).rows[0].email, "b@example.invalid");
   assert.equal((await pool.query("SELECT cost_rub FROM df_erased_costs")).rows[0].cost_rub, "97.00");
-  await assert.rejects(reserveGeneration({ userId: "keep-b", idempotencyKey: "other-job-key", templateId: "trend-06" }), /daily_budget_reached/);
+  await assert.rejects(reserveGeneration({ userId: "keep-b", idempotencyKey: "other-job-key", templateId: "trend-06", pricing: testPricing }), /daily_budget_reached/);
   const before = providerCalls;
   assert.equal(await processAccountDeletion("erase-a", {
     deleteMedia: async () => { throw new Error("must not run"); },

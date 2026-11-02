@@ -63,7 +63,7 @@ export async function reserveGeneration(input: {
     const { rows: [usage] } = await client.query(`
       SELECT count(*) FILTER (WHERE status IN ('queued','running'))::int AS active,
         count(*) FILTER (WHERE user_id=$1 AND status IN ('queued','running'))::int AS user_active,
-        COALESCE(sum(estimated_cost_rub) FILTER (WHERE (status!='failed' OR error_code IN ('submission_unknown','timeout')) AND
+        COALESCE(sum(estimated_cost_rub) FILTER (WHERE (status!='failed' OR error_code IN ('submission_unknown','timeout','billing_unconfirmed')) AND
           created_at >= date_trunc('day',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'),0)::float AS spend
       FROM df_jobs`, [input.userId]);
     if (usage.active >= controls.max_concurrent || usage.user_active >= controls.per_user_concurrent) {
@@ -95,7 +95,7 @@ export async function reserveGeneration(input: {
       const { rows: [todayUsage] } = await client.query(`
         SELECT count(*)::int AS today FROM df_jobs
         WHERE user_id=$1 AND access_source IS DISTINCT FROM 'credits' AND
-          (status!='failed' OR error_code IN ('submission_unknown','timeout')) AND
+          (status!='failed' OR error_code IN ('submission_unknown','timeout','billing_unconfirmed')) AND
           created_at >= date_trunc('day',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'
       `, [input.userId]);
       if (limit != null && Number(todayUsage.today) >= Number(limit)) {
@@ -113,24 +113,26 @@ export async function reserveGeneration(input: {
         RETURNING account_id
       `, [input.userId, creditDay, creditsReserved]);
       if (debited.rowCount !== 1) throw new GenerationPolicyError("insufficient_credits", 409);
-      await client.query(`
-        INSERT INTO df_credit_ledger (idempotency_key,account_id,utc_day,job_id,event,amount)
-        VALUES ($1,$2,$3,$4,'reserve',$5)
-      `, [`reserve:${id}`, input.userId, creditDay, id, -creditsReserved]);
     }
     await client.query(
       `INSERT INTO df_jobs
         (id,user_id,idempotency_key,template_id,estimated_cost_rub,estimated_cost_usd,
          usd_rub_rate,usd_rub_source,usd_rub_date,customer_price_rub,credits_reserved,
-         credit_day,access_source,credit_state,request_fingerprint,provider_model)
-       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+         credit_day,access_source,credit_state,request_fingerprint,provider_model,price_snapshot)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
       [
         id, input.userId, input.idempotencyKey, input.templateId, cost, price.providerCostUsd,
         price.usdRubRate, price.usdRubSource, price.usdRubDate, price.customerPriceRub,
         creditsReserved, creditDay, accessSource, creditState,
-        input.fingerprint ?? null, input.model ?? null,
+        input.fingerprint ?? null, input.model ?? null, JSON.stringify(price),
       ],
     );
+    if (accessSource === "credits") {
+      await client.query(`
+        INSERT INTO df_credit_ledger (idempotency_key,account_id,utc_day,job_id,event,amount)
+        VALUES ($1,$2,$3,$4,'reserve',$5)
+      `, [`reserve:${id}`, input.userId, creditDay, id, -creditsReserved]);
+    }
     await client.query("COMMIT");
     return { id, status: "queued", reused: false };
   } catch (error) {
@@ -176,10 +178,10 @@ export async function beginGeneration(id: string, recheckAccount = false): Promi
 }
 
 /** Ambiguous submissions retain daily quota; every attempt retains estimated spend. */
-export async function finishGeneration(id: string, status: "succeeded" | "failed", errorCode?: "provider_error" | "timeout" | "cancelled" | "submission_unknown"): Promise<boolean> {
+export async function finishGeneration(id: string, status: "succeeded" | "failed", errorCode?: "provider_error" | "timeout" | "cancelled" | "submission_unknown" | "billing_unconfirmed"): Promise<boolean> {
   if (!["succeeded", "failed"].includes(status)) throw new GenerationPolicyError("invalid_status", 400);
   const safeCode = status === "failed"
-    ? (["provider_error", "timeout", "cancelled", "submission_unknown"].includes(errorCode ?? "") ? errorCode : "provider_error")
+    ? (["provider_error", "timeout", "cancelled", "submission_unknown", "billing_unconfirmed"].includes(errorCode ?? "") ? errorCode : "billing_unconfirmed")
     : null;
   const client = await pool.connect();
   try {

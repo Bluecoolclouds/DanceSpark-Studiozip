@@ -31,6 +31,9 @@ export async function retentionBatch(after = "", now = new Date(),
     await client.query(`DELETE FROM df_jobs WHERE id IN (
       SELECT id FROM df_jobs WHERE status IN ('succeeded','failed')
         AND error_code IS DISTINCT FROM 'submission_unknown'
+        AND error_code IS DISTINCT FROM 'timeout'
+        AND error_code IS DISTINCT FROM 'billing_unconfirmed'
+        AND credit_state IS DISTINCT FROM 'reserved'
         AND COALESCE(completed_at,created_at) < $1::timestamptz - interval '30 days' LIMIT 250
     )`, [now]);
     await client.query("DELETE FROM df_erased_costs WHERE day<($1::timestamptz AT TIME ZONE 'UTC')::date-30", [now]);

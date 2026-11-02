@@ -14,7 +14,7 @@ import authRouter from "../src/routes/auth";
 const pool = isolatedDatabase(["df_auth_identities"]);
 const principal = { subject: "new-logto-subject", issuer: "https://auth.example.invalid/oidc", clientId: "test-web-client" };
 beforeEach(async () => {
-  await pool.query("TRUNCATE df_auth_identities,df_jobs,df_accounts,df_controls,df_admin_audit");
+  await pool.query("TRUNCATE df_auth_identities,df_jobs,df_accounts,df_controls,df_admin_audit CASCADE");
   await pool.query("INSERT INTO df_accounts(id,email,role,plan) VALUES('old-clerk-owner','owner@example.invalid','admin','stage'),('other','other@example.invalid','user','none')");
 });
 test("linkage keeps existing account ID, role, plan and all ownership stable", async () => {

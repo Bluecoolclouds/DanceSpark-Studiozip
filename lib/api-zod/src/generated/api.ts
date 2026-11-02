@@ -1000,9 +1000,11 @@ export const GetLightSwapperQuoteResponse = zod.object({
 
 
 /**
- * Authenticated paid subscribers only. Uses the published template original MP4, never a preview. Photos are inline JPEG/PNG/WebP in selection order; maximum 12 MiB decoded in total and 18 MiB JSON. No local URI or remote input URL is accepted. Duration and audio controls are unsupported. Reuse clientRequestId for retries; a changed payload conflicts. No automatic paid retries.
+ * Authenticated accounts with sufficient daily credits or available subscription quota. Uses the published template original MP4, never a preview. Photos are inline JPEG/PNG/WebP in selection order; maximum 12 MiB decoded in total and 18 MiB JSON. No local URI or remote input URL is accepted. Duration and audio controls are unsupported. Reuse clientRequestId for retries; a changed payload conflicts. No automatic paid retries.
  * @summary Submit the selected Genjutsu or Genjutsu Light v1.0 model
  */
+export const createLightSwapperGenerationBodyMaxCreditsMax = 1000000000;
+
 export const createLightSwapperGenerationBodyClientRequestIdRegExp = new RegExp('^[A-Za-z0-9_-]{8,150}$');
 export const createLightSwapperGenerationBodyTemplateIdRegExp = new RegExp('^[a-z0-9][a-z0-9-]{0,79}$');
 export const createLightSwapperGenerationBodyPhotosItemMax = 16777260;
@@ -1016,6 +1018,7 @@ export const createLightSwapperGenerationBodyPromptMax = 10000;
 
 
 export const CreateLightSwapperGenerationBody = zod.object({
+  "maxCredits": zod.number().int().min(1).max(createLightSwapperGenerationBodyMaxCreditsMax).optional().describe('Maximum server-calculated credit price approved by this client. Reject a changed higher price without reserving.'),
   "clientRequestId": zod.string().regex(createLightSwapperGenerationBodyClientRequestIdRegExp),
   "model": zod.enum(['higgsfield/genjutsu-light/motion-transfer/v1.0', 'higgsfield/genjutsu-light/object-swap/v1.0', 'higgsfield/genjutsu/motion-transfer/v1.0', 'higgsfield/genjutsu/object-swap/v1.0']),
   "templateId": zod.string().regex(createLightSwapperGenerationBodyTemplateIdRegExp),
@@ -1049,9 +1052,11 @@ export const UploadLightSwapperSourceVideoResponse = zod.object({
 
 
 /**
- * Authenticated paid subscribers only. The sourceVideoId must belong to the authenticated owner and refer to a video previously validated by the server. The server determines duration and minimum estimated cost; local URIs, remote URLs and client-supplied durations are not accepted. Reuse clientRequestId for retries; a changed payload conflicts. No automatic paid retries.
+ * Authenticated accounts with sufficient daily credits or available subscription quota. The sourceVideoId must belong to the authenticated owner and refer to a video previously validated by the server. The server determines duration and price; local URIs, remote URLs and client-supplied durations are not accepted. Reuse clientRequestId for retries; a changed payload conflicts. No automatic paid retries.
  * @summary Submit Light Swapper using an owned, validated video
  */
+export const createCustomVideoLightSwapperGenerationBodyMaxCreditsMax = 1000000000;
+
 export const createCustomVideoLightSwapperGenerationBodyClientRequestIdRegExp = new RegExp('^[A-Za-z0-9_-]{8,150}$');
 export const createCustomVideoLightSwapperGenerationBodyPhotosItemMax = 16777260;
 
@@ -1064,6 +1069,7 @@ export const createCustomVideoLightSwapperGenerationBodyPromptMax = 10000;
 
 
 export const CreateCustomVideoLightSwapperGenerationBody = zod.object({
+  "maxCredits": zod.number().int().min(1).max(createCustomVideoLightSwapperGenerationBodyMaxCreditsMax).optional().describe('Maximum server-calculated credit price approved by this client. Reject a changed higher price without reserving.'),
   "clientRequestId": zod.string().regex(createCustomVideoLightSwapperGenerationBodyClientRequestIdRegExp),
   "model": zod.enum(['higgsfield/genjutsu-light/motion-transfer/v1.0', 'higgsfield/genjutsu-light/object-swap/v1.0', 'higgsfield/genjutsu/motion-transfer/v1.0', 'higgsfield/genjutsu/object-swap/v1.0']),
   "sourceVideoId": zod.string().uuid(),

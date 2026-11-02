@@ -51,6 +51,7 @@ export async function getOwnedGeneration(ownerId: string, requestId: string) {
       .where(and(eq(danceJobs.id, generation.id), inArray(danceJobs.status, ["queued", "running", "succeeded"])));
     await finishGeneration(generation.id, "succeeded");
   }
-  else if (status.status === "failed") await finishGeneration(generation.id, "failed", "provider_error");
+  // An accepted job failing does not prove that the provider charged nothing.
+  else if (status.status === "failed") await finishGeneration(generation.id, "failed", "billing_unconfirmed");
   return { ...status, requestId };
 }

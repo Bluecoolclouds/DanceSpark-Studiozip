@@ -35,10 +35,19 @@ export async function launchLightGeneration(options: {
     if (active()) await persist({ generationRequestId: result.requestId, generationStatus: result.status, generationError: undefined });
   } catch (error) {
     if (active()) {
+      // Only this explicit pre-reservation response proves no provider POST was
+      // made. A timeout, missing acknowledgement or any other code stays locked.
+      const safePriceRejection = sent && error != null && typeof error === 'object'
+        && 'status' in error && error.status === 409 && 'data' in error
+        && error.data != null && typeof error.data === 'object'
+        && 'code' in error.data && error.data.code === 'price_changed';
       await persist({
-        generationStatus: sent ? 'unknown' : 'failed',
+        generationStatus: sent && !safePriceRejection ? 'unknown' : 'failed',
+        ...(safePriceRejection ? { lightSubmissionStarted: false, generationRequestId: undefined } : {}),
         // Never reset a persisted submission marker on an uncertain response.
-        generationError: sent
+        generationError: safePriceRejection
+          ? 'Цена изменилась. Запрос не отправлен и кредиты не списаны. Проверь обновлённую цену и подтверди запуск заново.'
+          : sent
           ? `${lightRejectionReason(error)}Проверяем тот же запрос без повторной отправки. Не создавай новый черновик для повтора; при необходимости проверь Higgsfield Console.`
           : error instanceof Error ? error.message : 'Не удалось подготовить фото. Платный запрос не отправлен.',
       });
@@ -53,6 +62,7 @@ export function lightRejectionReason(error: unknown): string {
     subscription_required: 'Нужна действующая оплаченная подписка.',
     insufficient_credits: 'Не хватает дневных кредитов, а доступная квота подписки исчерпана.',
     pricing_not_configured: 'Цена модели или курс не настроены. Запуск заблокирован.',
+    price_changed: 'Цена изменилась после подтверждения. Запуск не отправлен; сначала проверь новую цену.',
     credit_reservation_unavailable: 'Не удалось подтвердить резерв кредитов. Запуск не отправлен.',
     account_blocked: 'Генерация недоступна для этого аккаунта.',
     generation_paused: 'Генерация временно приостановлена.',

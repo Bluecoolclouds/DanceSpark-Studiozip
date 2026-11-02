@@ -17,7 +17,7 @@ export class AccountDeletionError extends Error {
 export async function hasUnsettledWork(client: Pick<PoolClient, "query">, id: string): Promise<boolean> {
   const { rows } = await client.query(`
     SELECT 1 FROM df_jobs WHERE user_id=$1
-      AND (status IN ('queued','running') OR error_code='submission_unknown')
+      AND (status IN ('queued','running') OR error_code IN ('submission_unknown','timeout','billing_unconfirmed') OR credit_state='reserved')
     UNION ALL
     SELECT 1 FROM dance_video_generations WHERE owner_id=$1 AND state IN ('reserved','queued')
     LIMIT 1`, [id]);

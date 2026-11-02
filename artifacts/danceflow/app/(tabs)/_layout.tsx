@@ -62,7 +62,8 @@ function ClassicTabLayout() {
           marginHorizontal: 28,
           bottom,
           height: 76,
-          paddingTop: 2,
+          // Equal insets keep the active pill centred inside the outer capsule.
+          paddingTop: 8,
           paddingBottom: 8,
           borderRadius: 999,
           borderTopWidth: 1,

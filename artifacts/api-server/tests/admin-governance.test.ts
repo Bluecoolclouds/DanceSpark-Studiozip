@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { beforeEach, test } from "node:test";
 import { randomUUID } from "node:crypto";
 import { isolatedDatabase } from "./helpers/database";
+import { testPricing } from "./helpers/pricing";
 import { reserveGeneration, beginGeneration, finishGeneration } from "../src/lib/generation-governance";
 import { seedVerifiedOwner, requireAdmin, protectAdminMutation } from "../src/middlewares/admin-auth";
 import { settingsResponse } from "../src/lib/admin-data";
@@ -15,7 +16,7 @@ import adminRouter from "../src/routes/admin";
 const pool = isolatedDatabase();
 beforeEach(async () => {
   process.env.higgs_api = "unit-test-id:unit-test-secret";
-  await pool.query("TRUNCATE df_jobs,df_accounts,df_controls,df_admin_audit");
+  await pool.query("TRUNCATE df_jobs,df_accounts,df_controls,df_admin_audit CASCADE");
   await pool.query(`INSERT INTO df_controls(id,paused,max_concurrent,per_user_concurrent,max_daily_spend_rub,cost_per_generation_rub)
     VALUES(1,false,10,5,10000,5)`);
   await pool.query(`INSERT INTO df_accounts(id,email,plan,subscription_until)
@@ -24,7 +25,7 @@ beforeEach(async () => {
           ('u3','three@example.invalid','stage',now()+interval '1 day')`);
 });
 
-const reserve = (key = randomUUID(), userId = "u1") => reserveGeneration({ userId, idempotencyKey: key, templateId: "bubblegum" });
+const reserve = (key = randomUUID(), userId = "u1") => reserveGeneration({ userId, idempotencyKey: key, templateId: "bubblegum", pricing: testPricing });
 const expectPolicy = (work: Promise<unknown>, code: string) => assert.rejects(work, (e: unknown) => e instanceof Error && e.message === code);
 
 test("missing provider configuration still fails closed without reserving spend", async () => {
@@ -48,9 +49,9 @@ test("pause, unpaid, expired and blocked accounts fail closed", async () => {
   await expectPolicy(reserve(), "generation_paused");
   await pool.query("UPDATE df_controls SET paused=false");
   await pool.query("UPDATE df_accounts SET plan='none' WHERE id='u1'");
-  await expectPolicy(reserve(), "subscription_required");
+  await expectPolicy(reserve(), "insufficient_credits");
   await pool.query("UPDATE df_accounts SET plan='warmup',subscription_until=now()-interval '1 day' WHERE id='u1'");
-  await expectPolicy(reserve(), "subscription_required");
+  await expectPolicy(reserve(), "insufficient_credits");
   await pool.query("UPDATE df_accounts SET blocked=true WHERE id='u1'");
   await expectPolicy(reserve(), "account_blocked");
 });
@@ -185,20 +186,27 @@ test("admin endpoint handlers return live data, persist edits, audit them and re
   const users = await call("get", "/admin/users", { query: { q: "two@" } });
   assert.equal(users.body.total, 1);
   assert.equal(users.body.items[0].id, "u2");
-  const updated = await call("patch", "/admin/users/:id", { params: { id: "u2" }, body: { blocked: true, dailyLimitOverride: 7 } });
+  const updated = await call("patch", "/admin/users/:id", { params: { id: "u2" }, body: { blocked: true, dailyLimitOverride: 7, dailyCreditOverride: 40 } });
   assert.equal(updated.status, 200);
   assert.equal(updated.body.blocked, true);
   assert.equal(updated.body.dailyLimitOverride, 7);
+  assert.equal(updated.body.dailyCreditOverride, 40);
   const rejectedGrant = await call("patch", "/admin/users/:id", { params: { id: "u2" }, body: { blocked: false, dailyLimitOverride: null, role: "admin" } });
   assert.equal(rejectedGrant.status, 400);
   const selfBlock = await call("patch", "/admin/users/:id", { params: { id: "u1" }, body: { blocked: true, dailyLimitOverride: null } });
   assert.equal(selfBlock.status, 400);
   const settings = await call("get", "/admin/settings");
-  const newSettings = { version: settings.body.version, paused: true, maxConcurrent: 3, perUserConcurrent: 1, maxDailySpendRub: 100, costPerGenerationRub: 5 };
+  const newSettings = { version: settings.body.version, paused: true, maxConcurrent: 3, perUserConcurrent: 1, maxDailySpendRub: 100, dailyFreeCredits: 10, usdRubRate: 80.5573, usdRubSource: "ЦБ РФ", usdRubDate: "2026-11-02" };
   const saved = await call("patch", "/admin/settings", { body: newSettings });
   assert.equal(saved.status, 200);
   assert.equal(saved.body.version, newSettings.version + 1);
   assert.equal(saved.body.paused, true);
+  assert.equal(saved.body.dailyFreeCredits, 10);
+  const economy = await call("get", "/admin/credit-economy");
+  assert.equal(economy.status, 200);
+  assert.equal(economy.body.effectiveDailyCredits, 60);
+  assert.equal(economy.body.rows.length, 12);
+  assert.equal(economy.body.rows.find((row: any) => row.model.includes("light") && row.resolution === "720p").credits, 278);
   assert.equal((await call("patch", "/admin/settings", { body: newSettings })).status, 409);
   const generations = await call("get", "/admin/generations");
   assert.equal(generations.body.total, 0);

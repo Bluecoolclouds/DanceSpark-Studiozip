@@ -13,7 +13,7 @@ import accountRouter from "../src/routes/account";
 const pool = isolatedDatabase();
 beforeEach(async () => {
   process.env.DANCEFLOW_OWNER_EMAIL = "owner@example.invalid";
-  await pool.query("TRUNCATE df_jobs,df_accounts,df_controls,df_admin_audit");
+  await pool.query("TRUNCATE df_jobs,df_accounts,df_controls,df_admin_audit CASCADE");
 });
 
 // Only the verified Clerk boundary is synthetic here. No production auth bypass,
@@ -149,6 +149,12 @@ test("real route chains enforce roles and subscription ownership across sign-out
       method, headers: identity ? { "x-test-session": identity } : {},
     });
     for (const identity of ["test-owner", "test-regular", undefined, "test-owner"]) {
+      const creditsResponse = await request("/account/credits?accountId=owner", identity);
+      assert.equal(creditsResponse.status, identity ? 200 : 401);
+      if (identity) {
+        assert.equal((await creditsResponse.json()).accountId, identity === "test-owner" ? "owner" : "regular");
+        assert.equal(creditsResponse.headers.get("cache-control"), "no-store");
+      }
       const response = await request("/account/subscription?userId=owner&accountId=owner&plan=stage", identity);
       assert.equal(response.headers.get("cache-control"), "no-store");
       if (!identity) {
@@ -160,7 +166,7 @@ test("real route chains enforce roles and subscription ownership across sign-out
         assert.equal(body.plan, identity === "test-owner" ? "stage" : "none");
       }
     }
-    for (const path of ["/admin/overview", "/admin/users", "/admin/settings", "/admin/generations", "/admin/audit"]) {
+    for (const path of ["/admin/overview", "/admin/users", "/admin/settings", "/admin/credit-economy", "/admin/generations", "/admin/audit"]) {
       assert.equal((await request(path, "test-owner")).status, 200, `owner ${path}`);
       assert.equal((await request(path, "test-regular")).status, 403, `regular ${path}`);
       assert.equal((await request(path)).status, 401, `signed out ${path}`);

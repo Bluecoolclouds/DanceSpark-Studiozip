@@ -17,10 +17,10 @@ import { launchLightGeneration, lightDraftBlocker, validatePhotoPayload } from '
 import { draftVideoUploadBlob } from '@/lib/draft-media';
 import { photoToDataUrl, readableVideoError } from '@/lib/video-generation';
 
-/** Mounted only for Light drafts. PixVerse keeps its own submission path. */
+/** Mounted for both supported Swapper families. Legacy PixVerse is read-only. */
 export function LightGeneration({ draft: d }: { draft: Draft }) {
   const c = useColors();
-  const { isSignedIn } = useDanceAuth();
+  const { isSignedIn, userId } = useDanceAuth();
   const { ownerId, persistDraft, updateDraft, draftStorageIssue } = useDance();
   const queryClient = useQueryClient();
   const active = useRef(true);
@@ -60,7 +60,7 @@ export function LightGeneration({ draft: d }: { draft: Draft }) {
   );
   const credits = useGetAccountCredits({
     query: {
-      queryKey: ['account-credits', ownerId],
+      queryKey: ['account-credits', userId],
       enabled: !!isSignedIn && !attempted,
       retry: false,
       staleTime: 0,
@@ -90,7 +90,7 @@ export function LightGeneration({ draft: d }: { draft: Draft }) {
   }, [status.data, d.id, updateDraft]);
 
   const launch = async () => {
-    if (busy || !confirm || blocker || attempted || !isSignedIn) return;
+    if (busy || !confirm || blocker || attempted || !isSignedIn || !quote.data || quote.isError) return;
     setConfirm(false);
     setBusy(true);
     try {
@@ -113,11 +113,12 @@ export function LightGeneration({ draft: d }: { draft: Draft }) {
           : { ...common, sourceVideoId: d.lightSourceVideoId! };
       },
       submit: data => 'sourceVideoId' in data
-        ? customMutation.mutateAsync({ data })
-        : mutation.mutateAsync({ data }),
+        ? customMutation.mutateAsync({ data: { ...data, maxCredits: quote.data!.credits } })
+        : mutation.mutateAsync({ data: { ...data, maxCredits: quote.data!.credits } }),
       });
     } finally {
-      if (ownerId) void queryClient.invalidateQueries({ queryKey: ['account-credits', ownerId] });
+      if (userId) void queryClient.invalidateQueries({ queryKey: ['account-credits', userId] });
+      void queryClient.invalidateQueries({ queryKey: ['light-swapper-quote', ownerId] });
       if (active.current) setBusy(false);
     }
   };
@@ -181,8 +182,8 @@ export function LightGeneration({ draft: d }: { draft: Draft }) {
           Собственное видео проверено: {d.sourceVideoDurationSeconds?.toFixed(1)} сек. Перед запуском будет отдельное подтверждение.
         </Text>}
       {isSignedIn && !customSourceNeedsUpload && (
-        <View testID="light-generation-price" style={{ backgroundColor: c.secondary, borderColor: c.border, borderWidth: 1, borderRadius: 16, padding: 14, gap: 5 }}>
-          {quote.isLoading && <Text style={{ color: c.mutedForeground }}>Рассчитываем точную цену по проверенному видео…</Text>}
+        <View testID="light-generation-price" style={{ backgroundColor: c.card, borderColor: c.border, borderWidth: 1, borderRadius: 16, padding: 14, gap: 5 }}>
+          {quote.isFetching && <Text style={{ color: c.mutedForeground }}>Проверяем актуальную цену по видео…</Text>}
           {quote.isError && <Text accessibilityRole="alert" style={{ color: c.destructive }}>Не удалось рассчитать цену. Запуск заблокирован, пока сервер не подтвердит тариф.</Text>}
           {quote.data && <Text style={{ color: c.foreground, fontFamily: F.bodyBold }}>
             Цена запуска: {quote.data.credits.toLocaleString('ru-RU')} кредитов · доступно {credits.data?.availableCredits.toLocaleString('ru-RU') ?? '…'}
@@ -197,8 +198,9 @@ export function LightGeneration({ draft: d }: { draft: Draft }) {
             </Text>}
         </View>
       )}
+      {!attempted && d.generationError && <Text accessibilityRole="alert" style={{ color: c.destructive, fontFamily: F.body }}>{d.generationError}</Text>}
       {!confirm && <BigButton testID="light-review-launch" label={isSignedIn ? `Запустить: ${familyLabel}…` : 'Войти для запуска'}
-        icon="play" disabled={!!blocker || !!draftStorageIssue || busy || (isSignedIn && !quote.data)}
+        icon="play" disabled={!!blocker || !!draftStorageIssue || busy || (isSignedIn && (!quote.data || quote.isFetching || quote.isError))}
         onPress={() => isSignedIn ? setConfirm(true) : router.push('/sign-in')} />}
       {confirm && <View testID="light-paid-confirmation" style={{ backgroundColor: c.card, padding: 16, borderWidth: 1, borderColor: c.border, borderRadius: 16, gap: 12 }}>
         <Text style={{ color: c.foreground, fontFamily: F.display }}>Подтвердить запуск</Text>
@@ -211,7 +213,7 @@ export function LightGeneration({ draft: d }: { draft: Draft }) {
           {' '}При достаточном балансе расходуются кредиты, подписочная квота остаётся нетронутой. Если кредитов не хватит, система проверит отдельный доступ по подписке.
         </Text>
         <Text style={{ color: c.foreground }}>Видео, выбранные фото и промпт будут переданы Higgsfield. Закрытие экрана не отменяет задание.</Text>
-        <BigButton testID="light-confirm-paid" label="Подтверждаю платный запуск" icon="play" onPress={() => void launch()} disabled={busy} />
+        <BigButton testID="light-confirm-paid" label="Подтверждаю запуск" icon="play" onPress={() => void launch()} disabled={busy || !quote.data || quote.isFetching || quote.isError || !!blocker} />
         <BigButton testID="light-cancel-paid" label="Только оставить черновик" icon="bookmark" color="accent" onPress={() => setConfirm(false)} />
       </View>}
     </>}

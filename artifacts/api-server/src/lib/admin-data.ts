@@ -50,7 +50,8 @@ export const userProjection = `
   a.created_at AS "createdAt",
   (SELECT count(*)::int FROM df_jobs j WHERE j.user_id=a.id) AS "totalGenerations",
   (SELECT count(*)::int FROM df_jobs j WHERE j.user_id=a.id AND
-    (j.status != 'failed' OR j.error_code='submission_unknown') AND
+    j.access_source IS DISTINCT FROM 'credits' AND
+    (j.status != 'failed' OR j.error_code IN ('submission_unknown','timeout','billing_unconfirmed')) AND
     j.created_at >= date_trunc('day',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')
     AS "todayGenerations"`;
 

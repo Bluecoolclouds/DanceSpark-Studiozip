@@ -1,4 +1,4 @@
-import { pgTable, text, numeric, timestamp, pgEnum, index, uniqueIndex, integer, date } from "drizzle-orm/pg-core";
+import { pgTable, text, numeric, timestamp, pgEnum, index, uniqueIndex, integer, date, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { danceAccounts } from "./dance-accounts";
 
@@ -15,6 +15,7 @@ export const danceJobs = pgTable("df_jobs", {
   usdRubSource: text("usd_rub_source"),
   usdRubDate: date("usd_rub_date", { mode: "string" }),
   customerPriceRub: numeric("customer_price_rub", { precision: 14, scale: 2 }),
+  priceSnapshot: jsonb("price_snapshot"),
   creditsReserved: integer("credits_reserved").notNull().default(0),
   creditDay: date("credit_day", { mode: "string" }),
   accessSource: text("access_source").$type<"credits" | "subscription">(),

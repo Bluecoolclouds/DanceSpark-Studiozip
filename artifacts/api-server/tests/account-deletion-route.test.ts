@@ -8,7 +8,7 @@ import accountRouter from "../src/routes/account";
 
 const pool = isolatedDatabase(["df_auth_identities"]);
 beforeEach(async () => {
-  await pool.query("TRUNCATE df_auth_identities,df_jobs,df_accounts,df_controls,df_admin_audit");
+  await pool.query("TRUNCATE df_auth_identities,df_jobs,df_accounts,df_controls,df_admin_audit CASCADE");
   await pool.query("INSERT INTO df_accounts(id,email) VALUES('route-a','a@example.invalid'),('route-b','b@example.invalid')");
 });
 
