@@ -307,6 +307,47 @@ export interface AccountSubscription {
   subscriptionUntil: string | null;
 }
 
+export interface AccountCredits {
+  accountId: string;
+  utcDay: string;
+  /** @minimum 0 */
+  grantedCredits: number;
+  /** @minimum 0 */
+  availableCredits: number;
+  /** @minimum 0 */
+  reservedCredits: number;
+  /** @minimum 0 */
+  spentCredits: number;
+  resetAt: string;
+  creditValueRub: 1;
+}
+
+export type LightSwapperQuoteResolution = typeof LightSwapperQuoteResolution[keyof typeof LightSwapperQuoteResolution];
+
+
+export const LightSwapperQuoteResolution = {
+  '480p': '480p',
+  '720p': '720p',
+  '1080p': '1080p',
+} as const;
+
+export interface LightSwapperQuote {
+  model: string;
+  resolution: LightSwapperQuoteResolution;
+  sourceSeconds: number;
+  billableSeconds: number;
+  providerCostUsd: number;
+  providerCostRub: number;
+  customerPriceRub: number;
+  /** @minimum 1 */
+  credits: number;
+  creditValueRub: 1;
+  markupPercent: 15;
+  usdRubRate: number;
+  usdRubSource: string;
+  usdRubDate: string;
+}
+
 export interface AdminSession {
   userId: string;
   email: string;
@@ -363,6 +404,18 @@ export interface AdminUser {
      * @nullable
      */
   dailyLimitOverride: number | null;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     * @nullable
+     */
+  dailyCreditOverride: number | null;
+  /** @minimum 0 */
+  todayCreditGrant: number;
+  /** @minimum 0 */
+  todayCreditBalance: number;
+  /** @minimum 0 */
+  todayCreditReserved: number;
   totalGenerations: number;
   todayGenerations: number;
   createdAt: string;
@@ -376,6 +429,12 @@ export interface AdminUserUpdate {
      * @nullable
      */
   dailyLimitOverride: number | null;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     * @nullable
+     */
+  dailyCreditOverride: number | null;
 }
 
 export interface AdminUsersPage {
@@ -395,6 +454,17 @@ export const AdminGenerationStatus = {
   failed: 'failed',
 } as const;
 
+/**
+ * @nullable
+ */
+export type AdminGenerationAccessSource = typeof AdminGenerationAccessSource[keyof typeof AdminGenerationAccessSource] | null;
+
+
+export const AdminGenerationAccessSource = {
+  credits: 'credits',
+  subscription: 'subscription',
+} as const;
+
 export interface AdminGeneration {
   id: string;
   userId: string;
@@ -403,6 +473,14 @@ export interface AdminGeneration {
   status: AdminGenerationStatus;
   /** @nullable */
   estimatedCostRub: number | null;
+  /** @nullable */
+  estimatedCostUsd: number | null;
+  /** @nullable */
+  customerPriceRub: number | null;
+  /** @minimum 0 */
+  creditsReserved: number;
+  /** @nullable */
+  accessSource: AdminGenerationAccessSource;
   /** @nullable */
   errorCode: string | null;
   createdAt: string;
@@ -438,11 +516,21 @@ export interface AdminSettingsInput {
      */
   maxDailySpendRub: number | null;
   /**
-     * @minimum 0.01
+     * @minimum 0
      * @maximum 100000
-     * @nullable
      */
-  costPerGenerationRub: number | null;
+  dailyFreeCredits: number;
+  /**
+     * @maximum 1000000
+     * @exclusiveMinimum 0
+     */
+  usdRubRate: number;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  usdRubSource: string;
+  usdRubDate: string;
 }
 
 export type AdminSettings = AdminSettingsInput & {
@@ -453,6 +541,54 @@ export type AdminSettings = AdminSettingsInput & {
   quotaTimezone: string;
   updatedAt: string;
 };
+
+export type AdminCreditEconomyRowFamily = typeof AdminCreditEconomyRowFamily[keyof typeof AdminCreditEconomyRowFamily];
+
+
+export const AdminCreditEconomyRowFamily = {
+  light: 'light',
+  standard: 'standard',
+} as const;
+
+export type AdminCreditEconomyRowResolution = typeof AdminCreditEconomyRowResolution[keyof typeof AdminCreditEconomyRowResolution];
+
+
+export const AdminCreditEconomyRowResolution = {
+  '480p': '480p',
+  '720p': '720p',
+  '1080p': '1080p',
+} as const;
+
+export interface AdminCreditEconomyRow {
+  model: string;
+  modelName: string;
+  family: AdminCreditEconomyRowFamily;
+  resolution: AdminCreditEconomyRowResolution;
+  sourceSeconds: number;
+  billableSeconds: number;
+  providerCostUsd: number;
+  providerCostRub: number;
+  customerPriceRub: number;
+  credits: number;
+  pricingSource: string;
+}
+
+export interface AdminCreditEconomy {
+  seconds: number;
+  registeredAccounts: number;
+  dailyFreeCredits: number;
+  effectiveDailyCredits: number;
+  maxDailyCreditValueRub: number;
+  estimatedMaxApiCostRub: number;
+  todayEstimatedApiCostRub: number;
+  todayCreditApiCostRub: number;
+  creditValueRub: 1;
+  markupPercent: 15;
+  usdRubRate: number;
+  usdRubSource: string;
+  usdRubDate: string;
+  rows: AdminCreditEconomyRow[];
+}
 
 export interface AdminAuditEntry {
   id: string;
@@ -635,10 +771,47 @@ export const ListAdminGenerationsStatus = {
   failed: 'failed',
 } as const;
 
+export type GetAdminCreditEconomyParams = {
+/**
+ * @minimum 4
+ * @maximum 300
+ */
+seconds?: number;
+};
+
 export type ListAdminAuditParams = {
 /**
  * @minimum 1
  */
 page?: number;
 };
+
+export type GetLightSwapperQuoteParams = {
+model: GetLightSwapperQuoteModel;
+resolution: GetLightSwapperQuoteResolution;
+/**
+ * @pattern ^[a-z0-9][a-z0-9-]{0,79}$
+ */
+templateId?: string;
+sourceVideoId?: string;
+};
+
+export type GetLightSwapperQuoteModel = typeof GetLightSwapperQuoteModel[keyof typeof GetLightSwapperQuoteModel];
+
+
+export const GetLightSwapperQuoteModel = {
+  'higgsfield/genjutsu-light/motion-transfer/v10': 'higgsfield/genjutsu-light/motion-transfer/v1.0',
+  'higgsfield/genjutsu-light/object-swap/v10': 'higgsfield/genjutsu-light/object-swap/v1.0',
+  'higgsfield/genjutsu/motion-transfer/v10': 'higgsfield/genjutsu/motion-transfer/v1.0',
+  'higgsfield/genjutsu/object-swap/v10': 'higgsfield/genjutsu/object-swap/v1.0',
+} as const;
+
+export type GetLightSwapperQuoteResolution = typeof GetLightSwapperQuoteResolution[keyof typeof GetLightSwapperQuoteResolution];
+
+
+export const GetLightSwapperQuoteResolution = {
+  '480p': '480p',
+  '720p': '720p',
+  '1080p': '1080p',
+} as const;
 

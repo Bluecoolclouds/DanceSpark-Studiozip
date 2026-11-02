@@ -2,6 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { startSubmissionRecovery } from "./lib/generation-recovery";
 import { startAccountMaintenance } from "./lib/data-retention";
+import { startDailyCreditIssuance } from "./lib/daily-credits";
 
 const rawPort = process.env["PORT"];
 
@@ -28,4 +29,8 @@ const server = app.listen(port, (err) => {
   server.once("close", stopRecovery);
   const stopMaintenance = startAccountMaintenance();
   server.once("close", stopMaintenance);
+  const stopDailyCredits = startDailyCreditIssuance((error) => {
+    logger.error({ err: error }, "Daily credit issuance failed");
+  });
+  server.once("close", stopDailyCredits);
 });

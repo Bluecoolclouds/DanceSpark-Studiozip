@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { and, eq, inArray, isNull } from "drizzle-orm";
-import { db, danceJobs, danceCatalogue } from "@workspace/db";
+import { db, danceJobs, danceCatalogue, pool } from "@workspace/db";
 import {
   CreateLightSwapperGenerationBody, CreateCustomVideoLightSwapperGenerationBody,
   type LightSwapperInput, type CustomVideoLightSwapperInput,
@@ -14,7 +14,9 @@ import { readTemplate, templateLimit, templateMetadata, validTemplateBytes } fro
 import { CustomVideoStorageError, readOwnedCustomVideo } from "./custom-video-storage";
 import { CustomVideoValidationError, inspectCustomVideo } from "./custom-video-validation";
 import type { Readable } from "node:stream";
-import { isStandardSwapper, swapperCostUsd, swapperSourceRequirements } from "./swapper-models";
+import { isStandardSwapper, swapperSourceRequirements } from "./swapper-models";
+import { ensureControls } from "./admin-data";
+import { quoteSwapperPrice, type GenerationPrice } from "./generation-pricing";
 
 async function publishedTemplate(id: string) {
   const [template] = await db.select().from(danceCatalogue)
@@ -23,17 +25,28 @@ async function publishedTemplate(id: string) {
   return template;
 }
 
-function minimumCostRub(seconds: number, resolution: LightSwapperInput["resolution"], model: string) {
-  // An operator-provided conservative USD/RUB rate, not a customer tariff.
-  // Never silently assume parity or use a client-supplied duration/quote.
-  const usdRub = Number(process.env.DANCEFLOW_LIGHT_USD_RUB);
-  // The legacy variable is a USD/RUB exchange rate shared by both families.
-  const usd = swapperCostUsd(model, seconds, resolution);
-  if (!Number.isFinite(usdRub) || usdRub <= 0 || typeof seconds !== "number" ||
-      !Number.isFinite(seconds) || seconds <= 0 || seconds > 300 || usd == null) {
-    throw new GenerationPolicyError("light_pricing_not_configured", 503);
+async function currentFx() {
+  await ensureControls();
+  const { rows: [controls] } = await pool.query(
+    "SELECT usd_rub_rate,usd_rub_source,usd_rub_date::text AS usd_rub_date FROM df_controls WHERE id=1",
+  );
+  const rate = Number(controls?.usd_rub_rate);
+  const source = String(controls?.usd_rub_source ?? "").trim();
+  const date = String(controls?.usd_rub_date ?? "");
+  if (!Number.isFinite(rate) || rate <= 0 || !source || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new GenerationPolicyError("pricing_not_configured", 503);
   }
-  return Math.ceil(usd * usdRub * 100) / 100;
+  return { rate, source, date };
+}
+
+async function pricedGeneration(
+  model: string,
+  seconds: number,
+  resolution: LightSwapperInput["resolution"],
+): Promise<GenerationPrice> {
+  const price = quoteSwapperPrice(model, seconds, resolution, await currentFx());
+  if (!price) throw new GenerationPolicyError("pricing_not_configured", 503);
+  return price;
 }
 
 async function originalVideo(templateId: string) {
@@ -69,6 +82,55 @@ export async function createOwnedCustomVideoLightSwapper(
   ownerId: string, value: CustomVideoLightSwapperInput,
 ) {
   return createOwnedLightSwapperForVideo(ownerId, value, true);
+}
+
+/** Exact server-side quote; it validates ownership and reads actual source duration. */
+export async function quoteOwnedLightSwapper(input: {
+  ownerId: string;
+  model: string;
+  resolution: LightSwapperInput["resolution"];
+  templateId?: string;
+  sourceVideoId?: string;
+}) {
+  if ((!input.templateId && !input.sourceVideoId) ||
+      (!!input.templateId === !!input.sourceVideoId)) {
+    throw new GenerationPolicyError("invalid_request", 400);
+  }
+  let seconds: number;
+  if (input.sourceVideoId) {
+    try {
+      const video = await readOwnedCustomVideo(input.ownerId, input.sourceVideoId);
+      seconds = await inspectCustomVideo(video, swapperSourceRequirements(input.model));
+    } catch (error) {
+      if (error instanceof CustomVideoValidationError) {
+        throw new GenerationPolicyError(error.code, error.code === "source_validation_unavailable" ? 503 : 400);
+      }
+      if (error instanceof CustomVideoStorageError) {
+        throw new GenerationPolicyError(
+          error.code === "source_storage_unavailable" ? error.code : "invalid_source_video",
+          error.code === "source_storage_unavailable" ? 503 : 400,
+        );
+      }
+      throw new GenerationPolicyError("invalid_source_video", 400);
+    }
+  } else {
+    const template = await publishedTemplate(input.templateId!);
+    const duration = template.metadata.sourceDurationSeconds;
+    if (typeof duration !== "number") throw new GenerationPolicyError("pricing_not_configured", 503);
+    seconds = duration;
+    if (isStandardSwapper(input.model)) {
+      const bytes = await originalVideo(input.templateId!);
+      try {
+        seconds = await inspectCustomVideo(bytes, swapperSourceRequirements(input.model));
+      } catch (error) {
+        if (error instanceof CustomVideoValidationError) {
+          throw new GenerationPolicyError(error.code, error.code === "source_validation_unavailable" ? 503 : 400);
+        }
+        throw error;
+      }
+    }
+  }
+  return pricedGeneration(input.model, seconds, input.resolution);
 }
 
 async function createOwnedLightSwapperForVideo(
@@ -137,11 +199,12 @@ async function createOwnedLightSwapperForVideo(
   // Replays must remain readable even after pricing configuration is removed.
   const [previous] = await db.select({ fingerprint: danceJobs.requestFingerprint }).from(danceJobs)
     .where(and(eq(danceJobs.userId, ownerId), eq(danceJobs.idempotencyKey, input.clientRequestId))).limit(1);
+  const price = previous ? undefined : await pricedGeneration(input.model, sourceDurationSeconds, input.resolution);
   const reservation = await reserveGeneration({
     userId: ownerId, idempotencyKey: input.clientRequestId,
     templateId: customInput ? `custom-${customInput.sourceVideoId}` : (input as LightSwapperInput).templateId,
     fingerprint, model: input.model,
-    minimumCostRub: previous ? undefined : minimumCostRub(sourceDurationSeconds, input.resolution, input.model),
+    pricing: price,
   });
   if (reservation.reused) return { requestId: reservation.id };
   let paidStarted = false;

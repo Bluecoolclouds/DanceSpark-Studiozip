@@ -51,6 +51,9 @@ export function lightRejectionReason(error: unknown): string {
     error.data && typeof error.data === 'object' && 'code' in error.data ? error.data.code : undefined;
   const messages: Record<string, string> = {
     subscription_required: 'Нужна действующая оплаченная подписка.',
+    insufficient_credits: 'Не хватает дневных кредитов, а доступная квота подписки исчерпана.',
+    pricing_not_configured: 'Цена модели или курс не настроены. Запуск заблокирован.',
+    credit_reservation_unavailable: 'Не удалось подтвердить резерв кредитов. Запуск не отправлен.',
     account_blocked: 'Генерация недоступна для этого аккаунта.',
     generation_paused: 'Генерация временно приостановлена.',
     daily_limit_reached: 'Дневной лимит подписки исчерпан.',

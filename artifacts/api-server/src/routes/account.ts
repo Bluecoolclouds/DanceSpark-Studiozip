@@ -1,12 +1,13 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, danceAccounts } from "@workspace/db";
-import { GetAccountSubscriptionResponse } from "@workspace/api-zod";
+import { GetAccountSubscriptionResponse, GetAccountCreditsResponse } from "@workspace/api-zod";
 import { RequestAccountDeletionBody, GetAccountDeletionResponse } from "@workspace/api-zod";
 import { requireAccountForDeletion, protectAdminMutation, getAccountId } from "../middlewares/admin-auth";
 import { requestDeletion, deletionStatus, AccountDeletionError } from "../lib/account-lifecycle";
 import { requireAccount, type ServerAccount } from "../middlewares/admin-auth";
 import { accountSubscription } from "../lib/account-subscription";
+import { getAccountDailyCredits } from "../lib/daily-credits";
 
 const router: IRouter = Router();
 
@@ -44,6 +45,18 @@ router.get("/account/subscription", requireAccount, async (req, res): Promise<vo
   } catch (error) {
     req.log.error({ err: error }, "Account subscription lookup failed");
     res.status(503).json({ error: "Не удалось проверить подписку. Попробуй ещё раз." });
+  }
+});
+
+router.get("/account/credits", requireAccount, async (req, res): Promise<void> => {
+  const identity = res.locals.account as ServerAccount;
+  try {
+    const credits = await getAccountDailyCredits(identity.id);
+    res.setHeader("Cache-Control", "no-store");
+    res.json(GetAccountCreditsResponse.parse({ ...credits, creditValueRub: 1 }));
+  } catch (error) {
+    req.log.error({ err: error }, "Account daily credits lookup failed");
+    res.status(503).json({ error: "Не удалось проверить дневные кредиты. Попробуй ещё раз." });
   }
 });
 

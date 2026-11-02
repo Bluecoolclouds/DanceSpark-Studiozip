@@ -40,14 +40,18 @@ function useUserMutation(onDone?: () => void) {
 function EditDialog({ user, onClose }: { user: AdminUser | null; onClose: () => void }) {
   const [blocked, setBlocked] = useState(false);
   const [limit, setLimit] = useState('');
+  const [creditLimit, setCreditLimit] = useState('');
   const [err, setErr] = useState<string | null>(null);
+  const [creditErr, setCreditErr] = useState<string | null>(null);
   const m = useUserMutation(onClose);
 
   useEffect(() => {
     if (user) {
       setBlocked(user.blocked);
       setLimit(user.dailyLimitOverride === null ? '' : String(user.dailyLimitOverride));
+      setCreditLimit(user.dailyCreditOverride === null ? '' : String(user.dailyCreditOverride));
       setErr(null);
+      setCreditErr(null);
     }
   }, [user]);
 
@@ -60,8 +64,16 @@ function EditDialog({ user, onClose }: { user: AdminUser | null; onClose: () => 
       if (!Number.isInteger(n) || n < 0 || n > 10000) { setErr('Целое число от 0 до 10 000 или пусто'); return; }
       val = n;
     }
+    const creditText = creditLimit.trim();
+    let creditVal: number | null = null;
+    if (creditText !== '') {
+      const n = Number(creditText);
+      if (!Number.isInteger(n) || n < 0 || n > 100000) { setCreditErr('Целое число от 0 до 100 000 или пусто'); return; }
+      creditVal = n;
+    }
     setErr(null);
-    m.mutate({ id: user.id, data: { blocked, dailyLimitOverride: val } });
+    setCreditErr(null);
+    m.mutate({ id: user.id, data: { blocked, dailyLimitOverride: val, dailyCreditOverride: creditVal } });
   };
 
   return (
@@ -86,6 +98,15 @@ function EditDialog({ user, onClose }: { user: AdminUser | null; onClose: () => 
               className="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 font-mono outline-none focus:ring-2 focus:ring-ring" />
             <p className={cn('mt-1 text-xs', err ? 'text-destructive' : 'text-muted-foreground')}>
               {err ?? 'Генераций в сутки по UTC. 0 — запретить. Пусто — сбросить к тарифу.'}
+            </p>
+          </div>
+          <div>
+            <label htmlFor="credit-limit" className="text-sm font-medium">Бесплатные кредиты в день</label>
+            <input id="credit-limit" inputMode="numeric" value={creditLimit} onChange={(e) => setCreditLimit(e.target.value)} placeholder="пусто — общий лимит"
+              data-testid="input-user-daily-credit-limit"
+              className="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 font-mono outline-none focus:ring-2 focus:ring-ring" />
+            <p className={cn('mt-1 text-xs', creditErr ? 'text-destructive' : 'text-muted-foreground')}>
+              {creditErr ?? '0 — отключить; пусто — общий лимит. Изменение действует со следующей выдачи по UTC.'}
             </p>
           </div>
         </div>
@@ -142,13 +163,14 @@ export default function UsersPage() {
         {d && d.items.length > 0 && (
           <>
             <div className={cn('overflow-x-auto transition-opacity', list.isPlaceholderData && 'opacity-60')}>
-              <table className="w-full min-w-[820px] text-sm">
+              <table className="w-full min-w-[980px] text-sm">
                 <thead>
                   <tr className="border-b border-border text-left text-xs text-muted-foreground">
                     <th className="px-5 py-3 font-medium">Пользователь</th>
                     <th className="px-3 py-3 font-medium">Тариф</th>
                     <th className="px-3 py-3 font-medium">Сегодня / всего</th>
                     <th className="px-3 py-3 font-medium">Лимит в сутки</th>
+                    <th className="px-3 py-3 font-medium">Кредиты сегодня</th>
                     <th className="px-3 py-3 font-medium">Статус</th>
                     <th className="px-5 py-3 text-right font-medium">Действия</th>
                   </tr>
@@ -170,6 +192,11 @@ export default function UsersPage() {
                       <td className="px-3 py-3 font-mono tabular">{fmtNum(u.todayGenerations)} / {fmtNum(u.totalGenerations)}</td>
                       <td className="px-3 py-3 font-mono" data-testid={`text-limit-${u.id}`}>
                         {u.dailyLimitOverride === null ? <span className="text-muted-foreground">по тарифу</span> : <span className="text-primary">{u.dailyLimitOverride}</span>}
+                      </td>
+                      <td className="px-3 py-3 font-mono" data-testid={`text-credits-${u.id}`}>
+                        <span>{fmtNum(u.todayCreditBalance)} / {fmtNum(u.todayCreditGrant)}</span>
+                        {u.dailyCreditOverride !== null && <span className="ml-1 text-xs text-primary">персонально</span>}
+                        {u.todayCreditReserved > 0 && <span className="block text-xs text-muted-foreground">резерв {fmtNum(u.todayCreditReserved)}</span>}
                       </td>
                       <td className="px-3 py-3">
                         {u.blocked
@@ -215,7 +242,14 @@ export default function UsersPage() {
             <AlertDialogAction data-testid="button-confirm-block" disabled={toggle.isPending}
               onClick={(e) => {
                 e.preventDefault();
-                if (confirm) toggle.mutate({ id: confirm.id, data: { blocked: !confirm.blocked, dailyLimitOverride: confirm.dailyLimitOverride } });
+                if (confirm) toggle.mutate({
+                  id: confirm.id,
+                  data: {
+                    blocked: !confirm.blocked,
+                    dailyLimitOverride: confirm.dailyLimitOverride,
+                    dailyCreditOverride: confirm.dailyCreditOverride,
+                  },
+                });
               }}>
               {toggle.isPending ? 'Сохраняем…' : 'Подтвердить'}
             </AlertDialogAction>

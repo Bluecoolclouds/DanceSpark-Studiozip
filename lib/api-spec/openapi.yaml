@@ -309,6 +309,18 @@ paths:
           description: Account blocked
         "503":
           description: Subscription cannot be verified
+  /account/credits:
+    get:
+      operationId: getAccountCredits
+      responses:
+        "200":
+          description: Current UTC-day credits for the authenticated account
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountCredits" }
+        "401": { description: Sign-in required }
+        "403": { description: Account blocked }
+        "503": { description: Daily credits are unavailable }
   /admin/session:
     get:
       operationId: getAdminSession
@@ -389,6 +401,17 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminSettings" }
+  /admin/credit-economy:
+    get:
+      operationId: getAdminCreditEconomy
+      parameters:
+        - { in: query, name: seconds, schema: { type: number, minimum: 4, maximum: 300, default: 15 } }
+      responses:
+        "200":
+          description: Server-calculated model prices and maximum daily free-credit exposure
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminCreditEconomy" }
   /admin/audit:
     get:
       operationId: listAdminAudit
@@ -413,6 +436,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /light-swapper/quote:
+    get:
+      operationId: getLightSwapperQuote
+      tags: [video-generations]
+      summary: Get the exact server-calculated cost before launch
+      parameters:
+        - { in: query, name: model, required: true, schema: { type: string, enum: [higgsfield/genjutsu-light/motion-transfer/v1.0, higgsfield/genjutsu-light/object-swap/v1.0, higgsfield/genjutsu/motion-transfer/v1.0, higgsfield/genjutsu/object-swap/v1.0] } }
+        - { in: query, name: resolution, required: true, schema: { type: string, enum: [480p, 720p, 1080p] } }
+        - { in: query, name: templateId, schema: { type: string, pattern: "^[a-z0-9][a-z0-9-]{0,79}$" } }
+        - { in: query, name: sourceVideoId, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Price for the actual server-validated input duration
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LightSwapperQuote" }
+        "400": { description: "Invalid model, source or media" }
+        "401": { description: Authentication required }
+        "403": { description: "Account blocked or source is not owned" }
+        "503": { description: Model price or currency rate is unavailable }
   /light-swapper/generations:
     post:
       operationId: createLightSwapperGeneration
@@ -763,6 +806,35 @@ components:
         plan: { type: string, enum: [none, warmup, dancefloor, stage] }
         status: { type: string, enum: [inactive, active, expired] }
         subscriptionUntil: { type: [string, "null"] }
+    AccountCredits:
+      type: object
+      required: [accountId, utcDay, grantedCredits, availableCredits, reservedCredits, spentCredits, resetAt, creditValueRub]
+      properties:
+        accountId: { type: string }
+        utcDay: { type: string, format: date }
+        grantedCredits: { type: integer, minimum: 0 }
+        availableCredits: { type: integer, minimum: 0 }
+        reservedCredits: { type: integer, minimum: 0 }
+        spentCredits: { type: integer, minimum: 0 }
+        resetAt: { type: string, format: date-time }
+        creditValueRub: { type: number, const: 1 }
+    LightSwapperQuote:
+      type: object
+      required: [model, resolution, sourceSeconds, billableSeconds, providerCostUsd, providerCostRub, customerPriceRub, credits, creditValueRub, markupPercent, usdRubRate, usdRubSource, usdRubDate]
+      properties:
+        model: { type: string }
+        resolution: { type: string, enum: [480p, 720p, 1080p] }
+        sourceSeconds: { type: number }
+        billableSeconds: { type: number }
+        providerCostUsd: { type: number }
+        providerCostRub: { type: number }
+        customerPriceRub: { type: number }
+        credits: { type: integer, minimum: 1 }
+        creditValueRub: { type: number, const: 1 }
+        markupPercent: { type: number, const: 15 }
+        usdRubRate: { type: number }
+        usdRubSource: { type: string }
+        usdRubDate: { type: string, format: date }
     AdminSession:
       type: object
       required: [userId, email, isAdmin, environment]
@@ -791,7 +863,7 @@ components:
         telemetryConnected: { type: boolean }
     AdminUser:
       type: object
-      required: [id, email, role, blocked, plan, subscriptionUntil, dailyLimitOverride, totalGenerations, todayGenerations, createdAt]
+      required: [id, email, role, blocked, plan, subscriptionUntil, dailyLimitOverride, dailyCreditOverride, todayCreditGrant, todayCreditBalance, todayCreditReserved, totalGenerations, todayGenerations, createdAt]
       properties:
         id: { type: string }
         email: { type: string }
@@ -800,16 +872,21 @@ components:
         plan: { type: string, enum: [none, warmup, dancefloor, stage] }
         subscriptionUntil: { type: [string, "null"] }
         dailyLimitOverride: { type: [integer, "null"], minimum: 0, maximum: 10000 }
+        dailyCreditOverride: { type: [integer, "null"], minimum: 0, maximum: 100000 }
+        todayCreditGrant: { type: integer, minimum: 0 }
+        todayCreditBalance: { type: integer, minimum: 0 }
+        todayCreditReserved: { type: integer, minimum: 0 }
         totalGenerations: { type: integer }
         todayGenerations: { type: integer }
         createdAt: { type: string }
     AdminUserUpdate:
       type: object
       additionalProperties: false
-      required: [blocked, dailyLimitOverride]
+      required: [blocked, dailyLimitOverride, dailyCreditOverride]
       properties:
         blocked: { type: boolean }
         dailyLimitOverride: { type: [integer, "null"], minimum: 0, maximum: 10000 }
+        dailyCreditOverride: { type: [integer, "null"], minimum: 0, maximum: 100000 }
     AdminUsersPage:
       type: object
       required: [items, total, page, pageSize]
@@ -820,7 +897,7 @@ components:
         pageSize: { type: integer }
     AdminGeneration:
       type: object
-      required: [id, userId, userEmail, templateId, status, estimatedCostRub, errorCode, createdAt, completedAt]
+      required: [id, userId, userEmail, templateId, status, estimatedCostRub, estimatedCostUsd, customerPriceRub, creditsReserved, accessSource, errorCode, createdAt, completedAt]
       properties:
         id: { type: string }
         userId: { type: string }
@@ -828,6 +905,10 @@ components:
         templateId: { type: string }
         status: { type: string, enum: [queued, running, succeeded, failed] }
         estimatedCostRub: { type: [number, "null"] }
+        estimatedCostUsd: { type: [number, "null"] }
+        customerPriceRub: { type: [number, "null"] }
+        creditsReserved: { type: integer, minimum: 0 }
+        accessSource: { type: [string, "null"], enum: [credits, subscription, null] }
         errorCode: { type: [string, "null"] }
         createdAt: { type: string }
         completedAt: { type: [string, "null"] }
@@ -842,14 +923,17 @@ components:
     AdminSettingsInput:
       type: object
       additionalProperties: false
-      required: [version, paused, maxConcurrent, perUserConcurrent, maxDailySpendRub, costPerGenerationRub]
+      required: [version, paused, maxConcurrent, perUserConcurrent, maxDailySpendRub, dailyFreeCredits, usdRubRate, usdRubSource, usdRubDate]
       properties:
         version: { type: integer, minimum: 0 }
         paused: { type: boolean }
         maxConcurrent: { type: integer, minimum: 1, maximum: 50 }
         perUserConcurrent: { type: integer, minimum: 1, maximum: 5 }
         maxDailySpendRub: { type: [number, "null"], minimum: 1, maximum: 1000000 }
-        costPerGenerationRub: { type: [number, "null"], minimum: 0.01, maximum: 100000 }
+        dailyFreeCredits: { type: integer, minimum: 0, maximum: 100000 }
+        usdRubRate: { type: number, exclusiveMinimum: 0, maximum: 1000000 }
+        usdRubSource: { type: string, minLength: 1, maxLength: 100 }
+        usdRubDate: { type: string, format: date }
     AdminSettings:
       allOf:
         - { $ref: "#/components/schemas/AdminSettingsInput" }
@@ -862,6 +946,39 @@ components:
             telemetryConnected: { type: boolean }
             quotaTimezone: { type: string }
             updatedAt: { type: string }
+    AdminCreditEconomyRow:
+      type: object
+      required: [model, modelName, family, resolution, sourceSeconds, billableSeconds, providerCostUsd, providerCostRub, customerPriceRub, credits, pricingSource]
+      properties:
+        model: { type: string }
+        modelName: { type: string }
+        family: { type: string, enum: [light, standard] }
+        resolution: { type: string, enum: [480p, 720p, 1080p] }
+        sourceSeconds: { type: number }
+        billableSeconds: { type: number }
+        providerCostUsd: { type: number }
+        providerCostRub: { type: number }
+        customerPriceRub: { type: number }
+        credits: { type: integer }
+        pricingSource: { type: string, format: uri }
+    AdminCreditEconomy:
+      type: object
+      required: [seconds, registeredAccounts, dailyFreeCredits, effectiveDailyCredits, maxDailyCreditValueRub, estimatedMaxApiCostRub, todayEstimatedApiCostRub, todayCreditApiCostRub, creditValueRub, markupPercent, usdRubRate, usdRubSource, usdRubDate, rows]
+      properties:
+        seconds: { type: number }
+        registeredAccounts: { type: integer }
+        dailyFreeCredits: { type: integer }
+        effectiveDailyCredits: { type: integer }
+        maxDailyCreditValueRub: { type: number }
+        estimatedMaxApiCostRub: { type: number }
+        todayEstimatedApiCostRub: { type: number }
+        todayCreditApiCostRub: { type: number }
+        creditValueRub: { type: number, const: 1 }
+        markupPercent: { type: number, const: 15 }
+        usdRubRate: { type: number }
+        usdRubSource: { type: string }
+        usdRubDate: { type: string, format: date }
+        rows: { type: array, items: { $ref: "#/components/schemas/AdminCreditEconomyRow" } }
     AdminAuditEntry:
       type: object
       required: [id, actorId, action, targetId, details, createdAt]

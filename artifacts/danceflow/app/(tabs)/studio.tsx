@@ -13,6 +13,7 @@ import { useDance } from '@/context/DanceContext';
 import { ColorScope, useColors } from '@/hooks/useColors';
 import colors from '@/constants/colors';
 import { AccountSubscription } from '@/components/AccountSubscription';
+import { AccountCredits } from '@/components/AccountCredits';
 import { DraftImage } from '@/components/draft-image';
 
 export default function Studio() {
@@ -48,6 +49,7 @@ function StudioScreen() {
       <View style={[styles.col, { gap: 12 }]}>
         <Text style={[styles.section, { color: c.foreground }]}>Аккаунт</Text>
         <AccountSubscription />
+        <AccountCredits />
         <Bouncy testID="open-subscription" accessibilityLabel="Тарифы подписки" scaleTo={0.97} onPress={() => router.push('/subscription')}
           style={[styles.subEntry, { backgroundColor: c.violet, shadowColor: c.violet }]}>
           <View style={[styles.subIcon, { backgroundColor: c.sun }]}>

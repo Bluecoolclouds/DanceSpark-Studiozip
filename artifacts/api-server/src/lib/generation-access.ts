@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db, danceJobs } from "@workspace/db";
-import { getDanceVideoStatus, submitDanceVideo, VideoSubmissionUnknownError } from "./video-generation";
-import { reserveGeneration, beginGeneration, finishGeneration, GenerationPolicyError } from "./generation-governance";
+import { getDanceVideoStatus } from "./video-generation";
+import { finishGeneration, GenerationPolicyError } from "./generation-governance";
 import type { VideoGenerationInput } from "@workspace/api-zod";
 import { isSwapperModel } from "./swapper-models";
 
@@ -11,33 +11,12 @@ export class VideoNotFoundError extends Error {
   }
 }
 
-export async function createOwnedGeneration(ownerId: string, input: VideoGenerationInput) {
-  // Shared with the admin app: subscription, block, pause, budget, quota and
-  // concurrency checks are atomic. Never submit again on an idempotent replay.
-  const reservation = await reserveGeneration({
-    userId: ownerId,
-    idempotencyKey: input.clientRequestId,
-    templateId: input.styleId,
-  });
-  if (reservation.reused) return { requestId: reservation.id };
-  if (!await beginGeneration(reservation.id)) {
-    await finishGeneration(reservation.id, "failed", "cancelled");
-    throw new GenerationPolicyError("generation_paused", 503);
-  }
-  let acceptedByProvider = false;
-  try {
-    const provider = await submitDanceVideo(input);
-    acceptedByProvider = true;
-    await db.update(danceJobs)
-      .set({ providerRequestId: provider.requestId })
-      .where(and(eq(danceJobs.id, reservation.id), inArray(danceJobs.status, ["queued", "running"]), isNull(danceJobs.providerRequestId)));
-    return { requestId: reservation.id };
-  } catch (error) {
-    await finishGeneration(reservation.id, "failed",
-      acceptedByProvider || error instanceof VideoSubmissionUnknownError ? "submission_unknown" : "provider_error");
-    if (acceptedByProvider) throw new VideoSubmissionUnknownError();
-    throw error;
-  }
+export async function createOwnedGeneration(ownerId: string, input: VideoGenerationInput): Promise<{ requestId: string }> {
+  void ownerId;
+  void input;
+  // PixVerse has no approved cost tariff in the server pricing table. Never
+  // substitute the old global estimate or submit a billable request.
+  throw new GenerationPolicyError("pricing_not_configured", 503);
 }
 
 export async function findOwnedLightSwapperGeneration(ownerId: string, clientRequestId: string) {

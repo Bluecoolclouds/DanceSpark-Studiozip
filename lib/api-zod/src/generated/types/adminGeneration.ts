@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AdminGenerationAccessSource } from './adminGenerationAccessSource';
 import type { AdminGenerationStatus } from './adminGenerationStatus';
 
 export interface AdminGeneration {
@@ -15,6 +16,14 @@ export interface AdminGeneration {
   status: AdminGenerationStatus;
   /** @nullable */
   estimatedCostRub: number | null;
+  /** @nullable */
+  estimatedCostUsd: number | null;
+  /** @nullable */
+  customerPriceRub: number | null;
+  /** @minimum 0 */
+  creditsReserved: number;
+  /** @nullable */
+  accessSource: AdminGenerationAccessSource;
   /** @nullable */
   errorCode: string | null;
   createdAt: string;

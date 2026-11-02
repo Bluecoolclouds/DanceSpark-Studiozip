@@ -13,6 +13,7 @@ export const danceAccounts = pgTable("df_accounts", {
   plan: dancePlan("plan").notNull().default("none"),
   subscriptionUntil: timestamp("subscription_until", { withTimezone: true }),
   dailyLimitOverride: integer("daily_limit_override"),
+  dailyCreditOverride: integer("daily_credit_override"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 export const insertDanceAccountSchema = createInsertSchema(danceAccounts);

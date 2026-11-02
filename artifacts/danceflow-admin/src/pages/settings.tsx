@@ -10,6 +10,7 @@ import {
   useUpdateAdminSettings,
   getGetAdminOverviewQueryKey,
   getListAdminAuditQueryKey,
+  useGetAdminCreditEconomy,
   type AdminSettings,
 } from '@workspace/api-client-react';
 import { PageHeader, Panel, ErrorState } from '@/components/states';
@@ -28,7 +29,10 @@ const schema = z.object({
   maxConcurrent: intIn(1, 50),
   perUserConcurrent: intIn(1, 5),
   maxDailySpendRub: optNum(1, 1_000_000, 'От 1 до 1 000 000 ₽ или пусто'),
-  costPerGenerationRub: optNum(0.01, 100_000, 'От 0,01 до 100 000 ₽ или пусто'),
+  dailyFreeCredits: intIn(0, 100_000),
+  usdRubRate: z.string().trim().refine((v) => Number.isFinite(Number(v.replace(',', '.'))) && Number(v.replace(',', '.')) > 0 && Number(v.replace(',', '.')) <= 1_000_000, 'Положительный курс до 1 000 000'),
+  usdRubSource: z.string().trim().min(1, 'Укажи источник курса').max(100, 'Не более 100 символов'),
+  usdRubDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Укажи дату курса'),
 });
 type FormV = z.infer<typeof schema>;
 
@@ -37,7 +41,10 @@ const toForm = (s: AdminSettings): FormV => ({
   maxConcurrent: String(s.maxConcurrent),
   perUserConcurrent: String(s.perUserConcurrent),
   maxDailySpendRub: s.maxDailySpendRub === null ? '' : String(s.maxDailySpendRub),
-  costPerGenerationRub: s.costPerGenerationRub === null ? '' : String(s.costPerGenerationRub),
+  dailyFreeCredits: String(s.dailyFreeCredits),
+  usdRubRate: String(s.usdRubRate),
+  usdRubSource: s.usdRubSource,
+  usdRubDate: s.usdRubDate,
 });
 const nul = (v: string) => (v.trim() === '' ? null : Number(v.trim().replace(',', '.')));
 
@@ -59,13 +66,20 @@ export default function SettingsPage() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const q = useGetAdminSettings({ query: { queryKey: getGetAdminSettingsQueryKey(), refetchInterval: POLL } });
+  const [calculatorSeconds, setCalculatorSeconds] = useState(15);
+  const economy = useGetAdminCreditEconomy({ seconds: calculatorSeconds }, {
+    query: { refetchInterval: POLL, retry: false },
+  });
   const s = q.data;
   const baseVersion = useRef<number | null>(null);
   const [conflict, setConflict] = useState(false);
 
   const form = useForm<FormV>({
     resolver: zodResolver(schema),
-    defaultValues: { paused: true, maxConcurrent: '', perUserConcurrent: '', maxDailySpendRub: '', costPerGenerationRub: '' },
+    defaultValues: {
+      paused: true, maxConcurrent: '', perUserConcurrent: '', maxDailySpendRub: '',
+      dailyFreeCredits: '0', usdRubRate: '', usdRubSource: '', usdRubDate: '',
+    },
   });
 
   useEffect(() => {
@@ -112,7 +126,10 @@ export default function SettingsPage() {
         maxConcurrent: Number(v.maxConcurrent),
         perUserConcurrent: Number(v.perUserConcurrent),
         maxDailySpendRub: nul(v.maxDailySpendRub),
-        costPerGenerationRub: nul(v.costPerGenerationRub),
+        dailyFreeCredits: Number(v.dailyFreeCredits),
+        usdRubRate: Number(v.usdRubRate.replace(',', '.')),
+        usdRubSource: v.usdRubSource.trim(),
+        usdRubDate: v.usdRubDate,
       },
     });
   });
@@ -171,8 +188,17 @@ export default function SettingsPage() {
               <Field label="Потолок расхода в сутки, ₽" hint="Оценочный, сутки по UTC. Без бюджета нельзя снять паузу." error={errs.maxDailySpendRub?.message}>
                 <input {...form.register('maxDailySpendRub')} inputMode="decimal" placeholder="не задан" className={inputCls} data-testid="input-max-daily-spend" />
               </Field>
-              <Field label="Оценка стоимости одной генерации, ₽" hint="Ваша ставка для оценок. Пусто — стоимость неизвестна." error={errs.costPerGenerationRub?.message}>
-                <input {...form.register('costPerGenerationRub')} inputMode="decimal" placeholder="неизвестна" className={inputCls} data-testid="input-cost-per-generation" />
+              <Field label="Ежедневные бесплатные кредиты" hint="На аккаунт по UTC. 0 — не выдавать; изменения действуют со следующей выдачи." error={errs.dailyFreeCredits?.message}>
+                <input {...form.register('dailyFreeCredits')} inputMode="numeric" className={inputCls} data-testid="input-daily-free-credits" />
+              </Field>
+              <Field label="Курс USD/RUB" hint="Снимок курса для новых расчётов и бюджета." error={errs.usdRubRate?.message}>
+                <input {...form.register('usdRubRate')} inputMode="decimal" className={inputCls} data-testid="input-usd-rub-rate" />
+              </Field>
+              <Field label="Источник курса" hint="Сохраняется вместе с каждой оценкой." error={errs.usdRubSource?.message}>
+                <input {...form.register('usdRubSource')} className={inputCls} data-testid="input-usd-rub-source" />
+              </Field>
+              <Field label="Дата курса" hint="Дата, на которую указан курс." error={errs.usdRubDate?.message}>
+                <input {...form.register('usdRubDate')} type="date" className={inputCls} data-testid="input-usd-rub-date" />
               </Field>
               <div className="flex items-center justify-between gap-3 px-5 py-4">
                 <span className="text-xs text-muted-foreground">{form.formState.isDirty ? 'Есть несохранённые изменения' : 'Изменений нет'}{paused ? '' : ' · генерации активны'}</span>
@@ -189,6 +215,47 @@ export default function SettingsPage() {
           </form>
 
           <aside className="space-y-4">
+            <Panel className="p-5" data-testid="panel-credit-economy">
+              <div className="font-display text-lg font-bold">Кредиты и экономика</div>
+              {economy.data && (
+                <div className="mt-3 space-y-2 text-sm">
+                  <div className="flex justify-between gap-3"><span className="text-muted-foreground">Аккаунтов</span><b>{economy.data.registeredAccounts.toLocaleString('ru-RU')}</b></div>
+                  <div className="flex justify-between gap-3"><span className="text-muted-foreground">Максимальная выдача / день</span><b>{economy.data.effectiveDailyCredits.toLocaleString('ru-RU')} кр. · {economy.data.maxDailyCreditValueRub.toLocaleString('ru-RU')} ₽</b></div>
+                  <div className="flex justify-between gap-3"><span className="text-muted-foreground">Оценка максимальных затрат API</span><b>≈ {economy.data.estimatedMaxApiCostRub.toLocaleString('ru-RU')} ₽</b></div>
+                  <div className="flex justify-between gap-3"><span className="text-muted-foreground">API за сегодня</span><b>{economy.data.todayEstimatedApiCostRub.toLocaleString('ru-RU')} ₽</b></div>
+                  <div className="flex justify-between gap-3"><span className="text-muted-foreground">Из генераций за кредиты</span><b>{economy.data.todayCreditApiCostRub.toLocaleString('ru-RU')} ₽</b></div>
+                  <p className="text-xs text-muted-foreground">1 кредит = 1 ₽ клиентской цены. В цену заложена наценка 15%; оценка затрат API использует себестоимость без наценки. Не включает скидки Higgsfield, комиссии и налоги.</p>
+                </div>
+              )}
+              {economy.isError && <p className="mt-3 text-sm text-destructive">Не удалось загрузить расчёт экономики.</p>}
+              <div className="mt-4 flex items-center justify-between gap-3">
+                <label htmlFor="calculator-seconds" className="text-sm font-medium">Длительность входа, сек.</label>
+                <input id="calculator-seconds" type="number" min={4} max={300} step={1} value={calculatorSeconds}
+                  onChange={(event) => setCalculatorSeconds(Math.max(4, Math.min(300, Number(event.target.value) || 4)))}
+                  className="w-24 rounded-md border border-input bg-background px-2 py-1 text-right font-mono" data-testid="input-credit-calculator-seconds" />
+              </div>
+              {economy.data && (
+                <div className="mt-3 max-h-80 overflow-auto rounded-lg border border-border">
+                  <table className="w-full min-w-[560px] text-left text-xs">
+                    <thead className="sticky top-0 bg-muted text-muted-foreground">
+                      <tr><th className="p-2">Модель / качество</th><th className="p-2">Оплачиваемые сек.</th><th className="p-2">API ₽</th><th className="p-2">Цена ₽</th><th className="p-2">Кредиты</th></tr>
+                    </thead>
+                    <tbody>
+                      {economy.data.rows.map((row) => (
+                        <tr key={`${row.model}-${row.resolution}`} className="border-t border-border">
+                          <td className="p-2"><span className="font-medium">{row.modelName}</span><br />{row.resolution}</td>
+                          <td className="p-2">{row.billableSeconds}</td>
+                          <td className="p-2">{row.providerCostRub.toLocaleString('ru-RU', { minimumFractionDigits: 2 })}</td>
+                          <td className="p-2">{row.customerPriceRub.toLocaleString('ru-RU', { minimumFractionDigits: 2 })}</td>
+                          <td className="p-2 font-semibold">{row.credits}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {economy.data && <p className="mt-2 text-xs text-muted-foreground">Тарифы до скидок: {economy.data.usdRubSource}, {economy.data.usdRubDate}; текущий курс {economy.data.usdRubRate}. Ссылки на официальные тарифы Higgsfield есть в таблице модели.</p>}
+            </Panel>
             <Panel className="p-5">
               <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-muted-foreground"><KeyRound className="h-3.5 w-3.5" />Ключ провайдера</div>
               <div className="mt-3 flex items-center gap-2" data-testid="status-provider-key">
@@ -210,7 +277,7 @@ export default function SettingsPage() {
                 <p className="mt-3 text-sm">Телеметрия шлюза подключена. Суммы остаются оценкой по вашей ставке, а не счётом провайдера.</p>
               ) : (
                 <p className="mt-3 text-sm" data-testid="text-telemetry-off">
-                  <b>Конвейер провайдера ещё не подключён.</b> Эти ограничения действуют только на серверный шлюз. Существующие отдельные маршруты генерации пока не инструментированы и их не соблюдают. Реальных счетов и баланса провайдера здесь нет.
+                  <b>Счёт Higgsfield не подключён.</b> Расход API считается по опубликованным тарифам до скидок и подтверждённому курсу. Скидки аккаунта, фактическая тарификация и итоговый счёт могут отличаться; неподдерживаемые по цене модели не запускаются.
                 </p>
               )}
             </Panel>

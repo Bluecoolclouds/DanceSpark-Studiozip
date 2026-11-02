@@ -14,4 +14,10 @@ export interface AdminUserUpdate {
      * @nullable
      */
   dailyLimitOverride: number | null;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     * @nullable
+     */
+  dailyCreditOverride: number | null;
 }

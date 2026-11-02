@@ -5,10 +5,14 @@ import {
   ListAdminUsersResponse, UpdateAdminUserParams, UpdateAdminUserBody, UpdateAdminUserResponse,
   ListAdminGenerationsQueryParams, ListAdminGenerationsResponse,
   GetAdminSettingsResponse, UpdateAdminSettingsBody, UpdateAdminSettingsResponse,
+  GetAdminCreditEconomyQueryParams, GetAdminCreditEconomyResponse,
   ListAdminAuditQueryParams, ListAdminAuditResponse,
 } from "@workspace/api-zod";
 import { requireAccount, requireAdmin, protectAdminMutation, type ServerAccount } from "../middlewares/admin-auth";
 import { ensureControls, audit, settingsResponse, userProjection, serializeUser } from "../lib/admin-data";
+import {
+  CREDIT_VALUE_RUB, GENERATION_MARKUP_RATE, PRICED_SWAPPER_MODELS, quoteSwapperPrice,
+} from "../lib/generation-pricing";
 
 const router: IRouter = Router();
 const PAGE_SIZE = 25;
@@ -67,8 +71,8 @@ router.patch("/admin/users/:id", async (req, res): Promise<void> => {
   try {
     await client.query("BEGIN");
     const updated = await client.query(
-      "UPDATE df_accounts SET blocked=$2,daily_limit_override=$3 WHERE id=$1 AND deletion_requested_at IS NULL RETURNING id",
-      [params.data.id, body.data.blocked, body.data.dailyLimitOverride],
+      "UPDATE df_accounts SET blocked=$2,daily_limit_override=$3,daily_credit_override=$4 WHERE id=$1 AND deletion_requested_at IS NULL RETURNING id",
+      [params.data.id, body.data.blocked, body.data.dailyLimitOverride, body.data.dailyCreditOverride],
     );
     if (!updated.rowCount) { await client.query("ROLLBACK"); res.status(404).json({ error: "Пользователь не найден" }); return; }
     await audit(client, actor.id, "user.controls.update", params.data.id, JSON.stringify(body.data));
@@ -88,7 +92,9 @@ router.get("/admin/generations", async (req, res): Promise<void> => {
   const where = "WHERE ($1::text='all' OR j.status::text=$1)";
   const [items, count] = await Promise.all([
     pool.query(`SELECT j.id,j.user_id AS "userId",a.email AS "userEmail",j.template_id AS "templateId",
-      j.status,j.estimated_cost_rub::float AS "estimatedCostRub",j.error_code AS "errorCode",
+      j.status,j.estimated_cost_rub::float AS "estimatedCostRub",
+      j.estimated_cost_usd::float AS "estimatedCostUsd",j.customer_price_rub::float AS "customerPriceRub",
+      j.credits_reserved AS "creditsReserved",j.access_source AS "accessSource",j.error_code AS "errorCode",
       j.created_at AS "createdAt",j.completed_at AS "completedAt"
       FROM df_jobs j JOIN df_accounts a ON a.id=j.user_id ${where}
       ORDER BY j.created_at DESC,j.id LIMIT $2 OFFSET $3`, [status, PAGE_SIZE, (page - 1) * PAGE_SIZE]),
@@ -113,8 +119,8 @@ router.patch("/admin/settings", async (req, res): Promise<void> => {
   if (b.perUserConcurrent > b.maxConcurrent) {
     res.status(400).json({ error: "Лимит пользователя не может превышать общий лимит" }); return;
   }
-  if (!b.paused && (b.costPerGenerationRub == null || b.maxDailySpendRub == null || !process.env.higgs_api?.trim())) {
-    res.status(400).json({ error: "Перед снятием паузы задайте себестоимость, дневной бюджет и серверный AI-ключ" }); return;
+  if (!b.paused && (b.maxDailySpendRub == null || !process.env.higgs_api?.trim())) {
+    res.status(400).json({ error: "Перед снятием паузы задайте дневной бюджет и серверный AI-ключ" }); return;
   }
   await ensureControls();
   const client = await pool.connect();
@@ -122,9 +128,11 @@ router.patch("/admin/settings", async (req, res): Promise<void> => {
     await client.query("BEGIN");
     const { rows } = await client.query(
       `UPDATE df_controls SET version=version+1,paused=$2,max_concurrent=$3,per_user_concurrent=$4,
-       max_daily_spend_rub=$5,cost_per_generation_rub=$6,updated_at=now()
+       max_daily_spend_rub=$5,cost_per_generation_rub=NULL,daily_free_credits=$6,
+       usd_rub_rate=$7,usd_rub_source=$8,usd_rub_date=$9,updated_at=now()
        WHERE id=1 AND version=$1 RETURNING *`,
-      [b.version, b.paused, b.maxConcurrent, b.perUserConcurrent, b.maxDailySpendRub, b.costPerGenerationRub],
+      [b.version, b.paused, b.maxConcurrent, b.perUserConcurrent, b.maxDailySpendRub,
+        b.dailyFreeCredits, b.usdRubRate, b.usdRubSource.trim(), b.usdRubDate],
     );
     if (!rows[0]) { await client.query("ROLLBACK"); res.status(409).json({ error: "Настройки уже изменены. Обновите их перед сохранением" }); return; }
     await audit(client, (res.locals.account as ServerAccount).id, "generation.settings.update", null, JSON.stringify(b));
@@ -134,6 +142,61 @@ router.patch("/admin/settings", async (req, res): Promise<void> => {
     await client.query("ROLLBACK");
     throw error;
   } finally { client.release(); }
+});
+
+router.get("/admin/credit-economy", async (req, res): Promise<void> => {
+  const parsed = GetAdminCreditEconomyQueryParams.safeParse(req.query);
+  if (!parsed.success) { res.status(400).json({ error: "Укажи длительность от 4 до 300 секунд." }); return; }
+  await ensureControls();
+  const [controls, accounts, spend] = await Promise.all([
+    pool.query("SELECT daily_free_credits,usd_rub_rate,usd_rub_source,usd_rub_date::text AS usd_rub_date FROM df_controls WHERE id=1"),
+    pool.query(`
+      SELECT count(*)::int AS registered_accounts,
+        COALESCE(sum(GREATEST(COALESCE(a.daily_credit_override,c.daily_free_credits),0)),0)::bigint AS effective_daily_credits
+      FROM df_accounts a CROSS JOIN df_controls c
+      WHERE c.id=1 AND a.deletion_requested_at IS NULL
+    `),
+    pool.query(`
+      SELECT
+        COALESCE(sum(estimated_cost_rub) FILTER (WHERE status!='failed' OR error_code IN ('submission_unknown','timeout')),0)::float
+          AS today_estimated_api_cost_rub,
+        COALESCE(sum(estimated_cost_rub) FILTER (WHERE access_source='credits' AND
+          (status!='failed' OR error_code IN ('submission_unknown','timeout'))),0)::float
+          AS today_credit_api_cost_rub
+      FROM df_jobs
+      WHERE created_at >= date_trunc('day',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'
+    `),
+  ]);
+  const setting = controls.rows[0];
+  const rate = Number(setting.usd_rub_rate);
+  const fx = { rate, source: String(setting.usd_rub_source), date: String(setting.usd_rub_date) };
+  const seconds = parsed.data.seconds ?? 15;
+  const rows = PRICED_SWAPPER_MODELS.flatMap((model) =>
+    (["480p", "720p", "1080p"] as const).map((resolution) => {
+      const quote = quoteSwapperPrice(model.id, seconds, resolution, fx);
+      if (!quote) throw new Error("Configured model tariff is unavailable");
+      return {
+        model: model.id, modelName: model.name, family: model.family, resolution,
+        sourceSeconds: seconds, billableSeconds: quote.billableSeconds,
+        providerCostUsd: quote.providerCostUsd, providerCostRub: quote.providerCostRub,
+        customerPriceRub: quote.customerPriceRub, credits: quote.credits,
+        pricingSource: model.pricingSource,
+      };
+    }),
+  );
+  const effectiveDailyCredits = Number(accounts.rows[0].effective_daily_credits);
+  res.json(GetAdminCreditEconomyResponse.parse({
+    seconds,
+    registeredAccounts: Number(accounts.rows[0].registered_accounts),
+    dailyFreeCredits: Number(setting.daily_free_credits),
+    effectiveDailyCredits,
+    maxDailyCreditValueRub: effectiveDailyCredits * CREDIT_VALUE_RUB,
+    estimatedMaxApiCostRub: Math.ceil((effectiveDailyCredits / (1 + GENERATION_MARKUP_RATE)) * 100) / 100,
+    todayEstimatedApiCostRub: Number(spend.rows[0].today_estimated_api_cost_rub),
+    todayCreditApiCostRub: Number(spend.rows[0].today_credit_api_cost_rub),
+    creditValueRub: CREDIT_VALUE_RUB, markupPercent: GENERATION_MARKUP_RATE * 100,
+    usdRubRate: rate, usdRubSource: fx.source, usdRubDate: fx.date, rows,
+  }));
 });
 
 router.get("/admin/audit", async (req, res): Promise<void> => {

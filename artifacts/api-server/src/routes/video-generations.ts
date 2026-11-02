@@ -7,6 +7,8 @@ import {
   UploadLightSwapperSourceVideoResponse,
   GetVideoGenerationParams,
   GetVideoGenerationResponse,
+  GetLightSwapperQuoteQueryParams,
+  GetLightSwapperQuoteResponse,
 } from "@workspace/api-zod";
 import { VideoProviderError, VideoProviderNotConfiguredError } from "../lib/video-generation";
 import { createOwnedGeneration, getOwnedGeneration, findOwnedLightSwapperGeneration, VideoNotFoundError } from "../lib/generation-access";
@@ -15,6 +17,7 @@ import { requireAccount, getAccountId } from "../middlewares/admin-auth";
 import { protectAdminMutation } from "../middlewares/admin-auth";
 import { createOwnedLightSwapper } from "../lib/light-swapper";
 import { createOwnedCustomVideoLightSwapper } from "../lib/light-swapper";
+import { quoteOwnedLightSwapper } from "../lib/light-swapper";
 import { CreateLightSwapperGenerationBody } from "@workspace/api-zod";
 import { saveOwnedCustomVideo } from "../lib/custom-video-storage";
 import {
@@ -23,6 +26,28 @@ import {
 
 const router: IRouter = Router();
 let customVideoUploading: symbol | undefined;
+
+router.get("/light-swapper/quote", requireAccount, async (req, res): Promise<void> => {
+  const ownerId = getAccountId(res);
+  if (!ownerId) { res.status(401).json({ error: "Войди в аккаунт." }); return; }
+  const parsed = GetLightSwapperQuoteQueryParams.safeParse(req.query);
+  if (!parsed.success) { res.status(400).json({ error: "Проверь модель, качество и выбранный источник." }); return; }
+  try {
+    const quote = await quoteOwnedLightSwapper({ ownerId, ...parsed.data });
+    res.setHeader("Cache-Control", "no-store");
+    res.json(GetLightSwapperQuoteResponse.parse(quote));
+  } catch (error) {
+    if (error instanceof GenerationPolicyError) {
+      const status = error.status;
+      res.status(status).json({ error: error.code === "pricing_not_configured"
+        ? "Цена этой модели или курс не настроены. Запуск заблокирован."
+        : "Не удалось проверить цену. Проверь исходное видео и попробуй ещё раз.", code: error.code });
+      return;
+    }
+    req.log.error({ category: "light_quote_failed" }, "Light Swapper quote failed");
+    res.status(503).json({ error: "Не удалось рассчитать стоимость. Запуск пока недоступен." });
+  }
+});
 
 router.get("/light-swapper/generations/by-client/:clientRequestId", requireAccount, async (req, res): Promise<void> => {
   res.setHeader("Cache-Control", "no-store");
@@ -51,8 +76,12 @@ router.post("/light-swapper/generations", requireAccount, protectAdminMutation, 
     res.status(202).json(CreateVideoGenerationResponse.parse({ requestId: result.requestId, status: "queued" }));
   } catch (error) {
     if (error instanceof GenerationPolicyError) {
-      res.status(error.status).json({ error: error.code === "invalid_source_video"
-        ? "Видео не подходит выбранной модели: минимум 4 секунды; для обычной замены объекта — от 409 600 пикселей в кадре."
+      res.status(error.status).json({ error: error.code === "pricing_not_configured"
+        ? "Цена этой модели не настроена. Запуск заблокирован."
+        : error.code === "insufficient_credits"
+          ? "Не хватает дневных кредитов и доступной квоты подписки."
+          : error.code === "invalid_source_video"
+            ? "Видео не подходит выбранной модели: минимум 4 секунды; для обычной замены объекта — от 409 600 пикселей в кадре."
         : "Создание видео недоступно. Проверь подписку, лимиты, настройки и исходные материалы.", code: error.code });
       return;
     }

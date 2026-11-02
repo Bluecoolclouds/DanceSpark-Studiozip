@@ -27,9 +27,19 @@ export interface AdminSettingsInput {
      */
   maxDailySpendRub: number | null;
   /**
-     * @minimum 0.01
+     * @minimum 0
      * @maximum 100000
-     * @nullable
      */
-  costPerGenerationRub: number | null;
+  dailyFreeCredits: number;
+  /**
+     * @maximum 1000000
+     * @exclusiveMinimum 0
+     */
+  usdRubRate: number;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  usdRubSource: string;
+  usdRubDate: Date;
 }

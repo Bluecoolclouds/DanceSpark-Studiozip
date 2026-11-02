@@ -22,6 +22,18 @@ export interface AdminUser {
      * @nullable
      */
   dailyLimitOverride: number | null;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     * @nullable
+     */
+  dailyCreditOverride: number | null;
+  /** @minimum 0 */
+  todayCreditGrant: number;
+  /** @minimum 0 */
+  todayCreditBalance: number;
+  /** @minimum 0 */
+  todayCreditReserved: number;
   totalGenerations: number;
   todayGenerations: number;
   createdAt: string;

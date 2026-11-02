@@ -1,15 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { useDanceAuth } from '@/lib/dance-auth';
 import {
   useCreateCustomVideoLightSwapperGeneration, useCreateLightSwapperGeneration,
   useFindLightSwapperGeneration, useUploadLightSwapperSourceVideo,
+  useGetLightSwapperQuote, useGetAccountCredits,
 } from '@workspace/api-client-react';
 import { BigButton } from '@/components/ui';
-import { fmtUsd, getModel } from '@/components/generation-form';
+import { getModel } from '@/components/generation-form';
 import { F } from '@/constants/fonts';
-import { estimateGenerationCost } from '@/constants/generation';
 import { useDance, type Draft } from '@/context/DanceContext';
 import { useColors } from '@/hooks/useColors';
 import { launchLightGeneration, lightDraftBlocker, validatePhotoPayload } from '@/lib/light-generation';
@@ -21,6 +22,7 @@ export function LightGeneration({ draft: d }: { draft: Draft }) {
   const c = useColors();
   const { isSignedIn } = useDanceAuth();
   const { ownerId, persistDraft, updateDraft, draftStorageIssue } = useDance();
+  const queryClient = useQueryClient();
   const active = useRef(true);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -31,13 +33,40 @@ export function LightGeneration({ draft: d }: { draft: Draft }) {
   const sourceUpload = useUploadLightSwapperSourceVideo({ mutation: { retry: false } });
   const model = getModel(d.model, d.modelFamily)!;
   const familyLabel = d.modelFamily === 'standard' ? 'Свапер' : 'Лёгкий Свапер';
-  const estimate = d.resolution ? estimateGenerationCost(d.resolution, d.sourceVideoDurationSeconds, d.modelFamily) : null;
   const blocker = lightDraftBlocker(d);
+  const attempted = !!(d.lightSubmissionStarted || d.generationRequestId ||
+    ['submitting', 'unknown', 'queued', 'processing', 'completed'].includes(d.generationStatus ?? ''));
   const catalogueSource = !!d.templateSnapshot?.videoUri &&
     d.templateSnapshot.videoUri === d.sourceVideoUri;
   const customSourceNeedsUpload = !catalogueSource && !d.lightSourceVideoId;
-  const attempted = !!(d.lightSubmissionStarted || d.generationRequestId ||
-    ['submitting', 'unknown', 'queued', 'processing', 'completed'].includes(d.generationStatus ?? ''));
+  const quoteParams = d.resolution && !blocker && !customSourceNeedsUpload
+    ? {
+        model: model.endpointId,
+        resolution: d.resolution,
+        ...(catalogueSource ? { templateId: d.templateId } : { sourceVideoId: d.lightSourceVideoId! }),
+      }
+    : undefined;
+  const quote = useGetLightSwapperQuote(
+    quoteParams ?? { model: model.endpointId, resolution: d.resolution ?? '720p' },
+    {
+      query: {
+        queryKey: ['light-swapper-quote', ownerId, quoteParams],
+        enabled: !!isSignedIn && !!quoteParams && !attempted,
+        retry: false,
+        staleTime: 0,
+        gcTime: 0,
+      },
+    },
+  );
+  const credits = useGetAccountCredits({
+    query: {
+      queryKey: ['account-credits', ownerId],
+      enabled: !!isSignedIn && !attempted,
+      retry: false,
+      staleTime: 0,
+      gcTime: 0,
+    },
+  });
   const status = useFindLightSwapperGeneration(d.id, {
     query: {
       enabled: !!isSignedIn && attempted && !d.videoUri && !busy,
@@ -64,7 +93,8 @@ export function LightGeneration({ draft: d }: { draft: Draft }) {
     if (busy || !confirm || blocker || attempted || !isSignedIn) return;
     setConfirm(false);
     setBusy(true);
-    await launchLightGeneration({
+    try {
+      await launchLightGeneration({
       ownerId, draft: d, active: () => active.current,
       persist: updates => persistDraft(d.id, updates),
       prepare: async () => {
@@ -85,8 +115,11 @@ export function LightGeneration({ draft: d }: { draft: Draft }) {
       submit: data => 'sourceVideoId' in data
         ? customMutation.mutateAsync({ data })
         : mutation.mutateAsync({ data }),
-    });
-    if (active.current) setBusy(false);
+      });
+    } finally {
+      if (ownerId) void queryClient.invalidateQueries({ queryKey: ['account-credits', ownerId] });
+      if (active.current) setBusy(false);
+    }
   };
 
   const uploadSourceVideo = async () => {
@@ -147,17 +180,37 @@ export function LightGeneration({ draft: d }: { draft: Draft }) {
         <Text style={{ color: c.mutedForeground }}>
           Собственное видео проверено: {d.sourceVideoDurationSeconds?.toFixed(1)} сек. Перед запуском будет отдельное подтверждение.
         </Text>}
+      {isSignedIn && !customSourceNeedsUpload && (
+        <View testID="light-generation-price" style={{ backgroundColor: c.secondary, borderColor: c.border, borderWidth: 1, borderRadius: 16, padding: 14, gap: 5 }}>
+          {quote.isLoading && <Text style={{ color: c.mutedForeground }}>Рассчитываем точную цену по проверенному видео…</Text>}
+          {quote.isError && <Text accessibilityRole="alert" style={{ color: c.destructive }}>Не удалось рассчитать цену. Запуск заблокирован, пока сервер не подтвердит тариф.</Text>}
+          {quote.data && <Text style={{ color: c.foreground, fontFamily: F.bodyBold }}>
+            Цена запуска: {quote.data.credits.toLocaleString('ru-RU')} кредитов · доступно {credits.data?.availableCredits.toLocaleString('ru-RU') ?? '…'}
+          </Text>}
+          {quote.data && <Text style={{ color: c.mutedForeground, fontFamily: F.body, fontSize: 12, lineHeight: 17 }}>
+            Один кредит = 1 ₽. Расчёт по {quote.data.billableSeconds.toLocaleString('ru-RU')} оплачиваемым секундам и наценке 15%.
+            {credits.data ? ` Дневной баланс сбросится ${new Date(credits.data.resetAt).toLocaleString('ru-RU')}.` : ''}
+          </Text>}
+          {quote.data && credits.data && credits.data.availableCredits < quote.data.credits &&
+            <Text style={{ color: c.mutedForeground, fontFamily: F.body, fontSize: 12, lineHeight: 17 }}>
+              Кредитов не хватает. Если доступна подписочная квота, будет использована только она; двойного списания не будет.
+            </Text>}
+        </View>
+      )}
       {!confirm && <BigButton testID="light-review-launch" label={isSignedIn ? `Запустить: ${familyLabel}…` : 'Войти для запуска'}
-        icon="play" disabled={!!blocker || !!draftStorageIssue || busy}
+        icon="play" disabled={!!blocker || !!draftStorageIssue || busy || (isSignedIn && !quote.data)}
         onPress={() => isSignedIn ? setConfirm(true) : router.push('/sign-in')} />}
       {confirm && <View testID="light-paid-confirmation" style={{ backgroundColor: c.card, padding: 16, borderWidth: 1, borderColor: c.border, borderRadius: 16, gap: 12 }}>
-        <Text style={{ color: c.foreground, fontFamily: F.display }}>Подтвердить платный запуск</Text>
+        <Text style={{ color: c.foreground, fontFamily: F.display }}>Подтвердить запуск</Text>
         <Text style={{ color: c.foreground }}>Модель: {familyLabel} · {model.title}{'\n'}{model.endpointId}{'\n'}
           Качество: {d.resolution} · Фото: {d.referenceImageUris?.length}{'\n'}
           Видео: {catalogueSource ? `${d.templateSnapshot?.title} · оригинал каталога` : `Своё видео · ${d.sourceVideoDurationSeconds?.toFixed(1)} сек, проверено сервером`}</Text>
-        <Text style={{ color: c.foreground }}>Предварительная себестоимость у Higgsfield: {estimate ? `≈ ${fmtUsd(estimate.estimatedUsd)}` : 'пока неизвестна'}.
-          Это оценка, а не гарантированная цена и не доплата к подписке. Фактическая стоимость зависит от обработки поставщиком.</Text>
-        <Text style={{ color: c.foreground }}>Видео, выбранные фото и промпт будут переданы Higgsfield. Нужна действующая оплаченная подписка; запуск расходует её лимит и баланс сервиса. Закрытие экрана не отменяет задание.</Text>
+        <Text style={{ color: c.foreground }}>
+          Точная цена по тарифу Higgsfield: {quote.data?.credits.toLocaleString('ru-RU') ?? '—'} кредитов.
+          {credits.data ? ` Доступно ${credits.data.availableCredits.toLocaleString('ru-RU')}.` : ''}
+          {' '}При достаточном балансе расходуются кредиты, подписочная квота остаётся нетронутой. Если кредитов не хватит, система проверит отдельный доступ по подписке.
+        </Text>
+        <Text style={{ color: c.foreground }}>Видео, выбранные фото и промпт будут переданы Higgsfield. Закрытие экрана не отменяет задание.</Text>
         <BigButton testID="light-confirm-paid" label="Подтверждаю платный запуск" icon="play" onPress={() => void launch()} disabled={busy} />
         <BigButton testID="light-cancel-paid" label="Только оставить черновик" icon="bookmark" color="accent" onPress={() => setConfirm(false)} />
       </View>}

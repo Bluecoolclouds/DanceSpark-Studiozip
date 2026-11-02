@@ -602,6 +602,28 @@ export const GetAccountSubscriptionResponse = zod.object({
 })
 
 
+export const getAccountCreditsResponseGrantedCreditsMin = 0;
+
+export const getAccountCreditsResponseAvailableCreditsMin = 0;
+
+export const getAccountCreditsResponseReservedCreditsMin = 0;
+
+export const getAccountCreditsResponseSpentCreditsMin = 0;
+
+
+
+export const GetAccountCreditsResponse = zod.object({
+  "accountId": zod.string(),
+  "utcDay": zod.coerce.date(),
+  "grantedCredits": zod.number().int().min(getAccountCreditsResponseGrantedCreditsMin),
+  "availableCredits": zod.number().int().min(getAccountCreditsResponseAvailableCreditsMin),
+  "reservedCredits": zod.number().int().min(getAccountCreditsResponseReservedCreditsMin),
+  "spentCredits": zod.number().int().min(getAccountCreditsResponseSpentCreditsMin),
+  "resetAt": zod.coerce.date(),
+  "creditValueRub": zod.literal(1)
+})
+
+
 export const GetAdminSessionResponse = zod.object({
   "userId": zod.string(),
   "email": zod.string(),
@@ -642,6 +664,15 @@ export const ListAdminUsersQueryParams = zod.object({
 export const listAdminUsersResponseItemsItemDailyLimitOverrideMin = 0;
 export const listAdminUsersResponseItemsItemDailyLimitOverrideMax = 10000;
 
+export const listAdminUsersResponseItemsItemDailyCreditOverrideMin = 0;
+export const listAdminUsersResponseItemsItemDailyCreditOverrideMax = 100000;
+
+export const listAdminUsersResponseItemsItemTodayCreditGrantMin = 0;
+
+export const listAdminUsersResponseItemsItemTodayCreditBalanceMin = 0;
+
+export const listAdminUsersResponseItemsItemTodayCreditReservedMin = 0;
+
 
 
 export const ListAdminUsersResponse = zod.object({
@@ -653,6 +684,10 @@ export const ListAdminUsersResponse = zod.object({
   "plan": zod.enum(['none', 'warmup', 'dancefloor', 'stage']),
   "subscriptionUntil": zod.string().nullable(),
   "dailyLimitOverride": zod.number().int().min(listAdminUsersResponseItemsItemDailyLimitOverrideMin).max(listAdminUsersResponseItemsItemDailyLimitOverrideMax).nullable(),
+  "dailyCreditOverride": zod.number().int().min(listAdminUsersResponseItemsItemDailyCreditOverrideMin).max(listAdminUsersResponseItemsItemDailyCreditOverrideMax).nullable(),
+  "todayCreditGrant": zod.number().int().min(listAdminUsersResponseItemsItemTodayCreditGrantMin),
+  "todayCreditBalance": zod.number().int().min(listAdminUsersResponseItemsItemTodayCreditBalanceMin),
+  "todayCreditReserved": zod.number().int().min(listAdminUsersResponseItemsItemTodayCreditReservedMin),
   "totalGenerations": zod.number().int(),
   "todayGenerations": zod.number().int(),
   "createdAt": zod.string()
@@ -674,15 +709,28 @@ export const UpdateAdminUserParams = zod.object({
 export const updateAdminUserBodyDailyLimitOverrideMin = 0;
 export const updateAdminUserBodyDailyLimitOverrideMax = 10000;
 
+export const updateAdminUserBodyDailyCreditOverrideMin = 0;
+export const updateAdminUserBodyDailyCreditOverrideMax = 100000;
+
 
 
 export const UpdateAdminUserBody = zod.object({
   "blocked": zod.boolean(),
-  "dailyLimitOverride": zod.number().int().min(updateAdminUserBodyDailyLimitOverrideMin).max(updateAdminUserBodyDailyLimitOverrideMax).nullable()
+  "dailyLimitOverride": zod.number().int().min(updateAdminUserBodyDailyLimitOverrideMin).max(updateAdminUserBodyDailyLimitOverrideMax).nullable(),
+  "dailyCreditOverride": zod.number().int().min(updateAdminUserBodyDailyCreditOverrideMin).max(updateAdminUserBodyDailyCreditOverrideMax).nullable()
 })
 
 export const updateAdminUserResponseDailyLimitOverrideMin = 0;
 export const updateAdminUserResponseDailyLimitOverrideMax = 10000;
+
+export const updateAdminUserResponseDailyCreditOverrideMin = 0;
+export const updateAdminUserResponseDailyCreditOverrideMax = 100000;
+
+export const updateAdminUserResponseTodayCreditGrantMin = 0;
+
+export const updateAdminUserResponseTodayCreditBalanceMin = 0;
+
+export const updateAdminUserResponseTodayCreditReservedMin = 0;
 
 
 
@@ -694,6 +742,10 @@ export const UpdateAdminUserResponse = zod.object({
   "plan": zod.enum(['none', 'warmup', 'dancefloor', 'stage']),
   "subscriptionUntil": zod.string().nullable(),
   "dailyLimitOverride": zod.number().int().min(updateAdminUserResponseDailyLimitOverrideMin).max(updateAdminUserResponseDailyLimitOverrideMax).nullable(),
+  "dailyCreditOverride": zod.number().int().min(updateAdminUserResponseDailyCreditOverrideMin).max(updateAdminUserResponseDailyCreditOverrideMax).nullable(),
+  "todayCreditGrant": zod.number().int().min(updateAdminUserResponseTodayCreditGrantMin),
+  "todayCreditBalance": zod.number().int().min(updateAdminUserResponseTodayCreditBalanceMin),
+  "todayCreditReserved": zod.number().int().min(updateAdminUserResponseTodayCreditReservedMin),
   "totalGenerations": zod.number().int(),
   "todayGenerations": zod.number().int(),
   "createdAt": zod.string()
@@ -710,6 +762,10 @@ export const ListAdminGenerationsQueryParams = zod.object({
   "page": zod.coerce.number().int().min(1).default(listAdminGenerationsQueryPageDefault)
 })
 
+export const listAdminGenerationsResponseItemsItemCreditsReservedMin = 0;
+
+
+
 export const ListAdminGenerationsResponse = zod.object({
   "items": zod.array(zod.object({
   "id": zod.string(),
@@ -718,6 +774,10 @@ export const ListAdminGenerationsResponse = zod.object({
   "templateId": zod.string(),
   "status": zod.enum(['queued', 'running', 'succeeded', 'failed']),
   "estimatedCostRub": zod.number().nullable(),
+  "estimatedCostUsd": zod.number().nullable(),
+  "customerPriceRub": zod.number().nullable(),
+  "creditsReserved": zod.number().int().min(listAdminGenerationsResponseItemsItemCreditsReservedMin),
+  "accessSource": zod.union([zod.literal('credits'),zod.literal('subscription'),zod.literal(null)]).nullable(),
   "errorCode": zod.string().nullable(),
   "createdAt": zod.string(),
   "completedAt": zod.string().nullable()
@@ -736,8 +796,13 @@ export const getAdminSettingsResponseOnePerUserConcurrentMax = 5;
 
 export const getAdminSettingsResponseOneMaxDailySpendRubMax = 1000000;
 
-export const getAdminSettingsResponseOneCostPerGenerationRubMin = 0.01;
-export const getAdminSettingsResponseOneCostPerGenerationRubMax = 100000;
+export const getAdminSettingsResponseOneDailyFreeCreditsMin = 0;
+export const getAdminSettingsResponseOneDailyFreeCreditsMax = 100000;
+
+export const getAdminSettingsResponseOneUsdRubRateExclusiveMin = 0;
+export const getAdminSettingsResponseOneUsdRubRateMax = 1000000;
+
+export const getAdminSettingsResponseOneUsdRubSourceMax = 100;
 
 
 
@@ -747,7 +812,10 @@ export const GetAdminSettingsResponse = zod.object({
   "maxConcurrent": zod.number().int().min(1).max(getAdminSettingsResponseOneMaxConcurrentMax),
   "perUserConcurrent": zod.number().int().min(1).max(getAdminSettingsResponseOnePerUserConcurrentMax),
   "maxDailySpendRub": zod.number().min(1).max(getAdminSettingsResponseOneMaxDailySpendRubMax).nullable(),
-  "costPerGenerationRub": zod.number().min(getAdminSettingsResponseOneCostPerGenerationRubMin).max(getAdminSettingsResponseOneCostPerGenerationRubMax).nullable()
+  "dailyFreeCredits": zod.number().int().min(getAdminSettingsResponseOneDailyFreeCreditsMin).max(getAdminSettingsResponseOneDailyFreeCreditsMax),
+  "usdRubRate": zod.number().gt(getAdminSettingsResponseOneUsdRubRateExclusiveMin).max(getAdminSettingsResponseOneUsdRubRateMax),
+  "usdRubSource": zod.string().min(1).max(getAdminSettingsResponseOneUsdRubSourceMax),
+  "usdRubDate": zod.coerce.date()
 }).and(zod.object({
   "providerKeyConfigured": zod.boolean(),
   "provider": zod.string(),
@@ -766,8 +834,13 @@ export const updateAdminSettingsBodyPerUserConcurrentMax = 5;
 
 export const updateAdminSettingsBodyMaxDailySpendRubMax = 1000000;
 
-export const updateAdminSettingsBodyCostPerGenerationRubMin = 0.01;
-export const updateAdminSettingsBodyCostPerGenerationRubMax = 100000;
+export const updateAdminSettingsBodyDailyFreeCreditsMin = 0;
+export const updateAdminSettingsBodyDailyFreeCreditsMax = 100000;
+
+export const updateAdminSettingsBodyUsdRubRateExclusiveMin = 0;
+export const updateAdminSettingsBodyUsdRubRateMax = 1000000;
+
+export const updateAdminSettingsBodyUsdRubSourceMax = 100;
 
 
 
@@ -777,7 +850,10 @@ export const UpdateAdminSettingsBody = zod.object({
   "maxConcurrent": zod.number().int().min(1).max(updateAdminSettingsBodyMaxConcurrentMax),
   "perUserConcurrent": zod.number().int().min(1).max(updateAdminSettingsBodyPerUserConcurrentMax),
   "maxDailySpendRub": zod.number().min(1).max(updateAdminSettingsBodyMaxDailySpendRubMax).nullable(),
-  "costPerGenerationRub": zod.number().min(updateAdminSettingsBodyCostPerGenerationRubMin).max(updateAdminSettingsBodyCostPerGenerationRubMax).nullable()
+  "dailyFreeCredits": zod.number().int().min(updateAdminSettingsBodyDailyFreeCreditsMin).max(updateAdminSettingsBodyDailyFreeCreditsMax),
+  "usdRubRate": zod.number().gt(updateAdminSettingsBodyUsdRubRateExclusiveMin).max(updateAdminSettingsBodyUsdRubRateMax),
+  "usdRubSource": zod.string().min(1).max(updateAdminSettingsBodyUsdRubSourceMax),
+  "usdRubDate": zod.coerce.date()
 })
 
 export const updateAdminSettingsResponseOneVersionMin = 0;
@@ -788,8 +864,13 @@ export const updateAdminSettingsResponseOnePerUserConcurrentMax = 5;
 
 export const updateAdminSettingsResponseOneMaxDailySpendRubMax = 1000000;
 
-export const updateAdminSettingsResponseOneCostPerGenerationRubMin = 0.01;
-export const updateAdminSettingsResponseOneCostPerGenerationRubMax = 100000;
+export const updateAdminSettingsResponseOneDailyFreeCreditsMin = 0;
+export const updateAdminSettingsResponseOneDailyFreeCreditsMax = 100000;
+
+export const updateAdminSettingsResponseOneUsdRubRateExclusiveMin = 0;
+export const updateAdminSettingsResponseOneUsdRubRateMax = 1000000;
+
+export const updateAdminSettingsResponseOneUsdRubSourceMax = 100;
 
 
 
@@ -799,7 +880,10 @@ export const UpdateAdminSettingsResponse = zod.object({
   "maxConcurrent": zod.number().int().min(1).max(updateAdminSettingsResponseOneMaxConcurrentMax),
   "perUserConcurrent": zod.number().int().min(1).max(updateAdminSettingsResponseOnePerUserConcurrentMax),
   "maxDailySpendRub": zod.number().min(1).max(updateAdminSettingsResponseOneMaxDailySpendRubMax).nullable(),
-  "costPerGenerationRub": zod.number().min(updateAdminSettingsResponseOneCostPerGenerationRubMin).max(updateAdminSettingsResponseOneCostPerGenerationRubMax).nullable()
+  "dailyFreeCredits": zod.number().int().min(updateAdminSettingsResponseOneDailyFreeCreditsMin).max(updateAdminSettingsResponseOneDailyFreeCreditsMax),
+  "usdRubRate": zod.number().gt(updateAdminSettingsResponseOneUsdRubRateExclusiveMin).max(updateAdminSettingsResponseOneUsdRubRateMax),
+  "usdRubSource": zod.string().min(1).max(updateAdminSettingsResponseOneUsdRubSourceMax),
+  "usdRubDate": zod.coerce.date()
 }).and(zod.object({
   "providerKeyConfigured": zod.boolean(),
   "provider": zod.string(),
@@ -808,6 +892,46 @@ export const UpdateAdminSettingsResponse = zod.object({
   "quotaTimezone": zod.string(),
   "updatedAt": zod.string()
 }))
+
+
+export const getAdminCreditEconomyQuerySecondsDefault = 15;
+export const getAdminCreditEconomyQuerySecondsMin = 4;
+export const getAdminCreditEconomyQuerySecondsMax = 300;
+
+
+
+export const GetAdminCreditEconomyQueryParams = zod.object({
+  "seconds": zod.coerce.number().min(getAdminCreditEconomyQuerySecondsMin).max(getAdminCreditEconomyQuerySecondsMax).default(getAdminCreditEconomyQuerySecondsDefault)
+})
+
+export const GetAdminCreditEconomyResponse = zod.object({
+  "seconds": zod.number(),
+  "registeredAccounts": zod.number().int(),
+  "dailyFreeCredits": zod.number().int(),
+  "effectiveDailyCredits": zod.number().int(),
+  "maxDailyCreditValueRub": zod.number(),
+  "estimatedMaxApiCostRub": zod.number(),
+  "todayEstimatedApiCostRub": zod.number(),
+  "todayCreditApiCostRub": zod.number(),
+  "creditValueRub": zod.literal(1),
+  "markupPercent": zod.literal(15),
+  "usdRubRate": zod.number(),
+  "usdRubSource": zod.string(),
+  "usdRubDate": zod.coerce.date(),
+  "rows": zod.array(zod.object({
+  "model": zod.string(),
+  "modelName": zod.string(),
+  "family": zod.enum(['light', 'standard']),
+  "resolution": zod.enum(['480p', '720p', '1080p']),
+  "sourceSeconds": zod.number(),
+  "billableSeconds": zod.number(),
+  "providerCostUsd": zod.number(),
+  "providerCostRub": zod.number(),
+  "customerPriceRub": zod.number(),
+  "credits": zod.number().int(),
+  "pricingSource": zod.string().url()
+}))
+})
 
 
 export const listAdminAuditQueryPageDefault = 1;
@@ -839,6 +963,39 @@ export const ListAdminAuditResponse = zod.object({
  */
 export const HealthCheckResponse = zod.object({
   "status": zod.string()
+})
+
+
+/**
+ * @summary Get the exact server-calculated cost before launch
+ */
+export const getLightSwapperQuoteQueryTemplateIdRegExp = new RegExp('^[a-z0-9][a-z0-9-]{0,79}$');
+
+
+export const GetLightSwapperQuoteQueryParams = zod.object({
+  "model": zod.enum(['higgsfield/genjutsu-light/motion-transfer/v1.0', 'higgsfield/genjutsu-light/object-swap/v1.0', 'higgsfield/genjutsu/motion-transfer/v1.0', 'higgsfield/genjutsu/object-swap/v1.0']),
+  "resolution": zod.enum(['480p', '720p', '1080p']),
+  "templateId": zod.coerce.string().regex(getLightSwapperQuoteQueryTemplateIdRegExp).optional(),
+  "sourceVideoId": zod.coerce.string().uuid().optional()
+})
+
+
+
+
+export const GetLightSwapperQuoteResponse = zod.object({
+  "model": zod.string(),
+  "resolution": zod.enum(['480p', '720p', '1080p']),
+  "sourceSeconds": zod.number(),
+  "billableSeconds": zod.number(),
+  "providerCostUsd": zod.number(),
+  "providerCostRub": zod.number(),
+  "customerPriceRub": zod.number(),
+  "credits": zod.number().int().min(1),
+  "creditValueRub": zod.literal(1),
+  "markupPercent": zod.literal(15),
+  "usdRubRate": zod.number(),
+  "usdRubSource": zod.string(),
+  "usdRubDate": zod.coerce.date()
 })
 
 

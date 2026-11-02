@@ -30,10 +30,12 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AccountCredits,
   AccountDeletion,
   AccountDeletionInput,
   AccountSubscription,
   AdminAuditPage,
+  AdminCreditEconomy,
   AdminGenerationsPage,
   AdminOverview,
   AdminSession,
@@ -49,8 +51,11 @@ import type {
   CatalogueTemplate,
   CustomVideoLightSwapperInput,
   DanceAuthSession,
+  GetAdminCreditEconomyParams,
+  GetLightSwapperQuoteParams,
   HealthStatus,
   LightSwapperInput,
+  LightSwapperQuote,
   LightSwapperSourceVideo,
   ListAdminAuditParams,
   ListAdminGenerationsParams,
@@ -1639,6 +1644,101 @@ export function useGetAccountSubscription<TData = Awaited<ReturnType<typeof getA
 
 
 
+export const getGetAccountCreditsUrl = () => {
+
+
+
+
+  return `/api/account/credits`
+}
+
+export const getAccountCredits = async ( options?: Parameters<typeof customFetch>[1]): Promise<AccountCredits> => {
+
+  return customFetch<AccountCredits>(getGetAccountCreditsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAccountCreditsQueryKey = () => {
+    return [
+    `/api/account/credits`
+    ] as const;
+    }
+
+
+export const getGetAccountCreditsQueryOptions = <TData = Awaited<ReturnType<typeof getAccountCredits>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAccountCredits>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAccountCreditsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAccountCredits>>> = ({ signal }) => getAccountCredits({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAccountCredits>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAccountCreditsQueryResult = NonNullable<Awaited<ReturnType<typeof getAccountCredits>>>
+export type GetAccountCreditsQueryError = ErrorType<void>
+
+
+export function useGetAccountCredits<TData = Awaited<ReturnType<typeof getAccountCredits>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAccountCredits>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAccountCredits>>,
+          TError,
+          Awaited<ReturnType<typeof getAccountCredits>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAccountCredits<TData = Awaited<ReturnType<typeof getAccountCredits>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAccountCredits>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAccountCredits>>,
+          TError,
+          Awaited<ReturnType<typeof getAccountCredits>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAccountCredits<TData = Awaited<ReturnType<typeof getAccountCredits>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAccountCredits>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetAccountCredits<TData = Awaited<ReturnType<typeof getAccountCredits>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAccountCredits>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAccountCreditsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getGetAdminSessionUrl = () => {
 
 
@@ -2293,6 +2393,108 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getUpdateAdminSettingsMutationOptions(options), queryClient);
     }
 
+export const getGetAdminCreditEconomyUrl = (params?: GetAdminCreditEconomyParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/credit-economy?${stringifiedParams}` : `/api/admin/credit-economy`
+}
+
+export const getAdminCreditEconomy = async (params?: GetAdminCreditEconomyParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminCreditEconomy> => {
+
+  return customFetch<AdminCreditEconomy>(getGetAdminCreditEconomyUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminCreditEconomyQueryKey = (params?: GetAdminCreditEconomyParams,) => {
+    return [
+    `/api/admin/credit-economy`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAdminCreditEconomyQueryOptions = <TData = Awaited<ReturnType<typeof getAdminCreditEconomy>>, TError = ErrorType<unknown>>(params?: GetAdminCreditEconomyParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminCreditEconomy>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminCreditEconomyQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminCreditEconomy>>> = ({ signal }) => getAdminCreditEconomy(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminCreditEconomy>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAdminCreditEconomyQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminCreditEconomy>>>
+export type GetAdminCreditEconomyQueryError = ErrorType<unknown>
+
+
+export function useGetAdminCreditEconomy<TData = Awaited<ReturnType<typeof getAdminCreditEconomy>>, TError = ErrorType<unknown>>(
+ params: undefined |  GetAdminCreditEconomyParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminCreditEconomy>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminCreditEconomy>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminCreditEconomy>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdminCreditEconomy<TData = Awaited<ReturnType<typeof getAdminCreditEconomy>>, TError = ErrorType<unknown>>(
+ params?: GetAdminCreditEconomyParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminCreditEconomy>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminCreditEconomy>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminCreditEconomy>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdminCreditEconomy<TData = Awaited<ReturnType<typeof getAdminCreditEconomy>>, TError = ErrorType<unknown>>(
+ params?: GetAdminCreditEconomyParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminCreditEconomy>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetAdminCreditEconomy<TData = Awaited<ReturnType<typeof getAdminCreditEconomy>>, TError = ErrorType<unknown>>(
+ params?: GetAdminCreditEconomyParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminCreditEconomy>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAdminCreditEconomyQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getListAdminAuditUrl = (params?: ListAdminAuditParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -2485,6 +2687,114 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getHealthCheckQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetLightSwapperQuoteUrl = (params: GetLightSwapperQuoteParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/light-swapper/quote?${stringifiedParams}` : `/api/light-swapper/quote`
+}
+
+/**
+ * @summary Get the exact server-calculated cost before launch
+ */
+export const getLightSwapperQuote = async (params: GetLightSwapperQuoteParams, options?: Parameters<typeof customFetch>[1]): Promise<LightSwapperQuote> => {
+
+  return customFetch<LightSwapperQuote>(getGetLightSwapperQuoteUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLightSwapperQuoteQueryKey = (params?: GetLightSwapperQuoteParams,) => {
+    return [
+    `/api/light-swapper/quote`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetLightSwapperQuoteQueryOptions = <TData = Awaited<ReturnType<typeof getLightSwapperQuote>>, TError = ErrorType<void>>(params: GetLightSwapperQuoteParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getLightSwapperQuote>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLightSwapperQuoteQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLightSwapperQuote>>> = ({ signal }) => getLightSwapperQuote(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLightSwapperQuote>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetLightSwapperQuoteQueryResult = NonNullable<Awaited<ReturnType<typeof getLightSwapperQuote>>>
+export type GetLightSwapperQuoteQueryError = ErrorType<void>
+
+
+export function useGetLightSwapperQuote<TData = Awaited<ReturnType<typeof getLightSwapperQuote>>, TError = ErrorType<void>>(
+ params: GetLightSwapperQuoteParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getLightSwapperQuote>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getLightSwapperQuote>>,
+          TError,
+          Awaited<ReturnType<typeof getLightSwapperQuote>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetLightSwapperQuote<TData = Awaited<ReturnType<typeof getLightSwapperQuote>>, TError = ErrorType<void>>(
+ params: GetLightSwapperQuoteParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getLightSwapperQuote>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getLightSwapperQuote>>,
+          TError,
+          Awaited<ReturnType<typeof getLightSwapperQuote>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetLightSwapperQuote<TData = Awaited<ReturnType<typeof getLightSwapperQuote>>, TError = ErrorType<void>>(
+ params: GetLightSwapperQuoteParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getLightSwapperQuote>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get the exact server-calculated cost before launch
+ */
+
+export function useGetLightSwapperQuote<TData = Awaited<ReturnType<typeof getLightSwapperQuote>>, TError = ErrorType<void>>(
+ params: GetLightSwapperQuoteParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getLightSwapperQuote>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetLightSwapperQuoteQueryOptions(params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

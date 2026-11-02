@@ -21,7 +21,10 @@ export function settingsResponse(row: Record<string, unknown>) {
     maxConcurrent: Number(row.max_concurrent),
     perUserConcurrent: Number(row.per_user_concurrent),
     maxDailySpendRub: row.max_daily_spend_rub == null ? null : Number(row.max_daily_spend_rub),
-    costPerGenerationRub: row.cost_per_generation_rub == null ? null : Number(row.cost_per_generation_rub),
+    dailyFreeCredits: Number(row.daily_free_credits ?? 0),
+    usdRubRate: Number(row.usd_rub_rate),
+    usdRubSource: String(row.usd_rub_source ?? ""),
+    usdRubDate: String(row.usd_rub_date),
     providerKeyConfigured: Boolean(process.env.higgs_api?.trim()),
     provider: "Higgsfield",
     keyStorage: "Серверные секреты окружения; значение не передаётся в браузер",
@@ -34,7 +37,17 @@ export function settingsResponse(row: Record<string, unknown>) {
 export const userProjection = `
   a.id,a.email,a.role,a.blocked,a.plan,
   a.subscription_until AS "subscriptionUntil",
-  a.daily_limit_override AS "dailyLimitOverride",a.created_at AS "createdAt",
+  a.daily_limit_override AS "dailyLimitOverride",
+  a.daily_credit_override AS "dailyCreditOverride",
+  COALESCE((SELECT b.granted_credits FROM df_credit_daily_balances b WHERE b.account_id=a.id
+    AND b.utc_day=(now() AT TIME ZONE 'UTC')::date),
+    COALESCE(a.daily_credit_override,(SELECT daily_free_credits FROM df_controls WHERE id=1),0))::int
+    AS "todayCreditGrant",
+  COALESCE((SELECT b.available_credits FROM df_credit_daily_balances b WHERE b.account_id=a.id
+    AND b.utc_day=(now() AT TIME ZONE 'UTC')::date),0)::int AS "todayCreditBalance",
+  COALESCE((SELECT b.reserved_credits FROM df_credit_daily_balances b WHERE b.account_id=a.id
+    AND b.utc_day=(now() AT TIME ZONE 'UTC')::date),0)::int AS "todayCreditReserved",
+  a.created_at AS "createdAt",
   (SELECT count(*)::int FROM df_jobs j WHERE j.user_id=a.id) AS "totalGenerations",
   (SELECT count(*)::int FROM df_jobs j WHERE j.user_id=a.id AND
     (j.status != 'failed' OR j.error_code='submission_unknown') AND
