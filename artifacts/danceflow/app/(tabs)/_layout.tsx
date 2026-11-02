@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useColors } from '@/hooks/useColors';
 import { Feather } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -50,21 +50,19 @@ function ClassicTabLayout() {
         tabBarActiveTintColor: colorsT.primary,
         tabBarInactiveTintColor: colorsT.mutedForeground,
         headerShown: false,
-        tabBarLabelPosition: 'below-icon',
-        tabBarLabelStyle: { fontFamily: F.bodyHeavy, fontSize: 11, lineHeight: 16, marginBottom: 0 },
-        tabBarIconStyle: { height: 24 },
-        tabBarItemStyle: { borderRadius: 999, marginVertical: 6, marginHorizontal: 4, overflow: 'hidden' },
-        tabBarActiveBackgroundColor: colors.light.primary + '1F',
+        // Own the icon/label layout: the default tab button has additional
+        // internal padding that can clip a custom-font label in a short pill.
+        tabBarItemStyle: { flex: 1, marginHorizontal: 3 },
         tabBarStyle: {
           position: 'absolute',
           left: 0,
           right: 0,
           marginHorizontal: 28,
           bottom,
-          height: 76,
-          // Equal insets keep the active pill centred inside the outer capsule.
+          height: 80,
           paddingTop: 8,
           paddingBottom: 8,
+          paddingHorizontal: 4,
           borderRadius: 999,
           borderTopWidth: 1,
           borderWidth: 1,
@@ -95,14 +93,67 @@ function ClassicTabLayout() {
           name={t.name}
           options={{
             title: t.title,
-            tabBarIcon: ({ color }) =>
-              isIOS ? <SymbolView name={t.sf as never} tintColor={color as string} size={24} /> : <Feather name={t.fe} size={22} color={color as string} />,
+            tabBarAccessibilityLabel: t.title,
+            tabBarButtonTestID: `bottom-tab-${t.name}`,
+            tabBarButton: ({ onPress, onLongPress, accessibilityLabel, testID, 'aria-selected': selected }) => {
+              const focused = selected === true;
+              const color = focused ? colorsT.primary : colorsT.mutedForeground;
+              return (
+                <Pressable
+                  onPress={onPress}
+                  onLongPress={onLongPress}
+                  accessibilityRole="tab"
+                  accessibilityLabel={accessibilityLabel}
+                  accessibilityState={{ selected: focused }}
+                  testID={testID}
+                  style={[styles.tabButton, {
+                    backgroundColor: focused ? colorsT.primary + '1F' : 'transparent',
+                  }]}
+                >
+                  <View style={styles.icon}>
+                    {isIOS
+                      ? <SymbolView name={t.sf as never} tintColor={color} size={24} />
+                      : <Feather name={t.fe} size={22} color={color} />}
+                  </View>
+                  <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[styles.label, { color }]}>
+                    {t.title}
+                  </Text>
+                </Pressable>
+              );
+            },
           }}
         />
       ))}
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabButton: {
+    flex: 1,
+    minHeight: 60,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    gap: 2,
+  },
+  icon: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  label: {
+    fontFamily: F.bodyHeavy,
+    fontSize: 12,
+    lineHeight: 18,
+    includeFontPadding: false,
+    textAlign: 'center',
+    flexShrink: 0,
+  },
+});
 
 export default function TabLayout() {
   if (isLiquidGlassAvailable()) return <NativeTabLayout />;
