@@ -5,14 +5,14 @@ generated = []
 id = "byLg91wFIna-89_RhPA6s"
 uri = "file://generated-artifacts/rustore/danceflow-store-icon-512.png"
 type = "image"
-title = "Иконка Danceflow для RuStore"
-description = "Непрозрачный PNG 512×512 из текущего значка приложения. Подготовка файла не означает готовность релиза к подаче."
+title = "Danceflow — иконка RuStore 512×512"
+description = "Готовый файл иконки магазина. Не включает APK/AAB или скриншоты, которые ещё нужно переснять с подписанной Android-сборки."
 logical_id = "f6c9d3dd-7560-48d2-9c32-d61a14edc30a"
 content_hash = "sha256:1e459f01432e1beeefb177365f1e8cddebca84dbacf0eca37efba18852870d1a"
 size = 404537
 mtime_ms = 1793584369388
-storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:46e8fdf1-9990-476d-811d-ead6144893a0/f6c9d3dd-7560-48d2-9c32-d61a14edc30a/c2b7d7c9-ba88-484d-b6cb-44f40d556067"
-storage_version_token = "1793584435218617"
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:46e8fdf1-9990-476d-811d-ead6144893a0/f6c9d3dd-7560-48d2-9c32-d61a14edc30a/e48736fe-15ba-413b-84a8-8ad256e7dbb3"
+storage_version_token = "1793672181437135"
 content_type = "image/png"
 
 [[outputs]]
