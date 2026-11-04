@@ -28,21 +28,19 @@
 
 Не устанавливать bucket-wide lifecycle rule: пользовательские исходники и каталог используют одно хранилище. Не удалять общий bucket.
 
-## Подпись и локальная Android-сборка — ещё не выполнены
+## Локальная Android-сборка и подпись — выполнены, приложение не опубликовано
 
-В текущем рабочем окружении нет команд JDK/Gradle/Android SDK (`java`, `gradle`, `adb`, `sdkmanager`), поэтому APK/AAB не получен и не подписан. Наличие Expo JS-build не заменяет native release.
+- APK: `generated-artifacts/rustore/Danceflow-1.0.0-ru.danceflow.app.apk`
+- AAB: `generated-artifacts/rustore/Danceflow-1.0.0-ru.danceflow.app.aab`
+- Контрольные суммы: `generated-artifacts/rustore/SHA256SUMS.txt`
+- `./gradlew :app:assembleRelease :app:bundleRelease` завершился успешно. Production API origin `https://danceflow.meduha.app` найден в собранном JS bundle; preview-домен в нём не найден.
+- Release preflight от 4 ноября 2026 года прошёл: проверены HTTPS-origin, package, versionCode, `allowBackup` и наличие production publishable key. Скрипт не раскрывает ключ и не проверяет доступность API или успешность входа.
+- Статическая проверка APK: пакет `ru.danceflow.app`, versionCode `1`, версия `1.0.0`, minSdk `24`, targetSdk `36`, `allowBackup=false`, `android:debuggable` не задан (по умолчанию `false`), включены ABI arm64-v8a, armeabi-v7a, x86 и x86_64.
+- APK проверен `apksigner`, AAB — `jarsigner`; оба подписаны одним сертификатом `CN=Danceflow`, RSA 4096, SHA-256 отпечаток `3c5170796a1d20e0c43dfaf25f59d87b26b61a5abc9f665b9d18d6e328a49873`. Это не debug-сертификат. Сохранить keystore и пароль раздельно в защищённом месте: они нужны для будущих обновлений.
+- В merged manifest присутствуют CAMERA, разрешения чтения медиа/старого хранилища, SYSTEM_ALERT_WINDOW и биометрические разрешения. До подачи проверить необходимость каждого и соответствие фактическому поведению и требованиям RuStore.
+- Эти файлы не загружались в RuStore и не устанавливались на физическое устройство. Авторизация, отказы в разрешениях, загрузка/сохранение видео, восстановление задания и обновление поверх прежней версии ещё не проверены на Android.
 
-После подготовки JDK/Android SDK на доверенной сборочной машине:
-1. Настроить production API и production Clerk **после отдельного разрешения на публикацию**. Проверить возвращение из авторизации в `danceflow://`, сессию, выход и повторный вход на Android, доступность поставщиков из РФ.
-2. Настроить публичные параметры `EXPO_PUBLIC_API_ORIGIN` и `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` для этой сборки; production secret key Clerk остаётся только на сервере. Не менять dev workflow и не подставлять preview-домен как production.
-3. Выполнить release preflight, затем в пакете приложения `pnpm exec expo prebuild --platform android`. Проверить generated manifest и зависимости; не считать, что Expo Go проверил native permissions.
-4. Создать release keystore через Android Studio/защищённый процесс, хранить его вне Git и деплой-образов. Сделать зашифрованную резервную копию ключа и паролей. Пароли — в защищённом хранилище сборочной машины, не в исходниках и не в чате.
-5. В generated Android Gradle настроить **release signingConfig** на этот keystore. Шаблон может подписывать release debug-ключом — это недопустимо. Не добавлять keystore/пароли в репозиторий. При необходимости держать generated Android-проект отдельно в доверенном release-workspace.
-6. В каталоге `android` выполнить `./gradlew :app:assembleRelease` (APK) либо `./gradlew :app:bundleRelease` (AAB). Выходные файлы хранить в игнорируемом `generated-artifacts/`, не в истории Git.
-7. Проверить APK через `apksigner verify --verbose --print-certs`, удостовериться, что сертификат не debug. Через Android Studio/aapt проверить `ru.danceflow.app`, versionCode, debuggable=false, allowBackup=false, список разрешений, поддерживаемые ABI/Android версии.
-8. Установить именно подписанный release APK на устройство; проверить обновление с тем же сертификатом. Для AAB проверить установленный из него комплект.
-
-Сборка и подпись сами по себе **не отправляют** приложение в RuStore.
+Дальше: провести проверку на физическом Android-устройстве, проверить production-вход и API, обосновать каждое разрешение из merged manifest, проверить AAB/APK в кабинете RuStore и пройти модераторский чек-лист. Сборка и подпись сами по себе **не отправляют** приложение в RuStore; юридические и географические блокеры выше остаются.
 
 ## Обязательные решения владельца / юриста
 

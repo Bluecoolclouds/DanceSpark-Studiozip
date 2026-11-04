@@ -20,3 +20,4 @@
 - [Release data policy](release-data-policy.md) — Approved: user source videos 7 days, completed jobs 30 days; protect active/uncertain jobs and shared catalogue.
 - [Danceflow legal position](danceflow-legal-position.md) — Owner-confirmed 18+ audience and catalogue/music rights; preserve vendor disclosures and launch blockers pending review.
 - [RuStore age category](rustore-age-category.md) — The 18+ audience decision does not by itself settle RuStore’s content rating; verify actual model outputs and safeguards.
+- [Danceflow Android release builds](danceflow-android-release-builds.md) — Keep Gradle cache and temporary build files on workspace storage; cap native build concurrency and restore stopped workflows.
