@@ -28,3 +28,4 @@ export * from "./dance-auth-identities";
 export * from "./dance-erased-costs";
 export * from "./dance-credit-daily-balances";
 export * from "./dance-credit-ledger";
+export * from "./better-auth";

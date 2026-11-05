@@ -7,7 +7,7 @@ An Expo dance-video app with a separate web admin panel and Express API.
 - Import verification (2026-11-05): dependencies installed from the frozen lockfile, existing schema applied to an empty development database, and the three application workflows started successfully on Node.js 24. Full workspace typecheck, `/api/healthz`, and `/api/catalogue` passed; the mobile web landing page and admin landing page were visually checked. Authenticated screens, native-device operation, and paid generation were not verified. The optional mockup workflow remains stopped.
 - Install dependencies with `pnpm install --frozen-lockfile`.
 - On a fresh import, the development database starts empty: apply the existing schema with `pnpm --filter @workspace/db run push` before using the API. This does not restore the source project's users or data.
-- Authentication and media credentials do not transfer with the repository. Reconnect the existing Clerk instance and restore its `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, and matching `VITE_CLERK_PUBLISHABLE_KEY` through workspace configuration before expecting either frontend or the API health endpoint to work. Preserve the existing authentication gates.
+- Authentication uses self-hosted Better Auth in the existing Express API and PostgreSQL. Apply the additive auth schema on fresh imports. Clerk/Logto services and keys are no longer runtime requirements; retained old secrets must not be printed or removed automatically.
 - Use the `nodejs-24` Replit module. Remove the imported `vue-node-20` module as well as `nodejs-20`; otherwise the Vue module can keep Node.js 20 on PATH, below Expo's required Node.js 22.13 minimum.
 - Start services through their managed Replit workflows, which supply `PORT` and routing:
   - `artifacts/danceflow: expo` — mobile app and Expo web preview.
@@ -18,10 +18,10 @@ An Expo dance-video app with a separate web admin panel and Express API.
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required settings: `DATABASE_URL` (Replit-managed PostgreSQL), `CLERK_PUBLISHABLE_KEY`, and `CLERK_SECRET_KEY`. The admin panel also uses `VITE_CLERK_PUBLISHABLE_KEY`. Clerk currently reports an externally configured instance; preserve this configuration rather than reprovisioning it.
+- Required settings: `DATABASE_URL` and a stable signing secret of at least 32 characters: `BETTER_AUTH_SECRET`, or the existing `SESSION_SECRET`. Keep it in Secrets; changing it invalidates signed cookies. Exact HTTPS origins come from runtime domains and optional `DANCEFLOW_WEB_ORIGINS`. Native release builds require `EXPO_PUBLIC_API_ORIGIN`; web uses same-origin `/api`. Never expose the signing secret in frontend variables.
 - After provisioning an empty development database, apply the existing schema with `pnpm --filter @workspace/db run push`. Review proposed changes before applying to a database containing data.
 - `higgs_api` is required only for actual Higgsfield generation; keep it in Secrets. Do not enable paid generation without provider configuration and spending limits.
-- `DANCEFLOW_OWNER_EMAIL` identifies the intended administrator; ownership also requires a verified authenticated identity.
+- No SMTP yet: new email addresses are unverified; confirmation and email password reset are unavailable. No public email-based administrator bootstrap or account linking. See [Better Auth operations](docs/better-auth.md) for the trusted-terminal owner/migration procedures. Never grant ownership just because a signup uses `DANCEFLOW_OWNER_EMAIL`.
 
 ## Stack
 
@@ -50,9 +50,8 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-- Imported project names ending in `.zip` can be rejected by Clerk provisioning as URL-like names. A plain project name is needed, but renaming and refreshing did not resolve the observed provisioning error in this import; see the agent memory note on imported authentication provisioning before retrying.
-- Without Clerk provisioning, the mobile app cannot initialize authentication and API middleware can return errors even for health requests. Do not bypass authentication to make previews load.
-- Run backend tests with `pnpm --filter @workspace/api-server test`. The launcher requires PostgreSQL tools (`initdb`, `pg_ctl`, `createdb`) on PATH, starts a disposable Unix-socket-only cluster, applies the current Drizzle schema, and removes it afterwards. It does not use `DATABASE_URL` or credentials from the application environment. Synthetic Clerk/Higgsfield keys and a network guard prevent external requests; production configuration checks remain unchanged. To run selected files, pass e.g. `pnpm --filter @workspace/api-server test tests/admin-governance.test.ts`. Direct test invocation fails unless launched in this isolated environment.
+- Do not provision an external authentication service or bypass authorization to make previews load.
+- Run backend tests with `pnpm --filter @workspace/api-server test`. The launcher requires PostgreSQL tools (`initdb`, `pg_ctl`, `createdb`) on PATH, starts a disposable Unix-socket-only cluster, applies the current Drizzle schema, and removes it afterwards. It does not use the application database or credentials. Synthetic session/Higgsfield configuration and a network guard prevent external requests. To run selected files, pass e.g. `pnpm --filter @workspace/api-server test tests/better-auth.test.ts`. Direct test invocation fails unless launched in this isolated environment.
 
 ## Pointers
 

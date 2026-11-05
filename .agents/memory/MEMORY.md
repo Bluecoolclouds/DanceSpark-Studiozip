@@ -13,6 +13,7 @@
 - [Light mobile safety](light-mobile-recovery.md) — Recovery after lost acknowledgement is read-only; custom videos need a validated upload contract, never silent substitution.
 - [Browser auth runtime](browser-auth-runtime.md) — Logto React SDK may swallow rejected operations; observe its error state and reset it for recovery.
 - [Expo API origins](expo-api-origins.md) — Use same-origin `/api` for Expo web and the explicit deployment host for native apps.
+- [Drizzle peer consistency](drizzle-peer-consistency.md) — Optional peer differences can make identical-version SQL and column types incompatible across packages.
 - [Expo preview loading](expo-preview-loading.md) — A blank first capture can be an unfinished async route bundle, not an authentication restriction.
 - [Danceflow colour constraints](danceflow-page-background.md) — Preserve app-wide base and launch backgrounds `#fbf9fd`, and yellow accents `#FED93C`.
 - [Catalogue open privacy](catalogue-open-privacy.md) — Limit rating influence by transient network source without storing address or account identifiers.

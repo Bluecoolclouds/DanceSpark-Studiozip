@@ -53,7 +53,8 @@ test("the last administrator and an unimplemented linked provider are explicit b
   await assert.rejects(requestDeletion("erase-a"), /last_administrator/);
   await pool.query("UPDATE df_accounts SET role='admin' WHERE id='keep-b'");
   await pool.query("INSERT INTO df_auth_identities(issuer,subject,account_id) VALUES('https://logto.example.invalid','subject','erase-a')");
-  await assert.rejects(requestDeletion("erase-a"), /linked_identity/);
+  await requestDeletion("erase-a");
+  assert.equal(await deletionStatus("erase-a"), "pending");
 });
 
 test("repeated requests are idempotent and new spending is blocked immediately", async () => {

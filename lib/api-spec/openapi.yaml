@@ -23,15 +23,6 @@ paths:
           content:
             text/html:
               schema: { type: string }
-  /auth/config:
-    get:
-      operationId: getAuthConfig
-      responses:
-        "200":
-          description: Public browser authentication configuration
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/WebAuthConfig" }
   /auth/session:
     get:
       operationId: getAuthSession
@@ -43,39 +34,6 @@ paths:
               schema: { $ref: "#/components/schemas/DanceAuthSession" }
         "401": { description: Sign in required }
         "403": { description: Account blocked }
-        "409": { description: Account linkage required }
-  /auth/logto/link:
-    post:
-      operationId: linkLogtoAccount
-      description: Requires a verified Clerk session and Logto proof; never links by email alone.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/LogtoIdentityProof" }
-      responses:
-        "200":
-          description: Linked without changing account ownership or role
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/DanceAuthSession" }
-        "409": { description: Identity belongs to another account }
-  /auth/logto/register:
-    post:
-      operationId: registerLogtoAccount
-      description: Explicit new registration. Existing accounts require proof of ownership.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/LogtoRegistration" }
-      responses:
-        "201":
-          description: Registered canonical account
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/DanceAuthSession" }
-        "409": { description: Existing account requires linkage }
   /catalogue:
     get:
       operationId: listCatalogue
@@ -664,15 +622,6 @@ paths:
                 $ref: "#/components/schemas/ApiError"
 components:
   schemas:
-    WebAuthConfig:
-      type: object
-      required: [enabled, endpoint, webAppId, adminAppId, resource]
-      properties:
-        enabled: { type: boolean }
-        endpoint: { type: string }
-        webAppId: { type: string }
-        adminAppId: { type: string }
-        resource: { type: string }
     DanceAuthSession:
       type: object
       required: [accountId, email, role]
@@ -680,19 +629,6 @@ components:
         accountId: { type: string }
         email: { type: string }
         role: { type: string, enum: [user, admin] }
-    LogtoIdentityProof:
-      type: object
-      additionalProperties: false
-      required: [accessToken, idToken]
-      properties:
-        accessToken: { type: string, minLength: 20, maxLength: 20000 }
-        idToken: { type: string, minLength: 20, maxLength: 20000 }
-    LogtoRegistration:
-      type: object
-      additionalProperties: false
-      required: [idToken]
-      properties:
-        idToken: { type: string, minLength: 20, maxLength: 20000 }
     LightSwapperInput:
       type: object
       additionalProperties: false

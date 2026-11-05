@@ -1,7 +1,7 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
-import { KeyRound, Link2, LogIn, LogOut, RotateCw, ShieldX, UserPlus } from 'lucide-react';
-import { useDanceAuth, type DanceAuthState } from '@workspace/auth-web';
+import { Info, KeyRound, LogIn, LogOut, RotateCw, ShieldX, UserPlus } from 'lucide-react';
+import { useDanceAuth } from '@workspace/auth-web';
 
 export function AuthFrame({ children }: { children: ReactNode }) {
   return (
@@ -38,120 +38,119 @@ export function useAdminSignOut() {
   return { run, error };
 }
 
-/** Logto-first entry; the old Clerk forms stay at ?legacy=1. */
-export function LogtoEntry({ mode }: { mode: 'sign-in' | 'sign-up' }) {
+const inputCls = 'w-full rounded-md border border-input bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-60';
+const PASSWORD_MIN = 10;
+const PASSWORD_MAX = 128;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function Notice({ title, children, testId }: { title: string; children: ReactNode; testId?: string }) {
+  return (
+    <div data-testid={testId} className="flex gap-3 rounded-md border border-border bg-secondary/60 px-3 py-2.5">
+      <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+      <div className="text-xs leading-relaxed text-muted-foreground"><div className="mb-0.5 font-semibold text-foreground">{title}</div>{children}</div>
+    </div>
+  );
+}
+
+const MIGRATION = 'Пароли из прежней системы входа не переносятся автоматически. Если аккаунт был создан раньше, обратитесь к оператору — он перенесёт аккаунт и роль вручную.';
+
+/** Own email/password form for /sign-in and /sign-up. */
+export function AdminAuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const auth = useDanceAuth();
+  const [, setLocation] = useLocation();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const start = async () => {
-    setBusy(true); setError('');
-    try { await auth.signInWithLogto(); } catch { setBusy(false); setError('Не удалось открыть страницу входа. Проверьте подключение.'); }
+  const locked = useRef(false);
+  const signUp = mode === 'sign-up';
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (locked.current) return;
+    const address = email.trim();
+    if (!EMAIL_RE.test(address)) return setError('Введите корректный адрес электронной почты.');
+    if (signUp) {
+      if (password.length < PASSWORD_MIN) return setError(`Пароль должен быть не короче ${PASSWORD_MIN} символов.`);
+      if (password.length > PASSWORD_MAX) return setError(`Пароль должен быть не длиннее ${PASSWORD_MAX} символов.`);
+      if (password !== confirm) return setError('Пароли не совпадают.');
+      if (!consent) return setError('Примите соглашение и политику конфиденциальности.');
+    }
+    locked.current = true; setBusy(true); setError('');
+    try {
+      if (signUp) await auth.signUp(address, password); else await auth.signIn(address, password);
+      setLocation('/overview', { replace: true });
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : 'Сервер не ответил. Повторите.');
+    } finally { locked.current = false; setBusy(false); }
   };
   return (
     <AuthFrame>
-      <Card testId={`card-logto-${mode}`}>
-        <div className="mb-5 grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary"><KeyRound className="h-6 w-6" /></div>
-        <h1 className="font-display text-2xl font-bold">{mode === 'sign-in' ? 'Вход в пульт' : 'Новый аккаунт'}</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {mode === 'sign-in'
-            ? 'Единый вход Danceflow. Пароль и его сброс — на защищённой странице входа.'
-            : 'Доступ к пульту выдаёт владелец на сервере. Уже есть аккаунт — войдите и привяжите его.'}
-        </p>
-        <div className="mt-6 space-y-2">
-          <button type="button" onClick={start} disabled={busy} className={primaryBtn} data-testid="button-logto-signin">
-            <LogIn className="h-4 w-4" /> {busy ? 'Открываем вход…' : 'Продолжить'}
+      <Card testId={`card-${mode}`}>
+        <div className="mb-5 grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">{signUp ? <UserPlus className="h-6 w-6" /> : <KeyRound className="h-6 w-6" />}</div>
+        <h1 className="font-display text-2xl font-bold">{signUp ? 'Новый аккаунт' : 'Вход в пульт'}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{signUp ? 'Доступ к пульту выдаёт владелец на сервере. Новый аккаунт начинается без роли администратора.' : 'Только для администраторов Danceflow.'}</p>
+        <form className="mt-6 space-y-3" onSubmit={submit} noValidate>
+          <label className="block space-y-1.5 text-sm font-medium">
+            <span>Электронная почта</span>
+            <input className={inputCls} type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={busy} data-testid="input-email" />
+          </label>
+          <label className="block space-y-1.5 text-sm font-medium">
+            <span>Пароль{signUp && <span className="font-normal text-muted-foreground"> · {PASSWORD_MIN}–{PASSWORD_MAX} символов</span>}</span>
+            <input className={inputCls} type="password" autoComplete={signUp ? 'new-password' : 'current-password'} maxLength={PASSWORD_MAX} value={password} onChange={(e) => setPassword(e.target.value)} disabled={busy} data-testid="input-password" />
+          </label>
+          {signUp && <>
+            <label className="block space-y-1.5 text-sm font-medium">
+              <span>Повторите пароль</span>
+              <input className={inputCls} type="password" autoComplete="new-password" maxLength={PASSWORD_MAX} value={confirm} onChange={(e) => setConfirm(e.target.value)} disabled={busy} data-testid="input-password-confirm" />
+            </label>
+            <label className="flex items-start gap-2.5 pt-1 text-xs leading-relaxed text-muted-foreground">
+              <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[hsl(var(--primary))]" checked={consent} onChange={(e) => setConsent(e.target.checked)} disabled={busy} data-testid="checkbox-consent" />
+              <span>Я принимаю <a className="font-semibold text-primary underline-offset-2 hover:underline" href="/legal/terms" target="_blank" rel="noreferrer">пользовательское соглашение</a> и <a className="font-semibold text-primary underline-offset-2 hover:underline" href="/privacy" target="_blank" rel="noreferrer">политику конфиденциальности</a>.</span>
+            </label>
+          </>}
+          {error && <p role="alert" className="text-sm text-destructive" data-testid="text-auth-error">{error}</p>}
+          <button type="submit" className={primaryBtn} disabled={busy || !email || !password || (signUp && (!confirm || !consent))} data-testid={`button-${mode}`}>
+            {signUp ? <UserPlus className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
+            {busy ? (signUp ? 'Создаём…' : 'Входим…') : (signUp ? 'Создать аккаунт' : 'Войти')}
           </button>
-          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-          <Link href={`/${mode}?legacy=1`} className={ghostBtn} data-testid="link-legacy-signin">
-            {mode === 'sign-in' ? 'Войти старым способом' : 'Старая регистрация'}
-          </Link>
+        </form>
+        <div className="mt-5 space-y-2">
+          {signUp
+            ? <Notice title="Почта не подтверждается" testId="notice-unverified">Письма не отправляются: адрес останется неподтверждённым, сброс пароля по почте недоступен.</Notice>
+            : <Notice title="Забыли пароль?" testId="notice-reset">Сброс по почте недоступен — письма не отправляются. Обратитесь к владельцу пульта.</Notice>}
+          <Notice title="Аккаунт из старой системы входа">{MIGRATION}</Notice>
         </div>
+        <p className="mt-5 text-center text-sm text-muted-foreground">
+          {signUp ? 'Уже есть аккаунт? ' : 'Нет аккаунта? '}
+          <Link href={signUp ? '/sign-in' : '/sign-up'} className="font-semibold text-primary" data-testid="link-switch-auth">{signUp ? 'Войти' : 'Зарегистрироваться'}</Link>
+        </p>
       </Card>
     </AuthFrame>
   );
 }
 
-const actionErrors: Record<string, string> = {
-  'link-needs-legacy': 'Сначала войдите в старый аккаунт — без этого привязка невозможна.',
-  'link-rejected': 'Старый вход не подтверждён. Войдите в старый аккаунт ещё раз.',
-  'already-linked': 'Один из аккаунтов уже привязан. Войдите тем способом, которым пользовались раньше.',
-  'email-taken': 'Аккаунт с этой почтой уже существует. Войдите старым способом и привяжите его.',
-  'email-unverified': 'Подтвердите email в Logto, затем войдите снова и повторите регистрацию.',
-  blocked: 'Аккаунт заблокирован. Новый аккаунт создать нельзя.',
-  expired: 'Новый вход истёк. Выйдите и войдите снова.',
-  network: 'Сервер не ответил. Повторите.',
-};
-
-function StatusScreen({ auth }: { auth: DanceAuthState }) {
+function StatusScreen({ auth }: { auth: ReturnType<typeof useDanceAuth> }) {
   const signOut = useAdminSignOut();
-  const legacyHref = '/sign-in?legacy=1';
-  if (auth.phase === 'link-required' && auth.migration) {
-    const m = auth.migration;
-    return (
-      <AuthFrame>
-        <Card testId="state-account-link">
-          <div className="mb-5 grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary"><Link2 className="h-6 w-6" /></div>
-          <h1 className="font-display text-2xl font-bold">Перенос аккаунта</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Новый вход ещё не связан с аккаунтом Danceflow. Роли и история сохраняются только при привязке.</p>
-          <dl className="mt-5 space-y-2">
-            <div className="rounded-md bg-secondary px-3 py-2">
-              <dt className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">новый вход</dt>
-              <dd className="font-mono text-sm" data-testid="text-logto-email">{m.logtoEmail ?? 'почта не указана'}</dd>
-            </div>
-            <div className="rounded-md bg-secondary px-3 py-2">
-              <dt className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">старый аккаунт</dt>
-              <dd className="font-mono text-sm" data-testid="text-legacy-email">{m.legacySignedIn ? (m.legacyEmail ?? 'аккаунт Danceflow') : 'вход не выполнен'}</dd>
-            </div>
-          </dl>
-          {m.error && <p role="alert" className="mt-4 text-sm text-destructive" data-testid="text-link-error">{actionErrors[m.error]}</p>}
-          <div className="mt-5 space-y-2">
-            {m.legacySignedIn ? (
-              <button type="button" className={primaryBtn} disabled={!!m.busy} onClick={() => void m.link()} data-testid="button-link-account">
-                <Link2 className="h-4 w-4" /> {m.busy === 'link' ? 'Привязываем…' : 'Привязать старый аккаунт'}
-              </button>
-            ) : (
-              <Link href={legacyHref} className={primaryBtn} data-testid="link-legacy-login"><LogIn className="h-4 w-4" /> Войти в старый аккаунт</Link>
-            )}
-          </div>
-          <div className="mt-5 border-t border-border pt-4">
-            <p className="text-xs text-muted-foreground">Уже есть аккаунт Danceflow? Привяжите его — не создавайте новый. Новый аккаунт начнётся с нуля, и этот вход потом нельзя будет перенести на старый аккаунт.</p>
-            <button type="button" className={`${ghostBtn} mt-3`} disabled={!!m.busy} onClick={() => void m.register()} data-testid="button-register-account">
-              <UserPlus className="h-4 w-4" /> {m.busy === 'register' ? 'Создаём…' : 'Я здесь впервые — создать новый'}
-            </button>
-            <button type="button" className={`${ghostBtn} mt-2`} disabled={!!m.busy} onClick={() => void signOut.run()} data-testid="button-cancel-link">
-              <LogOut className="h-4 w-4" /> Отмена — выйти
-            </button>
-            {signOut.error && <p role="alert" className="mt-2 text-sm text-destructive">{signOut.error}</p>}
-          </div>
-        </Card>
-      </AuthFrame>
-    );
-  }
-  if (auth.phase === 'config-error' || auth.phase === 'blocked' || auth.phase === 'session-error') {
-    const title = auth.phase === 'blocked' ? 'Доступ закрыт' : auth.phase === 'config-error' ? 'Вход недоступен' : 'Не удалось проверить аккаунт';
-    const text = auth.phase === 'blocked' ? 'Этот аккаунт заблокирован.'
-      : auth.phase === 'config-error' ? 'Не удалось загрузить настройки входа. Обход проверки не выполняется.'
-      : auth.sessionError === 'expired' ? 'Сеанс входа истёк. Выйдите и войдите снова.' : 'Не удалось проверить вход. Повторите или выйдите, чтобы сменить способ входа.';
+  if (auth.phase === 'blocked' || auth.phase === 'session-error') {
+    const blocked = auth.phase === 'blocked';
     return (
       <AuthFrame>
         <Card testId={`state-auth-${auth.phase}`}>
           <div className="mb-5 grid h-12 w-12 place-items-center rounded-xl bg-destructive/10 text-destructive"><ShieldX className="h-6 w-6" /></div>
-          <h1 className="font-display text-2xl font-bold">{title}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">{text}</p>
+          <h1 className="font-display text-2xl font-bold">{blocked ? 'Доступ закрыт' : 'Не удалось проверить аккаунт'}</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{blocked ? 'Этот аккаунт заблокирован.' : 'Не удалось проверить вход. Повторите или выйдите и войдите снова.'}</p>
           <div className="mt-6 space-y-2">
-            {auth.phase !== 'blocked' && (
-              <button type="button" className={primaryBtn} onClick={auth.retry} data-testid="button-auth-retry"><RotateCw className="h-4 w-4" /> Повторить</button>
-            )}
-            {auth.phase !== 'config-error' && (
-              <button type="button" className={ghostBtn} onClick={() => void signOut.run()} data-testid="button-auth-signout"><LogOut className="h-4 w-4" /> Выйти</button>
-            )}
+            {!blocked && <button type="button" className={primaryBtn} onClick={auth.retry} data-testid="button-auth-retry"><RotateCw className="h-4 w-4" /> Повторить</button>}
+            <button type="button" className={ghostBtn} onClick={() => void signOut.run()} data-testid="button-auth-signout"><LogOut className="h-4 w-4" /> Выйти</button>
             {signOut.error && <p role="alert" className="text-sm text-destructive">{signOut.error}</p>}
           </div>
         </Card>
       </AuthFrame>
     );
   }
-  return <AuthLoader label={auth.phase === 'signing-out' ? 'выходим из аккаунта' : auth.phase === 'resolving' ? 'проверяем аккаунт' : 'подключаем авторизацию'} />;
+  return <AuthLoader label={auth.phase === 'signing-out' ? 'выходим из аккаунта' : 'проверяем аккаунт'} />;
 }
 
 export function AuthLoader({ label }: { label: string }) {
@@ -167,46 +166,27 @@ export function AuthLoader({ label }: { label: string }) {
   );
 }
 
-const PUBLIC_DURING_LINK = ['/sign-in', '/sign-up'];
-
-/** Blocks routes until identity is settled; legacy login + callback stay public. */
+/** Blocks routes until identity is settled. */
 export function AuthPhaseGate({ children }: { children: ReactNode }) {
   const auth = useDanceAuth();
-  const [location] = useLocation();
-  if (location.startsWith('/auth/callback')) return <>{children}</>;
   if (auth.phase === 'signed-in' || auth.phase === 'signed-out') return <>{children}</>;
-  if (auth.phase === 'link-required' && PUBLIC_DURING_LINK.some((p) => location.startsWith(p))) return <>{children}</>;
   return <StatusScreen auth={auth} />;
 }
 
+/** Old external-login return URL; kept so stale links land somewhere honest. */
 export function AuthCallbackPage() {
   const auth = useDanceAuth();
   const [, setLocation] = useLocation();
-  const [startError, setStartError] = useState('');
-  const [busy, setBusy] = useState(false);
-  const start = async () => {
-    setBusy(true);
-    setStartError('');
-    try { await auth.signInWithLogto(); }
-    catch { setBusy(false); setStartError('Не удалось открыть вход. Проверьте подключение и повторите.'); }
-  };
   const done = auth.phase === 'signed-in';
   useEffect(() => { if (done) setLocation('/overview', { replace: true }); }, [done, setLocation]);
-  if (auth.phase === 'link-required' || auth.phase === 'blocked' || auth.phase === 'session-error' || auth.phase === 'config-error')
-    return <StatusScreen auth={auth} />;
-  const failed = auth.callback === 'error' || auth.phase === 'signed-out';
-  if (!failed) return <AuthLoader label={done ? 'открываем пульт' : 'завершаем вход'} />;
+  if (done) return <AuthLoader label="открываем пульт" />;
   return (
     <AuthFrame>
       <Card testId="state-callback-error">
-        <h1 className="font-display text-2xl font-bold">Вход не завершён</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Страница входа вернула ошибку или ссылка устарела.</p>
+        <h1 className="font-display text-2xl font-bold">Ссылка устарела</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Вход теперь выполняется по почте и паролю прямо в пульте.</p>
         <div className="mt-6 space-y-2">
-          {auth.logtoEnabled && (
-            <button type="button" className={primaryBtn} disabled={busy} onClick={start} data-testid="button-callback-retry"><RotateCw className="h-4 w-4" /> {busy ? 'Открываем вход…' : 'Войти снова'}</button>
-          )}
-          {startError && <p role="alert" className="text-sm text-destructive">{startError}</p>}
-          <Link href="/sign-in?legacy=1" className={ghostBtn} data-testid="link-legacy-login">Войти старым способом</Link>
+          <Link href="/sign-in" className={primaryBtn} data-testid="link-signin"><LogIn className="h-4 w-4" /> Войти</Link>
           <Link href="/" className={ghostBtn} data-testid="link-home">На главную</Link>
         </div>
       </Card>

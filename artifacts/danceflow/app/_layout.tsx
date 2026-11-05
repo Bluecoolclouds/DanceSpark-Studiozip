@@ -3,10 +3,8 @@ import { Platform, View } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { setBaseUrl } from '@workspace/api-client-react';
 import { setAuthTokenGetter } from '@workspace/api-client-react';
-import { ClerkLoaded, ClerkProvider } from '@clerk/expo';
 import { DanceAuthBoundary, useDanceAuth } from '@/lib/dance-auth';
 import { AuthStatusGate } from '@/components/AuthStatusGate';
-import { tokenCache } from '@clerk/expo/token-cache';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -29,8 +27,6 @@ setBaseUrl(Platform.OS === 'web' ? null : nativeApiOrigin({
   productionOrigin: process.env.EXPO_PUBLIC_API_ORIGIN,
   developmentDomain: process.env.EXPO_PUBLIC_DOMAIN,
 }));
-const clerkKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
-if (!clerkKey) throw new Error('CLERK_PUBLISHABLE_KEY is required for account authentication.');
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -45,7 +41,7 @@ function AuthBridge({ children }: { children: React.ReactNode }) {
   // from filling the next account's cache, including during sign-out.
   const queryClient = useMemo(() => new QueryClient(), [userId]);
   useEffect(() => {
-    // getToken is scoped to the canonical identity (Logto resource token or legacy Clerk token).
+    // Credential getters remain bound to the canonical account.
     setAuthTokenGetter(() => getToken());
     setTransportOwner(userId);
     return () => setAuthTokenGetter(null);
@@ -112,12 +108,6 @@ export default function RootLayout() {
   if (!fontsLoaded && !fontError) return null;
 
   return (
-    <ClerkProvider
-      publishableKey={clerkKey}
-      tokenCache={tokenCache}
-      proxyUrl={process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined}
-    >
-      <ClerkLoaded>
         <SafeAreaProvider>
           <ErrorBoundary>
               <GestureHandlerRootView>
@@ -133,7 +123,5 @@ export default function RootLayout() {
               </GestureHandlerRootView>
           </ErrorBoundary>
         </SafeAreaProvider>
-      </ClerkLoaded>
-    </ClerkProvider>
   );
 }

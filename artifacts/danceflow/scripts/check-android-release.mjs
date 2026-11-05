@@ -8,9 +8,7 @@ catch (error) { problems.push(error.message); }
 if (expo.android?.package !== 'ru.danceflow.app') problems.push('Изменён утверждённый Android package.');
 if (!Number.isInteger(expo.android?.versionCode) || expo.android.versionCode < 1) problems.push('Нужен положительный versionCode.');
 if (expo.android?.allowBackup !== false) problems.push('Автовосстановление пользовательских данных должно быть отключено.');
-if (!(process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '').startsWith('pk_live_')) {
-  problems.push('Нужен production publishable key Clerk в EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY.');
-}
+if (expo.scheme !== 'danceflow') problems.push('Для Better Auth нужен зарегистрированный scheme danceflow.');
 if (problems.length) {
   console.error('Android release preflight: NOT READY');
   for (const problem of problems) console.error(`- ${problem}`);

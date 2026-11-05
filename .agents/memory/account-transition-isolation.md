@@ -21,11 +21,11 @@ When migrating authentication providers, preserve Danceflow's existing internal 
 
 **How to apply:** Resolve authenticated provider identities to a stable internal account before loading account-scoped data. Keep the existing login working until the replacement and account linkage have been verified.
 
-Текущее решение пользователя: «пока на клерке будем … так быстрее». Переход на Logto приостановлен; используем Clerk.
+Текущее решение пользователя: перейти с Clerk и Logto на самостоятельно размещённый Better Auth, включая приложение и админку; на первом этапе без SMTP.
 
-**Why:** Пользователь решил пока остаться на Clerk, чтобы быстрее подготовить запуск.
+**Why:** Пользователь выбрал более простую авторизацию без зависимости входа от двух внешних поставщиков. Это заменяет прежнее временное решение остаться на Clerk.
 
-**How to apply:** Не считать переход на Logto условием готовности к production и не включать его в рамках подготовки запуска. Если пользователь возобновит переход, ранее согласованный объём — сначала веб и админка, не Android/iOS. Заполненная переменная native-app со значением SPA не подтверждает настройку нативного OAuth.
+**How to apply:** Не возвращать Clerk/Logto как обязательные условия запуска. Не обещать соответствие требованиям РФ только из-за смены библиотеки: география данных проверяется отдельно. Сохранять доказательство владения при переносе старых аккаунтов.
 
 Credential retrieval is part of in-flight work: a pending request must not borrow the next session's token, and a pending account-link action must not use a newly selected legacy account.
 

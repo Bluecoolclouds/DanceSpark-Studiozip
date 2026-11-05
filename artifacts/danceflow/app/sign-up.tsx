@@ -1,79 +1,55 @@
-import { useLocalSearchParams } from 'expo-router';
-import { useDanceAuth } from '@/lib/dance-auth';
-import { LogtoEntry, legacyParams } from '@/components/LogtoEntry';
-import { useSignUp } from '@clerk/expo';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
-import { View } from 'react-native';
-import { AuthAction, AuthError, AuthFrame, AuthInput, BigButton } from '@/components/AuthFrame';
+import React, { useRef, useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import { useDanceAuth } from '@/lib/dance-auth';
+import { useColors } from '@/hooks/useColors';
+import { F } from '@/constants/fonts';
+import { AuthError, AuthFrame, AuthInput, AuthNotice, BigButton, EMAIL_RE, MIGRATION_NOTE, PASSWORD_MAX, PASSWORD_MIN, errorText } from '@/components/AuthFrame';
 
 export default function SignUpScreen() {
   const auth = useDanceAuth();
-  const { legacy } = useLocalSearchParams<{ legacy?: string }>();
-  if (auth.logtoEnabled && legacy !== '1') return <LogtoEntry mode="sign-up" />;
-  return <LegacySignUpScreen />;
-}
-
-function LegacySignUpScreen() {
-  const auth = useDanceAuth();
-  const { signUp, errors, fetchStatus } = useSignUp();
-  const [emailAddress, setEmailAddress] = useState('');
+  const c = useColors();
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [code, setCode] = useState('');
+  const [confirmation, setConfirmation] = useState('');
+  const [consent, setConsent] = useState(false);
   const [message, setMessage] = useState('');
-  const working = fetchStatus === 'fetching';
+  const [busy, setBusy] = useState(false);
+  const locked = useRef(false);
   const create = async () => {
-    setMessage('');
-    try {
-      const { error } = await signUp.password({ emailAddress, password });
-      if (error) {
-        setMessage('Не удалось создать аккаунт. Проверь введённые данные и сообщение проверки.');
-        return;
-      }
-      await signUp.verifications.sendEmailCode();
-    } catch {
-      setMessage('Не удалось отправить код. Проверь подключение и попробуй ещё раз.');
-    }
+    if (locked.current) return;
+    const address = email.trim();
+    if (!EMAIL_RE.test(address)) return setMessage('Введи корректный адрес электронной почты.');
+    if (password.length < PASSWORD_MIN) return setMessage(`Пароль должен быть не короче ${PASSWORD_MIN} символов.`);
+    if (password.length > PASSWORD_MAX) return setMessage(`Пароль должен быть не длиннее ${PASSWORD_MAX} символов.`);
+    if (password !== confirmation) return setMessage('Пароли не совпадают.');
+    if (!consent) return setMessage('Чтобы создать аккаунт, прими условия и политику конфиденциальности.');
+    locked.current = true; setBusy(true); setMessage('');
+    try { await auth.signUp(address, password); router.replace('/studio'); }
+    catch (e) { setMessage(errorText(e, 'Не удалось создать аккаунт. Проверь подключение и попробуй ещё раз.')); }
+    finally { locked.current = false; setBusy(false); }
   };
-  const verify = async () => {
-    setMessage('');
-    try {
-      await signUp.verifications.verifyEmailCode({ code });
-      if (signUp.status === 'complete') {
-        await signUp.finalize({
-          navigate: ({ session }) => {
-            if (session?.currentTask) {
-              setMessage('Заверши дополнительную проверку аккаунта.');
-              return;
-            }
-            router.replace('/studio');
-          },
-        });
-      } else setMessage('Регистрация не завершена. Проверь код.');
-    } catch {
-      setMessage('Не удалось подтвердить код.');
-    }
-  };
-  const waitingForCode = signUp.status === 'missing_requirements' &&
-    signUp.unverifiedFields.includes('email_address') && signUp.missingFields.length === 0;
+  const link = { color: c.primary, fontFamily: F.body };
   return (
-    <AuthFrame title={waitingForCode ? 'Подтверди почту' : 'Твоя сцена ждёт'} subtitle={waitingForCode ? 'Введи код из письма.' : 'Создай аккаунт, чтобы запускать танцевальные видео.'} other="Уже есть аккаунт? Войти" href="/sign-in">
-      {waitingForCode ? (
-        <View style={{ gap: 14 }}>
-          <AuthInput label="Код из письма" value={code} onChangeText={setCode} keyboardType="number-pad" autoComplete="one-time-code" />
-          <AuthError message={errors.fields.code?.message || message} />
-          <BigButton label={working ? 'Проверяем...' : 'Подтвердить'} onPress={verify} disabled={working || !code} />
-        </View>
-      ) : (
-        <View style={{ gap: 14 }}>
-          <AuthInput label="Электронная почта" value={emailAddress} onChangeText={setEmailAddress} keyboardType="email-address" autoCapitalize="none" autoComplete="email" />
-          <AuthInput label="Пароль" value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" />
-          <AuthError message={errors.fields.emailAddress?.message || errors.fields.password?.message || message} />
-          <BigButton label={working ? 'Создаём аккаунт...' : 'Создать аккаунт'} onPress={create} disabled={working || !emailAddress || !password} />
-          <AuthAction label="Уже регистрировались? Восстановить пароль" testID="signup-forgot-password" disabled={working} onPress={() => router.push({ pathname: '/forgot-password', params: legacyParams(auth.logtoEnabled) })} />
-          <View nativeID="clerk-captcha" />
-        </View>
-      )}
+    <AuthFrame title="Твоя сцена ждёт" subtitle="Создай аккаунт, чтобы запускать танцевальные видео." other="Уже есть аккаунт? Войти" href="/sign-in">
+      <View style={{ gap: 14 }}>
+        <AuthInput label="Электронная почта" testID="signup-email" value={email} onChangeText={setEmail} editable={!busy} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} autoComplete="email" />
+        <AuthInput label={`Пароль (${PASSWORD_MIN}–${PASSWORD_MAX} символов)`} testID="signup-password" value={password} onChangeText={setPassword} editable={!busy} secureTextEntry autoCapitalize="none" autoComplete="new-password" maxLength={PASSWORD_MAX} />
+        <AuthInput label="Повтори пароль" testID="signup-confirm" value={confirmation} onChangeText={setConfirmation} editable={!busy} secureTextEntry autoCapitalize="none" autoComplete="new-password" maxLength={PASSWORD_MAX} />
+        <Pressable testID="signup-consent" accessibilityRole="checkbox" accessibilityState={{ checked: consent, disabled: busy }} disabled={busy} onPress={() => setConsent((v) => !v)} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
+          <View style={{ width: 22, height: 22, borderRadius: 7, borderWidth: 1, borderColor: consent ? c.primary : c.border, backgroundColor: consent ? c.primary : c.card, alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
+            {consent && <Feather name="check" size={15} color={c.primaryForeground} />}
+          </View>
+          <Text style={{ flex: 1, color: c.mutedForeground, fontFamily: F.body, fontSize: 13, lineHeight: 19 }}>
+            Я принимаю <Text accessibilityRole="link" style={link} onPress={() => router.push('/legal/terms')}>пользовательское соглашение</Text> и <Text accessibilityRole="link" style={link} onPress={() => router.push('/privacy')}>политику конфиденциальности</Text>.
+          </Text>
+        </Pressable>
+        <AuthError message={message} />
+        <BigButton testID="signup-submit" label={busy ? 'Создаём аккаунт...' : 'Создать аккаунт'} onPress={create} disabled={busy || !email || !password || !confirmation || !consent} />
+        <AuthNotice testID="signup-unverified" title="Почта не подтверждается" text="Письма пока не отправляются: адрес сохранится как неподтверждённый, а восстановить пароль по почте нельзя. Запомни пароль или сохрани его в менеджере паролей." />
+        <AuthNotice title="Уже регистрировались раньше?" text={MIGRATION_NOTE} />
+      </View>
     </AuthFrame>
   );
 }

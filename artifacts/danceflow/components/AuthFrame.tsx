@@ -6,7 +6,6 @@ import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollV
 import { BigButton, DemoBadge } from '@/components/ui';
 import { useColors } from '@/hooks/useColors';
 import { F } from '@/constants/fonts';
-import { useDanceAuth } from '@/lib/dance-auth';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 
@@ -15,7 +14,6 @@ export function AuthFrame({ title, subtitle, children, other, href, recovery = f
 }) {
   const c = useColors();
   const insets = useSafeAreaInsets();
-  const { logtoEnabled } = useDanceAuth();
   return (
     <KeyboardAwareScrollViewCompat bottomOffset={20} style={{ flex: 1, backgroundColor: c.background }} contentContainerStyle={{ paddingHorizontal: 24, paddingTop: (Platform.OS === 'web' ? 67 : insets.top) + 24, paddingBottom: (Platform.OS === 'web' ? 34 : insets.bottom) + 24, gap: 18 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -25,7 +23,7 @@ export function AuthFrame({ title, subtitle, children, other, href, recovery = f
       <Text style={{ fontFamily: F.display, fontSize: 33, color: c.foreground, lineHeight: 39 }}>{title}</Text>
       <Text style={{ fontFamily: F.body, color: c.mutedForeground, fontSize: 15 }}>{subtitle}</Text>
       {children}
-      <Link href={logtoEnabled ? { pathname: href, params: { legacy: '1' } } : href} asChild>
+      <Link href={href} asChild>
         <Text accessibilityRole="link" style={{ fontFamily: F.body, color: c.primary, fontSize: 15, textAlign: 'center', paddingVertical: 15 }}>{other}</Text>
       </Link>
     </KeyboardAwareScrollViewCompat>
@@ -76,6 +74,22 @@ export function AuthError({ message }: { message?: string }) {
   const c = useColors();
   return message ? <Text accessibilityRole="alert" style={{ color: c.primary, fontFamily: F.body, fontSize: 14 }}>{message}</Text> : null;
 }
+
+export function AuthNotice({ title, text, testID }: { title: string; text: string; testID?: string }) {
+  const c = useColors();
+  return (
+    <View testID={testID} style={{ borderWidth: 1, borderColor: c.border, backgroundColor: c.card, borderRadius: 13, padding: 14, gap: 4 }}>
+      <Text style={{ fontFamily: F.bodyHeavy, fontSize: 13, color: c.foreground }}>{title}</Text>
+      <Text style={{ fontFamily: F.body, fontSize: 13, lineHeight: 19, color: c.mutedForeground }}>{text}</Text>
+    </View>
+  );
+}
+
+export const PASSWORD_MIN = 10;
+export const PASSWORD_MAX = 128;
+export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const MIGRATION_NOTE = 'Пароли из прежней системы входа не переносятся автоматически. Если вы пользовались Danceflow раньше, напишите оператору — он поможет перенести аккаунт с черновиками и подпиской.';
+export const errorText = (e: unknown, fallback: string) => (e instanceof Error && e.message ? e.message : fallback);
 
 export { BigButton };
 

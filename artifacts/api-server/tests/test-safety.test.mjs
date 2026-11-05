@@ -7,7 +7,7 @@ const setup = new URL("./helpers/setup.mjs", import.meta.url).href;
 test("the launcher supplies only synthetic provider and auth configuration", () => {
   assert.equal(process.env.higgs_api, "unit-test-id:unit-test-secret");
   assert.equal(process.env.CLERK_SECRET_KEY, "sk_test_not_a_real_key");
-  assert.equal(process.env.SESSION_SECRET, undefined);
+  assert.equal(process.env.SESSION_SECRET, "isolated-test-session-secret-not-for-production-0123456789");
   assert.equal(process.env.VITE_CLERK_PUBLISHABLE_KEY, undefined);
   assert.equal(process.env.PGHOST, undefined);
 });

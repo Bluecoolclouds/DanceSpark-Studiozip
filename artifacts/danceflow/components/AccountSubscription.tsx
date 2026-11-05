@@ -13,9 +13,9 @@ const planNames = { none: 'Без подписки', warmup: 'Разминка',
 /** Read-only account access. Choosing an offer never changes this server state. */
 export function AccountSubscription() {
   const c = useColors();
-  const { isLoaded, isSignedIn, userId, email, signOut, source, logtoEnabled, signInWithLogto } = useDanceAuth();
+  const { isLoaded, isSignedIn, userId, email, signOut } = useDanceAuth();
   const [leaving, setLeaving] = useState(false);
-  const [connecting, setConnecting] = useState(false);
+  const connecting = false;
   const [signOutError, setSignOutError] = useState('');
   const enabled = isLoaded && !!isSignedIn && !leaving;
   const query = useGetAccountSubscription({
@@ -52,12 +52,6 @@ export function AccountSubscription() {
       setLeaving(false);
       setSignOutError('Не удалось выйти. Проверь подключение и повтори.');
     }
-  };
-  const connectLogto = async () => {
-    setConnecting(true);
-    setSignOutError('');
-    try { await signInWithLogto(); }
-    catch { setConnecting(false); setSignOutError('Не удалось открыть новый вход. Проверь подключение и повтори.'); }
   };
 
   // Presentation-only derivation of the status chip.
@@ -141,13 +135,6 @@ export function AccountSubscription() {
               <Text style={[styles.actionText, { color: c.foreground }]}>Выйти из аккаунта</Text>
             </Bouncy>
           </View>
-          {logtoEnabled && source === 'clerk' && (
-            <Bouncy testID="account-connect-logto" accessibilityLabel="Подключить вход Logto" disabled={connecting || leaving} scaleTo={0.96} onPress={connectLogto}
-              style={[styles.action, { backgroundColor: c.muted, flex: 0 }]}>
-              <Feather name="key" size={15} color={c.violet} />
-              <Text numberOfLines={1} style={[styles.actionText, { color: c.foreground }]}>{connecting ? 'Открываем вход…' : 'Подключить вход Logto'}</Text>
-            </Bouncy>
-          )}
           <Bouncy testID="account-delete-link" accessibilityLabel="Удалить аккаунт" disabled={leaving || connecting}
             onPress={() => router.push('/account-deletion')} style={[styles.action, { borderWidth: 1, borderColor: c.border }]}>
             <Feather name="trash-2" size={15} color={c.mutedForeground} />

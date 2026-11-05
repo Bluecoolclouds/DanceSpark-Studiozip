@@ -1,4 +1,3 @@
-import { clerkClient } from "@clerk/express";
 import { pool, type PoolClient } from "@workspace/db";
 import { ensureControls } from "./admin-data";
 import { deleteOwnedCustomVideos } from "./custom-video-storage";
@@ -38,11 +37,6 @@ export async function requestDeletion(id: string): Promise<void> {
       throw new AccountDeletionError("unsettled_generation",
         "Сначала дождись завершения генераций. Если результат отправки неизвестен, проверь статус задания или обратись в поддержку. Повторный платный запрос не нужен.");
     }
-    if ((await client.query("SELECT 1 FROM df_auth_identities WHERE account_id=$1 LIMIT 1", [id])).rows.length) {
-      // Logto is not enabled for the release. Never pretend its upstream identity was removed.
-      throw new AccountDeletionError("linked_identity",
-        "У аккаунта есть связанный вход Logto. Автоматическое удаление этого поставщика пока не подключено. Обратись в поддержку; удаление ещё не начато.");
-    }
     if (account.role === "admin" && !(await client.query(
       "SELECT 1 FROM df_accounts WHERE role='admin' AND id<>$1 AND deletion_requested_at IS NULL AND blocked=false LIMIT 1",
       [id],
@@ -63,21 +57,11 @@ export async function deletionStatus(id: string): Promise<"not_requested" | "pen
   return !row ? "completed" : !row.deletion_requested_at ? "not_requested" : row.deletion_error ? "retrying" : "pending";
 }
 
-async function deleteClerkIdentity(id: string) {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    await Promise.race([
-      clerkClient.users.deleteUser(id),
-      new Promise<never>((_resolve, reject) => {
-        timer = setTimeout(() => reject(new Error("identity_cleanup_timeout")), 30000);
-        timer.unref();
-      }),
-    ]);
-  }
-  catch (error) {
-    // Retry after an acknowledged upstream deletion / a failed final DB commit.
-    if ((error as { status?: number })?.status !== 404) throw error;
-  } finally { if (timer) clearTimeout(timer); }
+async function deleteLocalIdentity(id: string) {
+  // Cascades remove every session and password. No requests to former providers.
+  await pool.query(`DELETE FROM df_auth_user WHERE id IN (
+    SELECT subject FROM df_auth_identities WHERE account_id=$1 AND issuer='danceflow:better-auth'
+  )`, [id]);
 }
 
 type DeletionDependencies = {
@@ -88,7 +72,7 @@ type DeletionDependencies = {
 /** Durable saga: a failure NEVER reactivates the account or reports completion. */
 export async function processAccountDeletion(id: string, dependencies: DeletionDependencies = {
   deleteMedia: deleteOwnedCustomVideos,
-  deleteIdentity: deleteClerkIdentity,
+  deleteIdentity: deleteLocalIdentity,
 }): Promise<boolean> {
   const client = await pool.connect();
   let locked = false;

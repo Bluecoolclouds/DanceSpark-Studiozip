@@ -1,71 +1,49 @@
-# Authentication verification after import
+# Проверка авторизации Danceflow
 
-Checked on 2026-10-30. The existing external Clerk instance was preserved.
-No provisioning, key changes, owner changes, or paid generations were performed.
-No real credentials were read or included here.
+Текущая реализация — Better Auth, не Clerk/Logto. Инструкции настройки, ограничения
+без SMTP, безопасное назначение владельца и перенос существующих аккаунтов:
+[better-auth.md](better-auth.md).
 
-## Verified
+## Сервер
 
-- `pnpm run typecheck` passes across the workspace.
-- `pnpm --filter @workspace/api-server test` passes all 56 tests in a disposable
-  PostgreSQL instance with synthetic credentials and external networking disabled.
-- API, admin, and Expo managed workflows start successfully.
-- On the running development preview, `/api/healthz` returns 200.
-  `/api/admin/session`, `/api/admin/overview`, and `/api/account/subscription`
-  return 401 without a session.
-- `/admin/sign-in` renders the actual Clerk email and Google sign-in form.
-  A separate development-banner script has a 404/MIME warning; it does not
-  prevent the sign-in form from rendering.
-- Owner-email configuration is present. This is a presence check, not proof
-  that a particular live identity has owner access.
+Одноразовая база и синтетические данные в `pnpm --filter @workspace/api-server test`.
+Реальные парольные операции Better Auth проверяют:
 
-## Regression coverage
+- пароль хранится не в открытом виде; email остаётся неподтверждённым;
+- email владельца не повышает права;
+- совпадение со старым email блокирует публичную регистрацию без присоединения;
+- вход, неверный пароль, отзыв сессии и недействительный токен;
+- внутренние ID и тарифы не меняются при смене пользователя;
+- гость/обычный пользователь не получают административных данных;
+- блокировка и запрос удаления запрещают обычный доступ;
+- удаление локального аккаунта удаляет пароль и все сессии;
+- защищённые изменения требуют доверенного origin или проверяемых bearer credentials.
 
-`artifacts/api-server/tests/auth-account.test.ts` exercises real middleware and
-route chains with synthetic **post-verification Clerk output**:
+## Клиенты
 
-- Anonymous requests and client-supplied identities cannot select an account.
-- Only a verified configured owner email grants the initial admin role, once.
-- Verifying an existing owner allows bootstrap, including when the configured
-  email has surrounding whitespace.
-- Blocked owners cannot access their account.
-- Switching owner → regular user → signed out → owner preserves account data.
-- Admin routes return 200 for admins, 403 for regular users, and 401 for guests.
-- Regular users cannot mutate admin settings or users.
-- Subscription responses follow the authenticated account, ignoring submitted
-  account and plan selectors.
-- A failed Clerk identity lookup provisions no account and grants no access.
+На вебе проверять регистрацию с согласием, видимость ошибок входа, reload,
+выход и смену пользователей, вход администратора, отказ обычному пользователю
+и отсутствие данных администратора после смены аккаунта. Не вызывать платную
+генерацию для проверки авторизации.
 
-Existing tests separately exercise anonymous and forged-token rejection through
-the real Clerk middleware and rejection of another account's generation result.
-These tests do **not** prove that a real external Clerk user can sign in.
+Android использует официальный Better Auth Expo plugin и SecureStore. Проверка
+типов/серверных контрактов и веб-браузер не подтверждают работу на устройстве:
+требуется отдельный запуск native-сборки с корректным HTTPS API origin.
 
-## Changes
+## Результат проверки 2026-11-05
 
-- Admin queries use separate caches and remount account-local UI on identity
-  changes. Late responses and mutation callbacks cannot populate the next
-  account's cache through the discarded client.
-- Owner-email normalization is consistent between initial bootstrap and the
-  check that retries verification for an existing account.
-- Mobile account-scoped query clients and draft/favorite namespaces were
-  inspected; mobile authentication and storage behavior were not changed.
-
-## Unverified browser flows
-
-The browser verification run failed before returning evidence; attempting to
-resume the same run also failed because the connection was lost.
-No successful authenticated browser run is claimed.
-
-An authenticated browser pass against the existing external Clerk instance is
-still needed for:
-
-1. Mobile email sign-in and sign-out using actual Clerk sessions.
-2. Mobile A → B → A switching: drafts/favorites disappear and return only for
-   their owner, including after reload.
-3. Actual owner login to the admin panel and successful admin-session response.
-4. Ordinary-user login, denied admin screen, and “Выйти и сменить аккаунт”
-   returning to sign-in without showing the previous admin's data.
-
-Use supported test authentication or an authorized existing test session.
-Do not reprovision Clerk, request passwords in chat, grant roles to arbitrary
-users, or weaken server authentication to finish these checks.
+- Полный workspace typecheck и 36 мобильных unit-тестов прошли.
+- Общий серверный прогон: 155 проверок прошли, один устаревший cookie-only fixture
+  исправлен и подтверждён отдельным прогоном всех четырёх проверок удаления.
+- Браузер: создание обычного аккаунта с согласием, восстановление сессии после
+  reload, выход, видимая ошибка неверного пароля и правильный повторный вход.
+- Админка: отказ обычному пользователю, вход синтетического администратора,
+  доступ к overview/users, сохранение после reload, выход и повторный вход обычного
+  пользователя без административных данных.
+- Исправлен запрос canonical session через защищённый preview: служебные cookies
+  preview должны передаваться вместе с явно выбранным bearer-токеном.
+- Операторская команда назначения владельца проверена только на синтетическом
+  тестовом аккаунте. Оба тестовых аккаунта и их credentials/sessions удалены после
+  проверки; пользовательские данные и production не менялись.
+- Metro успешно собрал Android development JS bundle. Запуск на физическом
+  устройстве, native cold start и SecureStore после перезапуска не проверены.

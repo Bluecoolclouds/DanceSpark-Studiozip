@@ -3,10 +3,9 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
-import { clerkMiddleware } from "@clerk/express";
-import { publishableKeyFromHost } from "@clerk/shared/keys";
-import { CLERK_PROXY_PATH, clerkProxyMiddleware, getClerkProxyHost } from "./middlewares/clerkProxyMiddleware";
-import { withLogtoAuthentication } from "./middlewares/auth-provider";
+import { toNodeHandler } from "better-auth/node";
+import { auth } from "./lib/better-auth";
+import { requireAccount } from "./middlewares/admin-auth";
 import { allowedWebOrigin } from "./lib/web-origins";
 
 const app: Express = express();
@@ -34,7 +33,6 @@ app.use(
     },
   }),
 );
-app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 app.use(cors((req, callback) => {
   const origin = req.headers.origin;
   if (!origin) {
@@ -43,14 +41,15 @@ app.use(cors((req, callback) => {
   }
   callback(null, { origin: allowedWebOrigin(req, origin) ? origin : false, credentials: true });
 }));
+// Product session route uses the canonical account, not the auth library's subject.
+app.get("/api/auth/session", requireAccount, (_req, res) => {
+  const account = res.locals.account;
+  res.json({ accountId: account.id, email: account.email, role: account.role });
+});
+// Express 5 wildcard; Better Auth must read the body before Express consumes it.
+app.all("/api/auth/*splat", toNodeHandler(auth));
 app.use(express.json({ limit: "18mb" }));
 app.use(express.urlencoded({ extended: true }));
-app.use(withLogtoAuthentication(clerkMiddleware((req) => ({
-  publishableKey: publishableKeyFromHost(
-    getClerkProxyHost(req) ?? "",
-    process.env.CLERK_PUBLISHABLE_KEY,
-  ),
-}))));
 
 app.use("/api", router);
 

@@ -18,6 +18,8 @@ process.env.higgs_api = "unit-test-id:unit-test-secret";
 process.env.CLERK_PUBLISHABLE_KEY = `pk_test_${Buffer.from("clerk.example.test$").toString("base64")}`;
 process.env.CLERK_SECRET_KEY = "sk_test_not_a_real_key";
 process.env.DANCEFLOW_OWNER_EMAIL = "owner@example.invalid";
+process.env.SESSION_SECRET = "isolated-test-session-secret-not-for-production-0123456789";
+process.env.DANCEFLOW_WEB_ORIGINS = "https://danceflow.example.test";
 
 const violations = [];
 function blocked() {

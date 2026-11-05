@@ -9,9 +9,11 @@ export function isolatedDatabase(extraTables: "df_auth_identities"[] = []) {
   pool.options.options = `-c search_path=${schema}`;
   before(async () => {
     await pool.query(`CREATE SCHEMA ${schema}`);
-    for (const table of ["df_accounts", "df_jobs", "df_controls", "df_admin_audit", "dance_catalogue", "dance_catalogue_opens", "df_erased_costs", "dance_video_generations", "df_credit_daily_balances", "df_credit_ledger", ...extraTables]) {
+    for (const table of [...new Set(["df_accounts", "df_jobs", "df_controls", "df_admin_audit", "dance_catalogue", "dance_catalogue_opens", "df_erased_costs", "dance_video_generations", "df_credit_daily_balances", "df_credit_ledger", "df_auth_identities", "df_auth_user", "df_auth_session", "df_auth_credential", "df_auth_verification", "df_auth_rate_limit", ...extraTables])]) {
       await pool.query(`CREATE TABLE ${schema}.${table} (LIKE public.${table} INCLUDING ALL)`);
     }
+    await pool.query(`ALTER TABLE ${schema}.df_auth_session ADD FOREIGN KEY (user_id) REFERENCES ${schema}.df_auth_user(id) ON DELETE CASCADE`);
+    await pool.query(`ALTER TABLE ${schema}.df_auth_credential ADD FOREIGN KEY (user_id) REFERENCES ${schema}.df_auth_user(id) ON DELETE CASCADE`);
     // LIKE does not copy foreign keys.
     await pool.query(`ALTER TABLE ${schema}.df_jobs ADD FOREIGN KEY (user_id) REFERENCES ${schema}.df_accounts(id)`);
     await pool.query(`ALTER TABLE ${schema}.df_credit_daily_balances ADD FOREIGN KEY (account_id) REFERENCES ${schema}.df_accounts(id) ON DELETE CASCADE`);

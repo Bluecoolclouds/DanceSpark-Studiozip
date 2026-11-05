@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import { isolatedDatabase } from "./helpers/database";
 import { testPricing } from "./helpers/pricing";
 import { reserveGeneration, beginGeneration, finishGeneration } from "../src/lib/generation-governance";
-import { seedVerifiedOwner, requireAdmin, protectAdminMutation } from "../src/middlewares/admin-auth";
+import { requireAdmin, protectAdminMutation } from "../src/middlewares/admin-auth";
 import { settingsResponse } from "../src/lib/admin-data";
 import { UpdateAdminSettingsBody, UpdateAdminUserBody } from "@workspace/api-zod";
 import app from "../src/app";
@@ -111,15 +111,10 @@ test("pause prevents provider submission; claiming and terminal updates are idem
   assert.equal(Number(row.estimated_cost_rub), 5);
 });
 
-test("a verified configured owner is seeded once; mismatched/unverified identities are not", async () => {
-  await seedVerifiedOwner("u1", ["stranger@example.invalid"]);
+test("configured owner email alone cannot grant an administrator role", async () => {
+  await pool.query("UPDATE df_accounts SET email='owner@example.invalid' WHERE id='u1'");
   assert.equal((await pool.query("SELECT role FROM df_accounts WHERE id='u1'")).rows[0].role, "user");
-  await seedVerifiedOwner("u1", ["owner@example.invalid"]);
-  assert.equal((await pool.query("SELECT role FROM df_accounts WHERE id='u1'")).rows[0].role, "admin");
-  await pool.query("UPDATE df_accounts SET role='user' WHERE id='u1'");
-  await seedVerifiedOwner("u1", ["owner@example.invalid"]);
-  assert.equal((await pool.query("SELECT role FROM df_accounts WHERE id='u1'")).rows[0].role, "user");
-  assert.equal((await pool.query("SELECT count(*)::int n FROM df_admin_audit")).rows[0].n, 1);
+  assert.equal((await pool.query("SELECT count(*)::int n FROM df_admin_audit")).rows[0].n, 0);
 });
 
 test("role and cross-origin mutation checks are enforced independently of UI", () => {

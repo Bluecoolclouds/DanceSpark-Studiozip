@@ -1,86 +1,35 @@
-import { useLocalSearchParams } from 'expo-router';
-import { useDanceAuth } from '@/lib/dance-auth';
-import { LogtoEntry, legacyParams } from '@/components/LogtoEntry';
-import { useSignIn, useAuth } from '@clerk/expo';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { View } from 'react-native';
-import { AuthAction, AuthError, AuthFrame, AuthInput, BigButton } from '@/components/AuthFrame';
+import { useDanceAuth } from '@/lib/dance-auth';
+import { AuthAction, AuthError, AuthFrame, AuthInput, AuthNotice, BigButton, EMAIL_RE, MIGRATION_NOTE, errorText } from '@/components/AuthFrame';
 
 export default function SignInScreen() {
   const auth = useDanceAuth();
-  const { legacy } = useLocalSearchParams<{ legacy?: string }>();
-  if (auth.logtoEnabled && legacy !== '1') return <LogtoEntry mode="sign-in" />;
-  return <LegacySignInScreen />;
-}
-
-function LegacySignInScreen() {
-  const auth = useDanceAuth();
-  const { signIn, errors, fetchStatus } = useSignIn();
-  const { isSignedIn } = useAuth();
-  const [emailAddress, setEmailAddress] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [code, setCode] = useState('');
   const [message, setMessage] = useState('');
-  const working = fetchStatus === 'fetching';
-  const finish = async () => {
-    await signIn.finalize({
-      navigate: ({ session }) => {
-        if (session?.currentTask) {
-          setMessage('Заверши дополнительную проверку аккаунта и повтори вход.');
-          return;
-        }
-        router.replace('/studio');
-      },
-    });
-  };
+  const [busy, setBusy] = useState(false);
+  const locked = useRef(false);
   const login = async () => {
-    setMessage('');
-    try {
-      const { error } = await signIn.password({ emailAddress, password });
-      if (error) {
-        setMessage('Не удалось войти. Проверь почту, пароль и сообщение проверки.');
-        return;
-      }
-      if (signIn.status === 'complete') await finish();
-      else if (signIn.status === 'needs_client_trust') {
-        const emailCode = signIn.supportedSecondFactors.find((x) => x.strategy === 'email_code');
-        if (emailCode) await signIn.mfa.sendEmailCode();
-        else setMessage('Для этого аккаунта требуется дополнительная проверка, которая пока недоступна.');
-      } else {
-        setMessage('Для этого аккаунта требуется дополнительная проверка, которая пока недоступна.');
-      }
-    } catch {
-      setMessage('Не удалось войти. Проверь подключение и попробуй ещё раз.');
-    }
-  };
-  const verify = async () => {
-    setMessage('');
-    try {
-      await signIn.mfa.verifyEmailCode({ code });
-      if (signIn.status === 'complete') await finish();
-      else setMessage('Проверка не завершена. Попробуй ещё раз.');
-    } catch {
-      setMessage('Не удалось проверить код.');
-    }
+    if (locked.current) return;
+    const address = email.trim();
+    if (!EMAIL_RE.test(address)) { setMessage('Введи корректный адрес электронной почты.'); return; }
+    locked.current = true; setBusy(true); setMessage('');
+    try { await auth.signIn(address, password); router.replace('/studio'); }
+    catch (e) { setMessage(errorText(e, 'Не удалось войти. Проверь подключение и попробуй ещё раз.')); }
+    finally { locked.current = false; setBusy(false); }
   };
   return (
     <AuthFrame title="Войди в танец" subtitle="Вход защищает твои видео и баланс генераций." other="Нет аккаунта? Зарегистрироваться" href="/sign-up">
-      {signIn.status === 'needs_client_trust' ? (
-        <View style={{ gap: 14 }}>
-          <AuthInput label="Код из письма" value={code} onChangeText={setCode} keyboardType="number-pad" autoComplete="one-time-code" />
-          <AuthError message={errors.fields.code?.message || message} />
-          <BigButton label={working ? 'Проверяем...' : 'Подтвердить код'} onPress={verify} disabled={working || !code} />
-        </View>
-      ) : (
-        <View style={{ gap: 14 }}>
-          <AuthInput label="Электронная почта" value={emailAddress} onChangeText={setEmailAddress} keyboardType="email-address" autoCapitalize="none" autoComplete="email" />
-          <AuthInput label="Пароль" value={password} onChangeText={setPassword} secureTextEntry autoComplete="password" />
-          <AuthError message={errors.fields.identifier?.message || errors.fields.password?.message || message} />
-          <BigButton label={working ? 'Входим...' : 'Войти'} onPress={login} disabled={working || !emailAddress || !password || !!isSignedIn} />
-          <AuthAction label="Забыли пароль?" testID="forgot-password" disabled={working || !!isSignedIn} onPress={() => router.push({ pathname: '/forgot-password', params: legacyParams(auth.logtoEnabled) })} />
-        </View>
-      )}
+      <View style={{ gap: 14 }}>
+        <AuthInput label="Электронная почта" testID="signin-email" value={email} onChangeText={setEmail} editable={!busy} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} autoComplete="email" />
+        <AuthInput label="Пароль" testID="signin-password" value={password} onChangeText={setPassword} editable={!busy} secureTextEntry autoCapitalize="none" autoComplete="password" maxLength={128} onSubmitEditing={login} />
+        <AuthError message={message} />
+        <BigButton testID="signin-submit" label={busy ? 'Входим...' : 'Войти'} onPress={login} disabled={busy || !email || !password || auth.isSignedIn} />
+        <AuthAction label="Забыли пароль?" testID="forgot-password" disabled={busy} onPress={() => router.push('/forgot-password')} />
+        <AuthNotice testID="signin-migration" title="Пользовались Danceflow раньше?" text={MIGRATION_NOTE} />
+      </View>
     </AuthFrame>
   );
 }

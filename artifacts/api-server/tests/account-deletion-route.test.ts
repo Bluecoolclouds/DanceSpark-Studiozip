@@ -1,6 +1,7 @@
 import "./helpers/setup.mjs";
 import assert from "node:assert/strict";
-import { beforeEach, test } from "node:test";
+import { beforeEach, test, mock } from "node:test";
+import { auth } from "../src/lib/better-auth";
 import express from "express";
 import type { AddressInfo } from "node:net";
 import { isolatedDatabase } from "./helpers/database";
@@ -10,18 +11,17 @@ const pool = isolatedDatabase(["df_auth_identities"]);
 beforeEach(async () => {
   await pool.query("TRUNCATE df_auth_identities,df_jobs,df_accounts,df_controls,df_admin_audit CASCADE");
   await pool.query("INSERT INTO df_accounts(id,email) VALUES('route-a','a@example.invalid'),('route-b','b@example.invalid')");
+  await pool.query("INSERT INTO df_auth_identities(issuer,subject,account_id) SELECT 'danceflow:better-auth',id,id FROM df_accounts");
 });
 
 /** Verified identity is synthetic ONLY in this isolated test application. */
 function application() {
   const app = express();
-  app.use(express.json());
-  app.use((req, _res, next) => {
-    req.auth = Object.assign(() => ({
-      userId: req.get("x-fixture-account") ?? null, tokenType: "session_token",
-    }), { [Symbol.for("@clerk/express.auth")]: true }) as typeof req.auth;
-    next();
+  mock.method(auth.api, "getSession", async ({ headers }: { headers: Headers }) => {
+    const id = headers.get("x-fixture-account");
+    return id ? { user: { id }, session: { token: "fixture" } } : null;
   });
+  app.use(express.json());
   app.use("/api", accountRouter);
   return app;
 }
@@ -35,7 +35,7 @@ const post = (origin: string, owner?: string, body: unknown = { confirmation: "Ð
   fetch(`${origin}/api/account/deletion`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(owner ? { "x-fixture-account": owner } : {}),
-      ...(bearer ? { Authorization: "Bearer isolated-fixture" } : {}) },
+      ...(bearer ? { Authorization: "Bearer isolated-fixture" } : { Cookie: "synthetic-session=fixture" }) },
     body: JSON.stringify(body),
   });
 
@@ -58,9 +58,9 @@ test("own deletion queues durably, is repeatable, and never marks a second accou
       assert.equal(response.status, 200);
       assert.deepEqual(await response.json(), { status: "pending" });
     }
-    const own = await fetch(`${origin}/api/account/deletion`, { headers: { "x-fixture-account": "route-a" } });
+    const own = await fetch(`${origin}/api/account/deletion`, { headers: { "x-fixture-account": "route-a", Authorization: "Bearer fixture" } });
     assert.deepEqual(await own.json(), { status: "pending" });
-    const other = await fetch(`${origin}/api/account/deletion`, { headers: { "x-fixture-account": "route-b" } });
+    const other = await fetch(`${origin}/api/account/deletion`, { headers: { "x-fixture-account": "route-b", Authorization: "Bearer fixture" } });
     assert.deepEqual(await other.json(), { status: "not_requested" });
     assert.equal((await pool.query("SELECT blocked FROM df_accounts WHERE id='route-b'")).rows[0].blocked, false);
   });

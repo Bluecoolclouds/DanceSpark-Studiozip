@@ -33,7 +33,7 @@ and input URLs are never returned to the app.
 
 ## Application contract
 
-`POST /api/light-swapper/generations` requires the existing verified Clerk
+`POST /api/light-swapper/generations` requires a valid Better Auth
 identity and a server account with an active paid subscription. Cookie mutations
 require same origin; native mutations require a verified bearer token without an
 Origin header. User IDs and admin flags in the payload or headers grant nothing.

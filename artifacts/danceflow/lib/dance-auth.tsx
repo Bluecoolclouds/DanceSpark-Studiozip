@@ -1,39 +1,26 @@
-/**
- * Native auth: forwards Clerk untouched. Must not import Logto browser code;
- * the type-only import below is erased at build time.
- */
-import React, { useCallback, useMemo } from 'react';
-import { useAuth, useClerk, useUser } from '@clerk/expo';
-import type { DanceAuthState } from '@workspace/auth-web';
+import React from "react";
+import { createAuthClient } from "better-auth/react";
+import { expoClient } from "@better-auth/expo/client";
+import * as SecureStore from "expo-secure-store";
+import { DanceAuthProvider, type AccountSession } from "@workspace/auth-web";
+import { nativeApiOrigin } from "./api-origin";
+export { useDanceAuth, type DanceAuthState } from "@workspace/auth-web";
 
-export type { DanceAuthState };
-
-export function DanceAuthBoundary({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+const origin = nativeApiOrigin({ development: __DEV__,
+  productionOrigin: process.env.EXPO_PUBLIC_API_ORIGIN,
+  developmentDomain: process.env.EXPO_PUBLIC_DOMAIN });
+const client = createAuthClient({
+  baseURL: origin, basePath: "/api/auth",
+  plugins: [expoClient({ scheme: "danceflow", storagePrefix: "danceflow-auth",
+    storage: SecureStore, disableCache: true })],
+});
+async function loadSession(token: string): Promise<AccountSession> {
+  const response = await fetch(`${origin}/api/auth/session`, {
+    headers: { Authorization: `Bearer ${token}` }, credentials: "omit",
+  });
+  if (!response.ok) throw Object.assign(new Error("Не удалось проверить доступ к аккаунту."), { status: response.status });
+  return response.json();
 }
-
-export function useDanceAuth(): DanceAuthState {
-  const { isLoaded, isSignedIn, userId, getToken } = useAuth();
-  const { user } = useUser();
-  const clerk = useClerk();
-  const signOut = useCallback(async () => { await clerk.signOut(); }, [clerk]);
-  const token = useCallback(() => getToken(), [getToken]);
-  const email = user?.id === userId ? user?.primaryEmailAddress?.emailAddress ?? null : null;
-  return useMemo<DanceAuthState>(() => ({
-    phase: !isLoaded ? 'loading' : isSignedIn ? 'signed-in' : 'signed-out',
-    isLoaded: !!isLoaded,
-    isSignedIn: !!isSignedIn,
-    userId: isSignedIn ? userId ?? null : null,
-    email: isSignedIn ? email : null,
-    role: null,
-    source: isSignedIn ? 'clerk' : null,
-    logtoEnabled: false,
-    sessionError: null,
-    getToken: token,
-    signInWithLogto: async () => {},
-    signOut,
-    retry: () => {},
-    migration: null,
-    callback: 'disabled',
-  }), [isLoaded, isSignedIn, userId, email, token, signOut]);
+export function DanceAuthBoundary({ children }: { children: React.ReactNode }) {
+  return <DanceAuthProvider client={client} loadSession={loadSession}>{children}</DanceAuthProvider>;
 }
