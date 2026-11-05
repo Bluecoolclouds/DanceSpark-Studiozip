@@ -34,6 +34,11 @@ export async function issueDailyCreditsForCurrentDay(): Promise<number> {
         GREATEST(COALESCE(a.daily_credit_override,c.daily_free_credits),0)
       FROM df_accounts a CROSS JOIN df_controls c CROSS JOIN today
       WHERE c.id=1 AND a.deletion_requested_at IS NULL
+      -- Match per-account transactions: account lock before bucket/ledger.
+      -- Otherwise the bucket INSERT's later FK lock can deadlock against
+      -- an account request that already holds FOR UPDATE on df_accounts.
+      ORDER BY a.id
+      FOR KEY SHARE OF a
       ON CONFLICT (account_id,utc_day) DO NOTHING
       RETURNING account_id,utc_day,granted_credits
     )

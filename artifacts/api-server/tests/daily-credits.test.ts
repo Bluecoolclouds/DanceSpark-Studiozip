@@ -4,7 +4,7 @@ import { beforeEach, test } from "node:test";
 import { randomUUID } from "node:crypto";
 import { isolatedDatabase } from "./helpers/database";
 import { testPricing } from "./helpers/pricing";
-import { getAccountDailyCredits, issueDailyCreditsForCurrentDay } from "../src/lib/daily-credits";
+import { ensureDailyCreditBucket, getAccountDailyCredits, issueDailyCreditsForCurrentDay } from "../src/lib/daily-credits";
 import { reserveGeneration, beginGeneration, finishGeneration } from "../src/lib/generation-governance";
 import { quoteSwapperPrice, PRICED_SWAPPER_MODELS } from "../src/lib/generation-pricing";
 import { hasUnsettledWork } from "../src/lib/account-lifecycle";
@@ -38,6 +38,40 @@ test("concurrent global and account issuance grants exactly once to paid and fre
   assert.equal((await pool.query("SELECT count(*)::int n FROM df_credit_ledger WHERE event='daily_grant'")).rows[0].n, 3);
   await pool.query("UPDATE df_controls SET daily_free_credits=100");
   assert.equal((await getAccountDailyCredits("free")).grantedCredits, 20, "no mid-day second grant");
+});
+
+test("background issuance locks the account before its bucket while a request holds the account", async () => {
+  await pool.query("UPDATE df_controls SET daily_free_credits=20");
+  const client = await pool.connect();
+  let batch: Promise<number> | undefined;
+  try {
+    await client.query("BEGIN");
+    await client.query("SET LOCAL lock_timeout='3s'");
+    await client.query("SELECT id FROM df_accounts WHERE id='free' FOR UPDATE");
+    batch = issueDailyCreditsForCurrentDay();
+    void batch.catch(() => {}); // Preserve rejection for the awaited result below.
+    let waiting = false;
+    for (let attempt = 0; attempt < 100; attempt++) {
+      const result = await pool.query(`SELECT 1 FROM pg_stat_activity
+        WHERE datname=current_database() AND pid<>pg_backend_pid()
+          AND wait_event_type='Lock' AND query LIKE '%WITH today AS%' LIMIT 1`);
+      if (result.rowCount) { waiting = true; break; }
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+    assert.ok(waiting, "background grant must be waiting for this account");
+    // This must not wait on a bucket that the background insert already owns.
+    const balance = await ensureDailyCreditBucket(client, "free", null, 20);
+    assert.equal(balance.availableCredits, 20);
+    await client.query("COMMIT");
+    await batch;
+    assert.equal((await pool.query(
+      "SELECT count(*)::int n FROM df_credit_ledger WHERE account_id='free' AND event='daily_grant'",
+    )).rows[0].n, 1);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    await batch?.catch(() => {});
+    throw error;
+  } finally { client.release(); }
 });
 
 test("old UTC balances never carry forward and reset points to next UTC midnight", async () => {

@@ -22,6 +22,7 @@ An Expo dance-video app with a separate web admin panel and Express API.
 - After provisioning an empty development database, apply the existing schema with `pnpm --filter @workspace/db run push`. Review proposed changes before applying to a database containing data.
 - `higgs_api` is required only for actual Higgsfield generation; keep it in Secrets. Do not enable paid generation without provider configuration and spending limits.
 - No SMTP yet: new email addresses are unverified; confirmation and email password reset are unavailable. No public email-based administrator bootstrap or account linking. See [Better Auth operations](docs/better-auth.md) for the trusted-terminal owner/migration procedures. Never grant ownership just because a signup uses `DANCEFLOW_OWNER_EMAIL`.
+- Production requires an explicit public HTTPS `DANCEFLOW_WEB_ORIGINS`; preview/local/wildcard origins fail startup. Use API `check:auth-release` and read-only `check:auth-database` scripts before cutover, plus mobile `check:android-release`. Never run manual production schema migrations: managed PostgreSQL schema changes go through Publish review.
 
 ## Stack
 

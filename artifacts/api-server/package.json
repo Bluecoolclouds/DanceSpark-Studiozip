@@ -9,7 +9,9 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node tests/run.mjs",
-    "auth:operator": "tsx scripts/auth-operator.ts"
+    "auth:operator": "tsx scripts/auth-operator.ts",
+    "check:auth-release": "tsx scripts/check-auth-release.ts config",
+    "check:auth-database": "tsx scripts/check-auth-release.ts database"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1160.0",
