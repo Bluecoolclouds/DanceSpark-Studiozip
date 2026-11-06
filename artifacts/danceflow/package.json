@@ -9,6 +9,7 @@
     "serve": "node server/serve.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "check:android-release": "node --experimental-strip-types scripts/check-android-release.mjs",
+    "check:rustore-assets": "node scripts/check-rustore-assets.mjs",
     "test": "node --experimental-strip-types --experimental-test-module-mocks --test tests/*.test.mjs"
   },
   "devDependencies": {

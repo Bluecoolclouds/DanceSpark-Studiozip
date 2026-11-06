@@ -14,7 +14,8 @@ export function nativeApiOrigin(input: {
   const host = url.hostname.toLowerCase();
   if (!input.development && (
     host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.replit.dev') ||
-    host.endsWith('.repl.co') || !host.includes('.') || /^[\d.]+$/.test(host) || host.includes(':')
+    host.endsWith('.repl.co') || host.endsWith('.local') || host.endsWith('.internal') ||
+    !host.includes('.') || /^[\d.]+$/.test(host) || host.includes(':')
   )) throw new Error('Development-адрес или локальный сервер нельзя использовать в Android-релизе.');
   return url.origin;
 }
