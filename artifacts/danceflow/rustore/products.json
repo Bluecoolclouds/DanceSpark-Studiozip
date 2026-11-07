@@ -1,0 +1,24 @@
+{
+  "consoleApplicationId": "2063784286",
+  "androidPackage": "ru.danceflow.app",
+  "products": [
+    {
+      "productId": "razminka",
+      "planId": "monthly_10",
+      "accountPlan": "warmup",
+      "name": "Разминка"
+    },
+    {
+      "productId": "tancpol",
+      "planId": "monthly_25",
+      "accountPlan": "dancefloor",
+      "name": "Танцпол"
+    },
+    {
+      "productId": "cena",
+      "planId": "monthly_unlimited",
+      "accountPlan": "stage",
+      "name": "Сцена"
+    }
+  ]
+}
